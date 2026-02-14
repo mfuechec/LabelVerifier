@@ -27,29 +27,34 @@ export default function ResultsPage() {
   if (isLoading) return <LoadingSpinner message="Loading results..." />;
   if (error || !result) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p style={{ color: '#ef4444' }}>Failed to load verification results.</p>
-        <Link to="/" style={{ color: '#2563eb' }}>Back to Upload</Link>
+      <div style={{ padding: '3rem', textAlign: 'center' }}>
+        <p style={{ color: 'var(--red-600)', marginBottom: '1rem' }}>Failed to load verification results.</p>
+        <Link to="/" className="back-link">Back to Home</Link>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <Link to="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Back</Link>
-        <h2 style={{ margin: 0 }}>Verification Results</h2>
+    <div className="animate-in">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+        <Link to="/" className="back-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </Link>
+        <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.7rem' }}>Verification Results</h2>
       </div>
 
-      <OverallStatus
-        status={result.status}
-        confidence={result.overall_confidence}
-        beverageType={result.beverage_type}
-      />
+      <div className="section-card" style={{ marginBottom: '1.5rem' }}>
+        <OverallStatus
+          status={result.status}
+          confidence={result.overall_confidence}
+          beverageType={result.beverage_type}
+        />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <div>
-          <h3 style={{ marginBottom: '0.5rem' }}>Label Image</h3>
+        <div className="section-card">
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', marginBottom: '0.75rem' }}>Label Image</h3>
           <AnnotatedLabelViewer
             fields={result.fields}
             highlightedField={highlightedField}
@@ -57,8 +62,8 @@ export default function ResultsPage() {
           />
         </div>
 
-        <div>
-          <h3 style={{ marginBottom: '0.5rem' }}>Field Comparison</h3>
+        <div className="section-card">
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', marginBottom: '0.75rem' }}>Field Comparison</h3>
           <ComparisonTable
             fields={result.fields}
             highlightedField={highlightedField}

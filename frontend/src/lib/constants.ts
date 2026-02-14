@@ -6,17 +6,17 @@ export const CANONICAL_WARNING =
   'operate machinery, and may cause health problems.';
 
 export const STATUS_COLORS: Record<string, string> = {
-  match: '#22c55e',
-  content_mismatch: '#ef4444',
-  field_missing: '#ef4444',
-  extraction_uncertain: '#eab308',
+  match: 'var(--emerald-600)',
+  content_mismatch: 'var(--red-600)',
+  field_missing: 'var(--red-600)',
+  extraction_uncertain: 'var(--yellow-500)',
 };
 
 export const STATUS_BG_COLORS: Record<string, string> = {
-  pass: '#dcfce7',
-  needs_review: '#fef9c3',
-  fail: '#fee2e2',
-  pending: '#f3f4f6',
+  pass: 'var(--emerald-100)',
+  needs_review: 'var(--yellow-100)',
+  fail: 'var(--red-100)',
+  pending: 'var(--slate-100)',
 };
 
 export const STATUS_LABELS: Record<string, string> = {

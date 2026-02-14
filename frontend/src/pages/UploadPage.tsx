@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import ImageUploadZone from '../components/upload/ImageUploadZone';
 import ApplicationDataForm from '../components/upload/ApplicationDataForm';
 import ApplicationDataUpload from '../components/upload/ApplicationDataUpload';
+import HistoryFilters from '../components/history/HistoryFilters';
+import HistoryTable from '../components/history/HistoryTable';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
-import { useVerify } from '../api/verifications';
+import { useVerify, useVerifications } from '../api/verifications';
 import type { ApplicationData } from '../api/types';
 
 const emptyAppData: ApplicationData = {
@@ -25,6 +27,20 @@ export default function UploadPage() {
     other: null,
   });
   const [appData, setAppData] = useState<ApplicationData>(emptyAppData);
+
+  // History state
+  const [status, setStatus] = useState('');
+  const [beverageType, setBeverageType] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const { data: historyData, isLoading: historyLoading } = useVerifications({
+    status: status || undefined,
+    beverage_type: beverageType || undefined,
+    brand: search || undefined,
+    page,
+    per_page: 10,
+  });
 
   const handleFileSelect = useCallback((file: File, panel: string) => {
     setImages((prev) => ({ ...prev, [panel]: file }));
@@ -63,57 +79,92 @@ export default function UploadPage() {
     }
   };
 
-  if (verifyMutation.isPending) {
-    return <LoadingSpinner message="Analyzing label... This usually takes 3-5 seconds." />;
-  }
+  const totalPages = historyData ? Math.ceil(historyData.total / 10) : 0;
 
   return (
     <div>
-      <h2>Label Verification</h2>
-      <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-        Upload label images and enter application data to begin verification.
-      </p>
+      {/* Upload Section */}
+      <section className="section-card animate-in">
+        <div className="section-header">
+          <h2>New Verification</h2>
+          <p>Upload label images and enter application data to verify TTB compliance.</p>
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-        <div>
-          <h3 style={{ marginBottom: '1rem' }}>Label Images</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="upload-grid">
+          <div className="images-column">
+            <div className="images-column-label">Label Images</div>
             <ImageUploadZone label="Front Label" panelType="front" file={images.front} onFileSelect={handleFileSelect} />
             <ImageUploadZone label="Back Label" panelType="back" file={images.back} onFileSelect={handleFileSelect} />
             <ImageUploadZone label="Other" panelType="other" file={images.other} onFileSelect={handleFileSelect} />
-          </div>
-
-          <div style={{ marginTop: '1rem' }}>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-              Or load application data from a JSON file:
-            </p>
             <ApplicationDataUpload onDataLoaded={setAppData} />
           </div>
+
+          <div>
+            <ApplicationDataForm data={appData} onChange={setAppData} />
+          </div>
         </div>
 
-        <div>
-          <ApplicationDataForm data={appData} onChange={setAppData} />
+        <div style={{ borderTop: '1px solid var(--slate-200)', marginTop: '1.5rem', paddingTop: '1.5rem' }}>
+          <div className="verify-action">
+            <button
+              className="btn-verify"
+              onClick={handleSubmit}
+              disabled={verifyMutation.isPending}
+            >
+              {verifyMutation.isPending ? (
+                <>
+                  <span className="spinner-sm" />
+                  Analyzing Label...
+                </>
+              ) : (
+                'Verify Label'
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-        <button
-          onClick={handleSubmit}
-          disabled={verifyMutation.isPending}
-          style={{
-            padding: '0.75rem 3rem',
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            backgroundColor: '#2563eb',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-          }}
-        >
-          Verify Label
-        </button>
-      </div>
+      {/* History Section */}
+      <section className="section-card animate-in-delay-1">
+        <div className="history-header">
+          <h2>Recent Verifications</h2>
+          <HistoryFilters
+            status={status}
+            beverageType={beverageType}
+            search={search}
+            onStatusChange={setStatus}
+            onBeverageTypeChange={setBeverageType}
+            onSearchChange={setSearch}
+          />
+        </div>
+
+        {historyLoading ? (
+          <LoadingSpinner message="Loading history..." />
+        ) : (
+          <>
+            <HistoryTable items={historyData?.items || []} />
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </button>
+                <span className="page-info">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 }

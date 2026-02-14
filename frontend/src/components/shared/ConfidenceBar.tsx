@@ -3,29 +3,20 @@ interface ConfidenceBarProps {
 }
 
 export default function ConfidenceBar({ value }: ConfidenceBarProps) {
-  const color = value >= 90 ? '#22c55e' : value >= 70 ? '#eab308' : '#ef4444';
+  const color =
+    value >= 90 ? 'var(--emerald-600)' :
+    value >= 70 ? 'var(--yellow-500)' :
+    'var(--red-600)';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div
-        style={{
-          width: '60px',
-          height: '8px',
-          backgroundColor: '#e5e7eb',
-          borderRadius: '4px',
-          overflow: 'hidden',
-        }}
-      >
+    <div className="confidence-bar-container">
+      <div className="confidence-bar-track">
         <div
-          style={{
-            width: `${Math.min(100, value)}%`,
-            height: '100%',
-            backgroundColor: color,
-            borderRadius: '4px',
-          }}
+          className="confidence-bar-fill"
+          style={{ width: `${Math.min(100, value)}%`, backgroundColor: color }}
         />
       </div>
-      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{value.toFixed(0)}%</span>
+      <span className="confidence-bar-label">{value.toFixed(0)}%</span>
     </div>
   );
 }

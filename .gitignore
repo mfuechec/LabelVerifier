@@ -45,5 +45,8 @@ htmlcov/
 .coverage
 coverage/
 
+# Vercel
+.vercel/
+
 # Misc
 *.log
