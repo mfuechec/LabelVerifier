@@ -1,0 +1,43 @@
+.app-layout {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1.5rem;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.app-header h1 a {
+  text-decoration: none;
+  color: #1a1a2e;
+}
+
+.app-header nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.app-header nav a {
+  text-decoration: none;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.app-header nav a:hover {
+  color: #1a1a2e;
+}
+
+.app-main {
+  padding: 1rem 0;
+}

@@ -1,0 +1,277 @@
+{
+  "fixtures": [
+    {
+      "id": "fixture-1-angels-envy",
+      "description": "Good spirits label - domestic bourbon",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Angels Envy burbon front.jpg", "panel": "front"},
+        {"filename": "Angels Envy burbon back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00001",
+        "brand_name": "Angel's Envy",
+        "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
+        "alcohol_content": "43.3%",
+        "net_contents": "750 mL",
+        "producer_name": "Louisville Distilling Company",
+        "producer_address": "Louisville, Kentucky",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-2-den-of-thieves",
+      "description": "Good spirits label - domestic flavored whiskey",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Den of Thieves chocolate whiskey front.jpg", "panel": "front"},
+        {"filename": "Den of Thieves chocolate whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00002",
+        "brand_name": "Den of Thieves",
+        "class_type": "Chocolate Flavored Whiskey",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Strong Spirits",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-3-hanami-gin",
+      "description": "Good spirits label - imported gin from Holland",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Hanami gin front.jpg", "panel": "front"},
+        {"filename": "Hanami gin back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00003",
+        "brand_name": "Hanami",
+        "class_type": "Dry Gin",
+        "alcohol_content": "43%",
+        "net_contents": "750 mL",
+        "producer_name": "P. Melchers Distilleries BV",
+        "producer_address": "Lelystad, The Netherlands",
+        "country_of_origin": "Holland",
+        "importer_name": "The Red Sea Import Company",
+        "importer_address": "Princeton, MN",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-4-rosso-veneto",
+      "description": "Good wine label - imported Italian red wine",
+      "category": "good wine+beer",
+      "images": [
+        {"filename": "Rosso Veneto wine front.jpg", "panel": "front"},
+        {"filename": "Rosso Veneto wine back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00004",
+        "brand_name": "Rosso Veneto",
+        "class_type": "Red Wine",
+        "alcohol_content": "14.5%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": "Italy",
+        "importer_name": "Marcato Direct",
+        "importer_address": "Addison, IL 60108",
+        "beverage_type": "wine",
+        "has_sulfites_declaration": true
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "sulfites_declaration": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-5-woodford-reserve",
+      "description": "Bad warning label - warning text appears to omit 'during pregnancy'",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Woodford Reserve burbon front.jpg", "panel": "front"},
+        {"filename": "Woodford Reserve burbon front2.jpg", "panel": "other"},
+        {"filename": "Woodford Reserve burbon back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00005",
+        "brand_name": "Woodford Reserve",
+        "class_type": "Kentucky Straight Bourbon Whiskey",
+        "alcohol_content": "45.2%",
+        "net_contents": "750 mL",
+        "producer_name": "The Woodford Reserve Distillery",
+        "producer_address": "Versailles, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Warning text appears to omit 'during pregnancy'"
+      }
+    },
+    {
+      "id": "fixture-6-casamigos",
+      "description": "Bad label content - front label text in Spanish",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Casamigos tequila front.jpg", "panel": "front"},
+        {"filename": "Casamigos tequila back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00006",
+        "brand_name": "Casamigos",
+        "class_type": "Blanco Tequila",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Productos Finos de Agave",
+        "producer_address": "Jalisco, Mexico",
+        "country_of_origin": "Mexico",
+        "importer_name": "Casamigos Spirits Company",
+        "importer_address": "New York, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "match"
+        },
+        "notes": "Front label text is in Spanish (CATEGORIA, HECHO, CLASE). Back label has English info."
+      }
+    },
+    {
+      "id": "fixture-7-fete-rose",
+      "description": "Bad wine+beer - warning text has hyphenation issues",
+      "category": "bad wine+beer",
+      "images": [
+        {"filename": "Fete Rose wine.jpg", "panel": "front"},
+        {"filename": "Fete Rose wine back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00007",
+        "brand_name": "Fete",
+        "class_type": "Rose Wine",
+        "alcohol_content": "12.5%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": "France",
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "wine",
+        "has_sulfites_declaration": true
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Warning text has BEV-ERAGES hyphenation and possibly other issues"
+      }
+    },
+    {
+      "id": "fixture-8-mokka-whiskey",
+      "description": "Extraction challenge - highly stylized/decorative fonts",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Mokka whiskey front.jpg", "panel": "front"},
+        {"filename": "Mokka whiskey back.jpg", "panel": "back"},
+        {"filename": "Mokka whiskey other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00008",
+        "brand_name": "Mokka",
+        "class_type": "Whiskey with Natural Flavors",
+        "alcohol_content": "35%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain"
+        },
+        "notes": "Highly stylized/decorative font makes extraction difficult"
+      }
+    }
+  ]
+}

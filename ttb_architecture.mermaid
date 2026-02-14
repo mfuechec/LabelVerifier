@@ -1,0 +1,198 @@
+graph TB
+    subgraph Client["Frontend (React SPA) -- Vercel / Netlify"]
+        UI[Clean Upload Interface]
+        LabelUpload[Label Image Upload<br/>Drop Zones: Front / Back / Other<br/>Single + Batch]
+        AppFormUpload[Application Form Upload<br/>JSON / CSV]
+        ManualEntry[Manual Form Entry]
+        ResultsView[Results Dashboard<br/>Assist Mode -- Agent Makes Final Call]
+        AnnotatedLabel[Annotated Label Viewer<br/>Bounding Boxes + Color Coding<br/>Zoom / Pan / Click-to-Highlight]
+        ComparisonTable[Field-by-Field<br/>Comparison Table<br/>Override / Confirm / Flag]
+        BatchQueue[Batch Processing Queue<br/>+ Progress Tracker]
+        ReviewHistory[Review History<br/>Filter by Status / Date /<br/>Beverage Type / Brand]
+    end
+
+    subgraph API["Backend API -- Railway / Render / Fly.io"]
+        Gateway[API Gateway / Router]
+        Orchestrator[Verification Orchestrator<br/>Assist Mode]
+        AppDataParser[Application Data Parser<br/>JSON / CSV / Form Input]
+        ImageGrouper[Multi-Image Grouper<br/>Associates Front / Back / Other<br/>by Drop Zone or CSV Mapping]
+    end
+
+    subgraph Extraction["Label Extraction Pipeline"]
+        LLMVision[LLM Vision Extraction<br/>Claude / GPT-4o<br/>Combined OCR + Field ID<br/>in Single Call]
+        OCRFallback[OCR Fallback<br/>Azure Doc Intelligence /<br/>Google Vision API<br/>Precise Bounding Boxes]
+        FieldNormalizer[Field Normalizer<br/>Units, Formatting, Casing<br/>Proof Cross-Validation]
+        ImageMerger[Multi-Panel Merger<br/>Combine Fields from<br/>Front + Back + Other<br/>Flag Conflicts]
+    end
+
+    subgraph Verification["Comparison & Verification Engine"]
+        FieldMatcher[Field Matcher<br/>Strategy Dispatch]
+        ExactMatch[Exact Match<br/>Government Warning<br/>vs. Canonical Text]
+        FuzzyMatch[Fuzzy Match<br/>Brand, Class/Type,<br/>Producer, Address,<br/>Country of Origin]
+        NumericMatch[Numeric Match<br/>ABV + Proof Validation<br/>Net Contents + Unit Normalization]
+        PresenceCheck[Presence Check<br/>Sulfites Declaration]
+        ComplianceCheck[Compliance Checker<br/>Mandatory Fields by<br/>Beverage Type Matrix<br/>Spirits / Wine / Beer]
+        ConfidenceScorer[Confidence Scorer<br/>Per-Field + Overall<br/>Pass >= 90 / Review 70-89 / Fail < 70]
+    end
+
+    subgraph Annotation["Label Annotation Engine"]
+        BoundingBoxes[Bounding Box Extraction<br/>Field Locations + Coordinates]
+        Overlay[Image Overlay Generator]
+        GreenBox["Green = Match"]
+        RedBox["Red = Content Mismatch<br/>or Field Missing"]
+        YellowBox["Yellow = Extraction Uncertain<br/>Low Confidence / Needs Review"]
+        AnnotatedOutput[Annotated Image Output<br/>Per-Panel Annotations]
+    end
+
+    subgraph Output["Results Assembly"]
+        Report[Verification Report]
+        PassReview[Pass / Needs Review / Fail<br/>Recommendation]
+        FieldDetails[Field-Level Details<br/>Extracted vs. Declared<br/>4 Failure Categories]
+    end
+
+    subgraph Storage["Database (SQLite Prototype / PostgreSQL Production)"]
+        DB[(Database)]
+        Sessions[Verification Sessions<br/>ID, Timestamp, Agent,<br/>Beverage Type]
+        LabelRecords[Label Records<br/>Images, Extracted Data,<br/>Application Data]
+        StatusTracking[Status Tracking<br/>Pass / Fail / Needs Review /<br/>Agent Override + Notes]
+        ResultsStore[Stored Results<br/>Annotated Images,<br/>Comparison Reports]
+    end
+
+    subgraph HITL["Human-in-the-Loop (Assist Mode)"]
+        AgentDecision[Agent Final Decision<br/>Confirm / Override per Field]
+        FeedbackLoop[Agent Feedback<br/>AI Correct / AI Incorrect<br/>+ Field-Level Detail + Notes]
+    end
+
+    subgraph FutureScope["Out of Scope -- Future Production"]
+        direction LR
+        ShadowMode["Shadow Mode<br/>AI Runs Silently"]
+        AutoMode["Autonomous Mode<br/>Auto-Approve High Confidence"]
+        COLAIntegration[COLA System Integration]
+        ApplicantNotify[Applicant Notifications]
+        AgentAssignment[Multi-Agent Assignment]
+        AuditTrail[Formal Audit Trail]
+        ApprovalWorkflow[Approval / Rejection Workflow]
+        ModelFineTune[Model Fine-Tuning]
+        QASampling[QA Sampling + Blind Review]
+        AccuracyDash[Accuracy Dashboard +<br/>Trend Metrics]
+        ExportReport[Export Report PDF / JSON]
+    end
+
+    %% Main Flow -- Upload
+    UI --> LabelUpload
+    UI --> AppFormUpload
+    UI --> ManualEntry
+    UI --> BatchQueue
+    UI --> ReviewHistory
+
+    LabelUpload --> Gateway
+    AppFormUpload --> Gateway
+    ManualEntry --> Gateway
+    BatchQueue --> Gateway
+
+    Gateway --> Orchestrator
+    Gateway --> AppDataParser
+    Gateway --> ImageGrouper
+
+    %% Extraction Flow
+    ImageGrouper --> LLMVision
+    Orchestrator --> LLMVision
+    LLMVision --> FieldNormalizer
+    LLMVision -.->|Insufficient coordinates| OCRFallback
+    OCRFallback --> BoundingBoxes
+    LLMVision --> BoundingBoxes
+    FieldNormalizer --> ImageMerger
+    ImageMerger -->|Merged fields| FieldMatcher
+
+    %% Comparison Flow
+    AppDataParser --> FieldMatcher
+
+    FieldMatcher --> ExactMatch
+    FieldMatcher --> FuzzyMatch
+    FieldMatcher --> NumericMatch
+    FieldMatcher --> PresenceCheck
+    FieldMatcher --> ComplianceCheck
+
+    ExactMatch --> ConfidenceScorer
+    FuzzyMatch --> ConfidenceScorer
+    NumericMatch --> ConfidenceScorer
+    PresenceCheck --> ConfidenceScorer
+    ComplianceCheck --> ConfidenceScorer
+
+    %% Annotation Flow
+    BoundingBoxes --> Overlay
+    ConfidenceScorer --> Overlay
+
+    Overlay --> GreenBox
+    Overlay --> RedBox
+    Overlay --> YellowBox
+    GreenBox --> AnnotatedOutput
+    RedBox --> AnnotatedOutput
+    YellowBox --> AnnotatedOutput
+
+    %% Results Assembly
+    ConfidenceScorer --> Report
+    Report --> PassReview
+    Report --> FieldDetails
+
+    %% Results to UI
+    AnnotatedOutput --> ResultsView
+    AnnotatedOutput --> AnnotatedLabel
+    PassReview --> ResultsView
+    FieldDetails --> ComparisonTable
+
+    %% Storage connections
+    Orchestrator --> DB
+    Report --> DB
+    AnnotatedOutput --> DB
+    DB --> Sessions
+    DB --> LabelRecords
+    DB --> StatusTracking
+    DB --> ResultsStore
+    ReviewHistory --> DB
+
+    %% Agent Assist Mode Flow
+    ResultsView --> AgentDecision
+    AgentDecision --> StatusTracking
+    AgentDecision --> FeedbackLoop
+    FeedbackLoop --> DB
+
+    %% Future scope connections (dashed)
+    StatusTracking -.->|Future| ApprovalWorkflow
+    ApprovalWorkflow -.->|Future| ApplicantNotify
+    DB -.->|Future| COLAIntegration
+    DB -.->|Future| AuditTrail
+    Sessions -.->|Future| AgentAssignment
+    FeedbackLoop -.->|Future| ModelFineTune
+    FeedbackLoop -.->|Future| AccuracyDash
+    DB -.->|Future| QASampling
+    Report -.->|Future| ExportReport
+    DB -.->|Future| ShadowMode
+    ConfidenceScorer -.->|Future| AutoMode
+
+    %% Styling
+    classDef client fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
+    classDef api fill:#FFF3E0,stroke:#E65100,stroke-width:2px
+    classDef extraction fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px
+    classDef verification fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px
+    classDef annotation fill:#FFF9C4,stroke:#F9A825,stroke-width:2px
+    classDef output fill:#FCE4EC,stroke:#C62828,stroke-width:2px
+    classDef storage fill:#E0F2F1,stroke:#00695C,stroke-width:2px
+    classDef hitl fill:#E8EAF6,stroke:#283593,stroke-width:2px
+    classDef future fill:#F5F5F5,stroke:#9E9E9E,stroke-width:1px,stroke-dasharray: 5 5
+    classDef green fill:#C8E6C9,stroke:#2E7D32
+    classDef red fill:#FFCDD2,stroke:#C62828
+    classDef yellow fill:#FFF9C4,stroke:#F9A825
+
+    class UI,LabelUpload,AppFormUpload,ManualEntry,ResultsView,AnnotatedLabel,ComparisonTable,BatchQueue,ReviewHistory client
+    class Gateway,Orchestrator,AppDataParser,ImageGrouper api
+    class LLMVision,OCRFallback,FieldNormalizer,ImageMerger extraction
+    class FieldMatcher,ExactMatch,FuzzyMatch,NumericMatch,PresenceCheck,ComplianceCheck,ConfidenceScorer verification
+    class BoundingBoxes,Overlay,AnnotatedOutput annotation
+    class GreenBox green
+    class RedBox red
+    class YellowBox yellow
+    class Report,PassReview,FieldDetails output
+    class DB,Sessions,LabelRecords,StatusTracking,ResultsStore storage
+    class AgentDecision,FeedbackLoop hitl
+    class ShadowMode,AutoMode,COLAIntegration,ApplicantNotify,AgentAssignment,AuditTrail,ApprovalWorkflow,ModelFineTune,QASampling,AccuracyDash,ExportReport future
