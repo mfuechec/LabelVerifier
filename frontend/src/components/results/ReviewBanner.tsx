@@ -6,7 +6,7 @@ interface ReviewBannerProps {
 }
 
 export default function ReviewBanner({ reviewSummary, onReviewNext }: ReviewBannerProps) {
-  const { fields_needing_review, fields_reviewed, flagged_field_names } = reviewSummary;
+  const { fields_needing_review, fields_reviewed } = reviewSummary;
 
   if (fields_needing_review === 0) return null;
 
