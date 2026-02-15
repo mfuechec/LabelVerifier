@@ -349,7 +349,7 @@ def score_fixture(
 
     # Build field-level results
     field_results = {}
-    expected_fields = expected.get("field_expectations", {})
+    expected_fields = expected.get("expected_field_results", expected.get("field_expectations", {}))
     for cr in comparison_results:
         expected_field_status = expected_fields.get(cr.field_name)
         field_results[cr.field_name] = {

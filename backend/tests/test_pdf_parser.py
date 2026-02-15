@@ -149,7 +149,7 @@ class TestPDFApplicationParser:
         import os
         pdf_path = os.path.join(
             os.path.dirname(__file__), "..", "..",
-            "test data", "packages", "pass", "angels-envy", "application.pdf"
+            "test data", "scenarios", "pass", "angels-envy", "application.pdf"
         )
         if not os.path.exists(pdf_path):
             pytest.skip("Test data packages not generated yet")
