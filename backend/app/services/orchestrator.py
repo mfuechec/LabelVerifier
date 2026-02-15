@@ -21,6 +21,7 @@ from app.services.comparison import ComparisonService, ConfidenceScorer
 from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
 from app.services.annotation import AnnotationService
+from app.services.image_preprocessor import preprocess_image
 
 
 class VerificationOrchestrator:
@@ -64,10 +65,13 @@ class VerificationOrchestrator:
             img_path.write_bytes(img_bytes)
             annotated_images[panel] = f"/api/v1/images/{session_id}/{panel}"
 
-        # 1. Extract fields from each panel (parallel)
+        # 1. Preprocess images (upscale small images, sharpen for text readability)
+        processed_images = [preprocess_image(img) for img in images]
+
+        # Extract fields from each panel (parallel)
         extraction_tasks = [
             self.extraction_service.extract_fields(img, panel)
-            for img, panel in zip(images, panels)
+            for img, panel in zip(processed_images, panels)
         ]
         extraction_results: list[ExtractionResult] = await asyncio.gather(
             *extraction_tasks, return_exceptions=True

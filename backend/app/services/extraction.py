@@ -61,6 +61,31 @@ Rules:
 - If no government warning is visible on this label, return null
 - Extract EXACTLY as printed -- do NOT correct errors"""
 
+# Focused prompt for importer re-extraction when initial pass returns null
+IMPORTER_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find and extract the IMPORTER information from this label image.
+
+Look carefully for text containing "IMPORTED BY" or "IMPORTER" -- this is usually printed in small text near the bottom of the label or on the back panel, often near the government warning or barcode.
+
+The importer line typically follows this pattern:
+IMPORTED BY [Company Name], [City], [State]
+
+Examples:
+- "IMPORTED BY SIDNEY FRANK IMPORTING CO. INC. NEW ROCHELLE, N.Y."
+- "IMPORTED BY NICHE W. & S., CEDAR KNOLLS, NJ"
+- "IMPORTED BY KOBRAND CORPORATION, NEW YORK, N.Y."
+
+Read every word carefully, especially small text at the bottom of the label.
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"importer_name": {"value": null, "conf": "high"}, "importer_address": {"value": null, "conf": "high"}}
+
+Rules:
+- importer_name: The company name AFTER "IMPORTED BY". Do NOT include the "IMPORTED BY" prefix.
+- importer_address: The city and state that follow the company name.
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- If no importer information is visible, return null for both fields
+- Extract EXACTLY as printed -- do NOT correct errors"""
+
 
 @dataclass
 class ExtractionResult:
@@ -329,6 +354,23 @@ class AnthropicExtractor(BaseExtractor):
                     "extraction_confidence": gw_field.get("extraction_confidence", "high") if isinstance(gw_field, dict) else "high",
                 }
 
+            # Third pass: re-extract importer info if missing.
+            # Small importer text is often missed on the first pass.
+            imp_field = fields.get("importer_name", {})
+            imp_val = imp_field.get("value") if isinstance(imp_field, dict) else imp_field
+            if not imp_val:
+                reextracted_imp = await self.reextract_importer(image_bytes, mime_type)
+                if reextracted_imp:
+                    for key in ("importer_name", "importer_address"):
+                        val = reextracted_imp.get(key)
+                        if val:
+                            fields[key] = {
+                                "value": val,
+                                "bounding_box": None,
+                                "extraction_confidence": "medium",
+                            }
+                            logger.info("Importer re-extraction found %s for %s", key, panel_type)
+
             return ExtractionResult(fields=fields, panel_type=panel_type)
 
         except Exception as e:
@@ -396,6 +438,65 @@ class AnthropicExtractor(BaseExtractor):
 
         except Exception as e:
             logger.exception("Warning re-extraction failed: %s", e)
+            return None
+
+
+    async def reextract_importer(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> dict | None:
+        """Re-extract importer name and address with a focused prompt.
+
+        Returns:
+            Dict with importer_name and importer_address values, or None on failure.
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": IMPORTER_REEXTRACT_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            response_text = response.content[0].text
+            logger.info("Importer re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None
+
+            result = {}
+            for key in ("importer_name", "importer_address"):
+                field = parsed.get(key)
+                if isinstance(field, dict) and "value" in field:
+                    result[key] = field["value"]
+                elif isinstance(field, str):
+                    result[key] = field
+
+            return result if any(result.values()) else None
+
+        except Exception as e:
+            logger.exception("Importer re-extraction failed: %s", e)
             return None
 
 
