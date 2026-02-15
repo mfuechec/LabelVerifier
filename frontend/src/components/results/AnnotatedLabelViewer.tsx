@@ -57,7 +57,7 @@ export default function AnnotatedLabelViewer({
                 border: '1px solid var(--slate-300)',
                 borderRadius: '4px',
                 cursor: 'pointer',
-                backgroundColor: activePanel === panel ? 'var(--slate-700)' : 'var(--white)',
+                backgroundColor: activePanel === panel ? 'var(--navy-700)' : 'var(--white)',
                 color: activePanel === panel ? 'var(--white)' : 'var(--slate-600)',
               }}
             >

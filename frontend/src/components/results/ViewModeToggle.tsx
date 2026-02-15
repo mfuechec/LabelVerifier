@@ -24,7 +24,7 @@ export default function ViewModeToggle({ mode, onModeChange }: ViewModeTogglePro
           fontWeight: mode === 'comparison' ? 600 : 400,
           border: 'none',
           cursor: 'pointer',
-          backgroundColor: mode === 'comparison' ? 'var(--slate-700)' : 'var(--white)',
+          backgroundColor: mode === 'comparison' ? 'var(--navy-700)' : 'var(--white)',
           color: mode === 'comparison' ? 'var(--white)' : 'var(--slate-600)',
           transition: 'background-color 0.15s, color 0.15s',
         }}
@@ -40,7 +40,7 @@ export default function ViewModeToggle({ mode, onModeChange }: ViewModeTogglePro
           border: 'none',
           borderLeft: '1px solid var(--slate-300)',
           cursor: 'pointer',
-          backgroundColor: mode === 'extracted' ? 'var(--slate-700)' : 'var(--white)',
+          backgroundColor: mode === 'extracted' ? 'var(--navy-700)' : 'var(--white)',
           color: mode === 'extracted' ? 'var(--white)' : 'var(--slate-600)',
           transition: 'background-color 0.15s, color 0.15s',
         }}

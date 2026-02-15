@@ -22,7 +22,7 @@ function WordDiff({ extracted, canonical }: { extracted: string; canonical: stri
             key={i}
             style={{
               backgroundColor: matches ? undefined : 'var(--red-100)',
-              color: matches ? 'var(--slate-700)' : 'var(--red-700)',
+              color: matches ? 'var(--navy-700)' : 'var(--red-700)',
               fontWeight: matches ? 400 : 600,
               padding: matches ? undefined : '0 2px',
               borderRadius: '2px',

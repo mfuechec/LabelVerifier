@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     llm_model: str = "meta-llama/llama-4-maverick-17b-128e-instruct"
     database_url: str = "sqlite:///./data/labelverify.db"
-    allowed_origins: str = "http://localhost:5173"
+    allowed_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175"
     max_image_size: int = 10 * 1024 * 1024  # 10MB
     allowed_mime_types: list[str] = [
         "image/jpeg",
