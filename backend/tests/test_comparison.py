@@ -303,6 +303,18 @@ class TestConfidenceReasons:
         assert "Fuzzy match" in reason
         assert "threshold: 85%" in reason
 
+    def test_fuzzy_match_declared_substring_of_extracted(self):
+        """When declared brand is fully contained in extracted text, it should match."""
+        status, score, reason = fuzzy_match("Cascade Winery", "Cascade")
+        assert status == "match", f"Expected match but got {status}: {reason}"
+        assert score >= 85.0
+
+    def test_fuzzy_match_extracted_substring_of_declared(self):
+        """When extracted text is fully contained in declared, it should match."""
+        status, score, reason = fuzzy_match("Cascade", "Cascade Winery")
+        assert status == "match", f"Expected match but got {status}: {reason}"
+        assert score >= 85.0
+
     def test_fuzzy_match_reason_on_mismatch(self):
         status, score, reason = fuzzy_match("COMPLETELY DIFFERENT", "Old Tom Distillery")
         assert status == "content_mismatch"

@@ -47,6 +47,12 @@ def fuzzy_match(
     if not norm_ext:
         return ("field_missing", 0.0, "Field not found on label")
 
+    # Check if one value fully contains the other (e.g. "Cascade" in "Cascade Winery")
+    if norm_dec in norm_ext or norm_ext in norm_dec:
+        best_ratio = max(fuzz.partial_ratio(norm_ext, norm_dec), fuzz.token_set_ratio(norm_ext, norm_dec))
+        if best_ratio >= threshold:
+            return ("match", best_ratio, f"Fuzzy match: {best_ratio:.0f}% (containment match, threshold: {threshold:.0f}%)")
+
     # Blend strict and lenient ratios to prevent short-token inflation
     strict_ratio = max(fuzz.ratio(norm_ext, norm_dec), fuzz.token_sort_ratio(norm_ext, norm_dec))
     lenient_ratio = max(fuzz.token_set_ratio(norm_ext, norm_dec), fuzz.partial_ratio(norm_ext, norm_dec))

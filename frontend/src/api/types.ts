@@ -70,6 +70,29 @@ export interface HistoryResponse {
   per_page: number;
 }
 
+export interface BatchStatus {
+  batch_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  total_items: number;
+  completed_items: number;
+  failed_items: number;
+  created_at: string;
+}
+
+export interface BatchSessionItem {
+  session_id: string;
+  brand_name: string | null;
+  beverage_type: string;
+  status: string;
+  overall_confidence: number | null;
+  created_at: string;
+}
+
+export interface BatchResponse {
+  batch: BatchStatus;
+  items: BatchSessionItem[];
+}
+
 export interface OverrideRequest {
   override_status: 'match' | 'content_mismatch' | 'field_missing';
   note?: string;

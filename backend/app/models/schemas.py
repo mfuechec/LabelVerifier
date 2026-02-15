@@ -72,6 +72,29 @@ class FeedbackRequest(BaseModel):
     note: str | None = None
 
 
+class BatchStatus(BaseModel):
+    batch_id: str
+    status: Literal["pending", "processing", "completed", "failed"]
+    total_items: int
+    completed_items: int
+    failed_items: int
+    created_at: str
+
+
+class BatchSessionItem(BaseModel):
+    session_id: str
+    brand_name: str | None = None
+    beverage_type: str
+    status: str
+    overall_confidence: float | None = None
+    created_at: str
+
+
+class BatchResponse(BaseModel):
+    batch: BatchStatus
+    items: list[BatchSessionItem]
+
+
 class HistoryItem(BaseModel):
     session_id: str
     application_id: str | None = None

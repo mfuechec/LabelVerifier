@@ -5,13 +5,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api.routes import verify, history, feedback, health
+from app.api.routes import verify, history, feedback, health, batch
 from app.db.setup import get_db, create_tables
 
 logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     settings.validate_required()
 
     app = FastAPI(
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     app.include_router(verify.router, prefix="/api/v1", tags=["verification"])
     app.include_router(history.router, prefix="/api/v1", tags=["history"])
     app.include_router(feedback.router, prefix="/api/v1", tags=["feedback"])
+    app.include_router(batch.router, prefix="/api/v1", tags=["batch"])
 
     # Ensure data directories exist
     os.makedirs("data/uploads", exist_ok=True)

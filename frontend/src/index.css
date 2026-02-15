@@ -191,6 +191,27 @@ table {
   box-shadow: 0 0 6px rgba(5, 150, 105, 0.5);
 }
 
+.app-header .header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-header .nav-link {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--slate-400);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.app-header .nav-link:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* Main layout */
 .app-main {
   max-width: var(--container-max);

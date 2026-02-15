@@ -50,6 +50,7 @@ class VerificationOrchestrator:
         images: list[bytes],
         panels: list[str],
         application_data: ApplicationData,
+        batch_id: str | None = None,
     ) -> VerificationResult:
         session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -174,7 +175,7 @@ class VerificationOrchestrator:
         # 7. Persist to DB
         self._persist_session(
             session_id, application_data, enriched_results,
-            overall_confidence, status, now,
+            overall_confidence, status, now, batch_id=batch_id,
         )
 
         # 8. Compute review summary
@@ -205,6 +206,7 @@ class VerificationOrchestrator:
         confidence: float,
         status: str,
         now: str,
+        batch_id: str | None = None,
     ):
         conn = get_db(self.db_path)
         try:
@@ -212,10 +214,10 @@ class VerificationOrchestrator:
                 conn.execute(
                     """INSERT INTO verification_sessions
                        (id, application_id, beverage_type, status,
-                        overall_confidence, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        overall_confidence, batch_id, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                     (session_id, app_data.application_id,
-                     app_data.beverage_type, status, confidence, now, now),
+                     app_data.beverage_type, status, confidence, batch_id, now, now),
                 )
 
                 app_id = str(uuid.uuid4())
