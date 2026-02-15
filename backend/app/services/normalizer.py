@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 
 def normalize_whitespace(text: str) -> str:
@@ -96,6 +97,8 @@ COUNTRY_ALIASES: dict[str, str] = {
     "ecosse": "scotland",
     "irlande": "ireland",
     "pays-bas": "netherlands",
+    "holland": "netherlands",
+    "the netherlands": "netherlands",
     "angleterre": "england",
     "royaume-uni": "united kingdom",
     "états-unis": "united states",
@@ -130,10 +133,13 @@ def normalize_country(text: str) -> str:
 
 
 def normalize_for_fuzzy(text: str) -> str:
-    """Normalize text for fuzzy comparison: lowercase, strip punctuation, collapse spaces."""
+    """Normalize text for fuzzy comparison: lowercase, fold diacritics, strip punctuation, collapse spaces."""
     if not text:
         return ""
     text = text.lower()
+    # Fold diacritics to ASCII (ä→a, é→e, ü→u, etc.)
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()

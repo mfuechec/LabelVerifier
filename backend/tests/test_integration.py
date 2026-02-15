@@ -505,6 +505,111 @@ MOCK_EXTRACTIONS = {
         "importer_address": "New York, NY",
         "government_warning": CANONICAL_WARNING,
     },
+    # --- Bad spirits warning: remaining labels ---
+    "edge-dutch-courage-warning-small-font": {
+        "brand_name": "Small Batch Dutch Courage Dry Gin",
+        "class_type": "Dry Gin",
+        "alcohol_content": "44.5% Alc. by Vol.",
+        "net_contents": "750 mL",
+        "producer_name": "Zuidam Distillers Export BV",
+        "producer_address": "The Netherlands",
+        "country_of_origin": "Holland",  # Front label says "Product of Holland"
+        "importer_name": "The Red Sea Import Company",
+        "importer_address": "Princeton, MN USA",
+        # Warning text correct but extracted with medium confidence (tiny font near barcode)
+        "government_warning": CANONICAL_WARNING,
+    },
+    "edge-howling-moon-warning-spacing": {
+        "brand_name": "Howling Moon",
+        "class_type": "Spirits Distilled From Grain",
+        "alcohol_content": "50% ALC/VOL (100 proof)",
+        "net_contents": "750 ml",
+        "producer_name": "Howling Moon",
+        "producer_address": "Asheville, North Carolina",
+        # Warning missing spaces: "(1)According" and "defects.(2)"
+        "government_warning": (
+            "GOVERNMENT WARNING: (1)According to the Surgeon General, women "
+            "should not drink alcoholic beverages during pregnancy because of "
+            "the risk of birth defects.(2) Consumption of alcoholic beverages "
+            "impairs your ability to drive a car or operate machinery, and may "
+            "cause health problems."
+        ),
+    },
+    "edge-jacques-cardin-warning-tiny": {
+        "brand_name": "Jacques Cardin",
+        "class_type": "VSOP Cognac with Natural Flavors",
+        "alcohol_content": "40% Alc./Vol.",
+        "net_contents": "750 ML",
+        "producer_name": "H. Mounier",
+        "producer_address": "Cognac, France",
+        "country_of_origin": "France",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        # Warning truncated -- tiny font near barcode, LLM couldn't read full text
+        "government_warning": (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN "
+            "SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF "
+            "BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC"
+        ),
+    },
+    "edge-presidential-dram-warning-correct": {
+        "brand_name": "The Presidential Dram",
+        "class_type": "Straight Rye Whiskey",
+        "alcohol_content": "60% Alc by Vol (120 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Proof and Wood Ventures",
+        "producer_address": "Bardstown, KY",
+        # Warning correctly printed and clearly readable
+        "government_warning": CANONICAL_WARNING,
+    },
+    "edge-sailor-jerry-warning-miniature": {
+        "brand_name": "Sailor Jerry",
+        "class_type": "Caribbean Rum",
+        "alcohol_content": "46% ALC./VOL.",
+        "net_contents": "50mL",
+        "producer_name": "Sailor Jerry Rum",
+        "producer_address": "Edison, NJ",
+        # Miniature label -- warning text too small for reliable extraction
+        "government_warning": (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, "
+            "WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY "
+            "BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF "
+            "ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR "
+            "OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        ),
+    },
+    "edge-stoll-wolfe-warning-decorative": {
+        "brand_name": "Stoll & Wolfe",
+        "class_type": "A Blend of American Straight Whiskeys",
+        "alcohol_content": "43% Alc. by Vol. (86 Proof)",
+        "net_contents": "750 ml",
+        "producer_name": "Heritage Spirits LLC",
+        "producer_address": "Lancaster, PA",
+        # Decorative font causes OCR artifacts -- LLM misreads characters
+        "government_warning": (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, "
+            "WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY "
+            "BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC "
+            "BEVERAGES IMPAIRS YOUR ABILITYTO DRIVE A CAR OR OPERATE "
+            "MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        ),
+    },
+    "edge-white-label-warning-typo": {
+        "brand_name": "White Label",
+        "class_type": "Corn Whiskey",
+        "alcohol_content": "50% Alc/Vol",
+        "net_contents": "750 mL",
+        "producer_name": "Franklin County Distilleries",
+        "producer_address": "120 Easy Street at Boones Mill, Franklin County, Virginia 24176",
+        # Warning has COMSUMPTION typo (missing N)
+        "government_warning": (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN "
+            "SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF "
+            "THE RISK OF BIRTH DEFECTS. (2) COMSUMPTION OF ALCOHOLIC BEVERAGES "
+            "IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY "
+            "CAUSE HEALTH PROBLEMS."
+        ),
+    },
 }
 
 
@@ -527,6 +632,16 @@ MOCK_EXTRACTION_CONFIDENCES: dict[str, dict[str, str]] = {
     },
     "missing-resilient": {
         "government_warning": "low",
+    },
+    # Bad spirits warning: uncertain extractions from imperfect images
+    "edge-jacques-cardin-warning-tiny": {
+        "government_warning": "medium",  # Microscopic font, partially obscured
+    },
+    "edge-sailor-jerry-warning-miniature": {
+        "government_warning": "low",  # 50mL miniature, nearly unreadable
+    },
+    "edge-stoll-wolfe-warning-decorative": {
+        "government_warning": "medium",  # Decorative font causes OCR uncertainty
     },
 }
 
@@ -814,6 +929,103 @@ class TestWoodfordWarningOmission:
         assert get_field_status(self.fields, "brand_name") == "match"
         assert get_field_status(self.fields, "class_type") == "match"
         assert get_field_status(self.fields, "alcohol_content") == "match"
+
+
+class TestHowlingMoonWarningSpacing:
+    """Warning missing spaces after (1) and before (2) -- real label text issue."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-howling-moon-warning-spacing"
+        )
+
+    def test_overall_fail(self):
+        assert self.status == "fail"
+
+    def test_warning_is_content_mismatch(self):
+        assert get_field_status(self.fields, "government_warning") == "content_mismatch"
+
+    def test_warning_similarity_is_high_but_not_exact(self):
+        """Spacing differences are subtle -- similarity should be >95% but not 100%."""
+        conf = get_field_confidence(self.fields, "government_warning")
+        assert conf > 95.0
+        assert conf < 100.0
+
+    def test_other_fields_match(self):
+        assert get_field_status(self.fields, "brand_name") == "match"
+        assert get_field_status(self.fields, "alcohol_content") == "match"
+
+
+class TestWhiteLabelWarningTypo:
+    """COMSUMPTION typo on actual label -- same type of issue as Barenjager."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-white-label-warning-typo"
+        )
+
+    def test_overall_fail(self):
+        assert self.status == "fail"
+
+    def test_warning_is_content_mismatch(self):
+        assert get_field_status(self.fields, "government_warning") == "content_mismatch"
+
+    def test_other_fields_match(self):
+        assert get_field_status(self.fields, "brand_name") == "match"
+        assert get_field_status(self.fields, "class_type") == "match"
+        assert get_field_status(self.fields, "alcohol_content") == "match"
+
+
+class TestSailorJerryMiniatureWarning:
+    """50mL miniature -- warning text too tiny for reliable extraction."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-sailor-jerry-warning-miniature"
+        )
+
+    def test_overall_needs_review(self):
+        assert self.status == "needs_review"
+
+    def test_warning_is_extraction_uncertain(self):
+        """Low confidence extraction should become uncertain, not false pass/fail."""
+        assert get_field_status(self.fields, "government_warning") == "extraction_uncertain"
+
+    def test_warning_confidence_capped(self):
+        conf = get_field_confidence(self.fields, "government_warning")
+        assert conf <= 50.0
+
+
+class TestJacquesCardinTinyWarning:
+    """Tiny warning font near barcode -- truncated extraction at medium confidence."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-jacques-cardin-warning-tiny"
+        )
+
+    def test_overall_needs_review(self):
+        assert self.status == "needs_review"
+
+    def test_warning_is_extraction_uncertain(self):
+        """Medium confidence + mismatch (truncated text) becomes uncertain."""
+        assert get_field_status(self.fields, "government_warning") == "extraction_uncertain"
+
+
+class TestPresidentialDramWarningCorrect:
+    """Warning text is correct and clear -- should pass despite being in bad-warning folder."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-presidential-dram-warning-correct"
+        )
+
+    def test_overall_pass(self):
+        """Label with correct warning text should pass (font-size violations are out of scope)."""
+        assert self.status == "pass"
+
+    def test_warning_matches(self):
+        assert get_field_status(self.fields, "government_warning") == "match"
 
 
 # ============================================================

@@ -7,6 +7,7 @@ from app.services.comparison import (
     presence_check,
     class_type_match,
     ComparisonService,
+    ConfidenceScorer,
     CANONICAL_WARNING,
 )
 
@@ -140,6 +141,18 @@ class TestFuzzyMatch:
     def test_empty_extracted(self):
         status, score, _reason = fuzzy_match("", "Test Value")
         assert status == "field_missing"
+
+    def test_umlaut_brand_name_matches(self):
+        """Bärenjäger (with umlauts) should match Barenjager (without)."""
+        status, score, _reason = fuzzy_match("Bärenjäger", "Barenjager")
+        assert status == "match"
+        assert score >= 90.0
+
+    def test_accented_characters_match(self):
+        """Names with accents should match their ASCII equivalents."""
+        status, score, _reason = fuzzy_match("Château Pétrus", "Chateau Petrus")
+        assert status == "match"
+        assert score >= 90.0
 
 
 class TestNumericMatchABV:
@@ -295,6 +308,18 @@ class TestCountryNameNormalization:
 
     def test_mexique_matches_mexico(self):
         r = self._compare_country("México", "Mexico")
+        assert r.status == "match"
+        assert r.confidence >= 85.0
+
+    def test_holland_matches_the_netherlands(self):
+        """'Holland' and 'The Netherlands' are the same country -- common on spirit labels."""
+        r = self._compare_country("Holland", "The Netherlands")
+        assert r.status == "match"
+        assert r.confidence >= 85.0
+
+    def test_the_netherlands_matches_netherlands(self):
+        """'The Netherlands' should match 'Netherlands'."""
+        r = self._compare_country("The Netherlands", "Netherlands")
         assert r.status == "match"
         assert r.confidence >= 85.0
 
@@ -627,3 +652,294 @@ class TestComparisonService:
         for r in results:
             if r.field_name != "government_warning":
                 assert r.status == "match", f"{r.field_name} should match"
+
+
+class TestGovernmentWarningRejections:
+    """Verify that non-exact government warnings are correctly rejected.
+
+    Per TTB requirements, the government warning must be word-for-word exact.
+    These tests cover real-world deviations agents encounter: creative wording,
+    truncated text, missing sections, and subtle word substitutions.
+    """
+
+    def test_title_case_prefix_still_matches(self):
+        """'Government Warning:' in title case is accepted (case-insensitive)."""
+        text = (
+            "Government Warning: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability to drive a car or "
+            "operate machinery, and may cause health problems."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "match"
+
+    def test_missing_pregnancy_clause_is_rejected(self):
+        """Omitting 'during pregnancy' changes the meaning -- must fail."""
+        text = (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages because of the "
+            "risk of birth defects. (2) Consumption of alcoholic beverages "
+            "impairs your ability to drive a car or operate machinery, "
+            "and may cause health problems."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+
+    def test_substituted_word_impairs_vs_affects(self):
+        """Replacing 'impairs' with 'affects' -- subtle word swap must fail."""
+        text = (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages affects your ability to drive a car or "
+            "operate machinery, and may cause health problems."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+
+    def test_missing_section_2_entirely(self):
+        """Warning with only section (1) -- section (2) omitted entirely."""
+        text = (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+        assert score < 80.0  # Substantially different
+
+    def test_missing_section_1_entirely(self):
+        """Warning with only section (2) -- section (1) omitted entirely."""
+        text = (
+            "GOVERNMENT WARNING: (2) Consumption of alcoholic beverages "
+            "impairs your ability to drive a car or operate machinery, "
+            "and may cause health problems."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+        assert score < 70.0  # Substantially different -- missing entire section
+
+    def test_completely_missing_warning(self):
+        """No warning extracted at all -- should be field_missing via ComparisonService."""
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "TEST",
+            "class_type": "BOURBON",
+            "alcohol_content": "45%",
+            "net_contents": "750 mL",
+            # government_warning intentionally omitted
+        }
+        service = ComparisonService()
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        warning = next(r for r in results if r.field_name == "government_warning")
+        assert warning.status == "field_missing"
+        assert warning.confidence == 0.0
+
+    def test_missing_warning_fails_overall(self):
+        """Missing government warning (critical field) should produce overall 'fail'."""
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "TEST",
+            "class_type": "BOURBON",
+            "alcohol_content": "45%",
+            "net_contents": "750 mL",
+        }
+        service = ComparisonService()
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        scorer = ConfidenceScorer()
+        _avg, status = scorer.calculate(results)
+        assert status == "fail"
+
+    def test_mismatched_warning_fails_overall(self):
+        """Wrong warning wording (critical field mismatch) should produce overall 'fail'."""
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "TEST",
+            "class_type": "BOURBON",
+            "alcohol_content": "45%",
+            "net_contents": "750 mL",
+            "government_warning": (
+                "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+                "women should not drink alcoholic beverages because of the "
+                "risk of birth defects. (2) Consumption of alcoholic beverages "
+                "affects your ability to drive a car or operate machinery, "
+                "and may cause health problems."
+            ),
+        }
+        service = ComparisonService()
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        scorer = ConfidenceScorer()
+        _avg, status = scorer.calculate(results)
+        assert status == "fail"
+
+    def test_truncated_warning_text(self):
+        """Warning that cuts off mid-sentence should fail."""
+        text = (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability"
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+
+    def test_extra_text_appended(self):
+        """Warning with extra text appended should fail exact match."""
+        text = (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability to drive a car or "
+            "operate machinery, and may cause health problems. "
+            "Drink responsibly."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+
+    def test_missing_government_warning_prefix(self):
+        """Warning text without the 'GOVERNMENT WARNING:' prefix should fail."""
+        text = (
+            "(1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability to drive a car or "
+            "operate machinery, and may cause health problems."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+
+    def test_reworded_health_problems_ending(self):
+        """Changing 'health problems' to 'health issues' should fail."""
+        text = (
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability to drive a car or "
+            "operate machinery, and may cause health issues."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+
+
+class TestImperfectImageExtraction:
+    """Verify that low-confidence extractions from imperfect images
+    (bad angles, glare, stylized fonts) produce extraction_uncertain status
+    rather than false pass/fail results.
+    """
+
+    def _run_comparison_with_confidences(
+        self, extracted: dict, confidences: dict, beverage_type: str = "distilled_spirits"
+    ):
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test Brand", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type=beverage_type,
+        )
+        service = ComparisonService()
+        return service.compare_fields(
+            extracted, app_data, beverage_type,
+            extraction_confidences=confidences,
+        )
+
+    def test_low_confidence_warning_becomes_uncertain(self):
+        """Government warning extracted with low confidence (e.g. glare on label)
+        should become extraction_uncertain, not a false pass or fail."""
+        results = self._run_comparison_with_confidences(
+            extracted={"government_warning": CANONICAL_WARNING},
+            confidences={"government_warning": "low"},
+        )
+        warning = next(r for r in results if r.field_name == "government_warning")
+        assert warning.status == "extraction_uncertain"
+        assert warning.confidence <= 50.0
+
+    def test_low_confidence_warning_triggers_needs_review(self):
+        """An extraction_uncertain on a critical field should produce needs_review overall."""
+        results = self._run_comparison_with_confidences(
+            extracted={
+                "brand_name": "TEST BRAND",
+                "class_type": "BOURBON",
+                "alcohol_content": "45%",
+                "net_contents": "750 mL",
+                "government_warning": CANONICAL_WARNING,
+            },
+            confidences={"government_warning": "low"},
+        )
+        scorer = ConfidenceScorer()
+        _avg, status = scorer.calculate(results)
+        assert status == "needs_review"
+
+    def test_medium_confidence_mismatch_becomes_uncertain(self):
+        """Medium confidence + content mismatch (e.g. bad OCR from angle)
+        should become extraction_uncertain -- the mismatch might be OCR error."""
+        results = self._run_comparison_with_confidences(
+            extracted={"government_warning": "GOVERNMENT WARNING: partially readable text"},
+            confidences={"government_warning": "medium"},
+        )
+        warning = next(r for r in results if r.field_name == "government_warning")
+        assert warning.status == "extraction_uncertain"
+        assert warning.confidence <= 60.0
+
+    def test_high_confidence_mismatch_stays_mismatch(self):
+        """High confidence + content mismatch = genuine mismatch, not uncertainty."""
+        results = self._run_comparison_with_confidences(
+            extracted={
+                "government_warning": (
+                    "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+                    "women should not drink alcoholic beverages because of the "
+                    "risk of birth defects."
+                )
+            },
+            confidences={"government_warning": "high"},
+        )
+        warning = next(r for r in results if r.field_name == "government_warning")
+        assert warning.status == "content_mismatch"
+
+    def test_multiple_fields_low_confidence_all_uncertain(self):
+        """Simulates a badly-lit photo where multiple fields have low extraction confidence."""
+        results = self._run_comparison_with_confidences(
+            extracted={
+                "brand_name": "TEST BRAND",
+                "alcohol_content": "45%",
+                "government_warning": CANONICAL_WARNING,
+            },
+            confidences={
+                "brand_name": "low",
+                "alcohol_content": "low",
+                "government_warning": "low",
+            },
+        )
+        for r in results:
+            if r.field_name in ("brand_name", "alcohol_content", "government_warning"):
+                assert r.status == "extraction_uncertain", (
+                    f"{r.field_name} should be uncertain with low confidence"
+                )
+
+    def test_medium_confidence_mismatch_becomes_uncertain(self):
+        """Medium confidence + mismatch from garbled OCR should become uncertain.
+        A badly angled photo might produce unrecognizable text for brand name."""
+        results = self._run_comparison_with_confidences(
+            extracted={"brand_name": "TSET BNRAD"},  # garbled from bad image
+            confidences={"brand_name": "medium"},
+        )
+        brand = next(r for r in results if r.field_name == "brand_name")
+        # Garbled text produces a content_mismatch, which at medium confidence
+        # should become extraction_uncertain
+        assert brand.status == "extraction_uncertain"
+        assert brand.confidence <= 60.0

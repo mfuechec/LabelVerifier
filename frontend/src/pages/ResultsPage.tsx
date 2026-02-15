@@ -9,7 +9,6 @@ import ViewModeToggle from '../components/results/ViewModeToggle';
 import type { ViewMode } from '../components/results/ViewModeToggle';
 import AnnotatedLabelViewer from '../components/results/AnnotatedLabelViewer';
 import AgentDecisionBar from '../components/results/AgentDecisionBar';
-import FeedbackWidget from '../components/results/FeedbackWidget';
 import OverrideModal from '../components/results/OverrideModal';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
 import ErrorBanner from '../components/shared/ErrorBanner';
@@ -132,7 +131,7 @@ export default function ResultsPage() {
           )}
 
           <AgentDecisionBar
-            isSubmitting={decisionMutation.isPending}
+            isSubmitting={decisionMutation.isPending || feedbackMutation.isPending}
             onDecision={(decision, notes) => {
               if (sessionId) {
                 decisionMutation.mutate({
@@ -141,23 +140,17 @@ export default function ResultsPage() {
                 });
               }
             }}
+            onFeedback={(correct) => {
+              if (sessionId) {
+                feedbackMutation.mutate({
+                  sessionId,
+                  body: { ai_correct: correct },
+                });
+              }
+            }}
           />
           {decisionMutation.isError && <ErrorBanner message={getErrorMessage(decisionMutation.error)} />}
-
-          <div style={{ marginTop: '1rem' }}>
-            <FeedbackWidget
-              isSubmitting={feedbackMutation.isPending}
-              onFeedback={(correct) => {
-                if (sessionId) {
-                  feedbackMutation.mutate({
-                    sessionId,
-                    body: { ai_correct: correct },
-                  });
-                }
-              }}
-            />
-            {feedbackMutation.isError && <ErrorBanner message={getErrorMessage(feedbackMutation.error)} />}
-          </div>
+          {feedbackMutation.isError && <ErrorBanner message={getErrorMessage(feedbackMutation.error)} />}
         </div>
       </div>
 

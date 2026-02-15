@@ -21,13 +21,24 @@ Return ONLY a JSON object exactly like this (no markdown, no extra text):
 {"brand_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
 
 Rules:
-- Replace null with the extracted string value, or keep null if not found
+- Replace null with the extracted string value, or keep null if not found on the label
+- If a field is NOT clearly visible on the label, set value to null. Do NOT guess or fabricate text.
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
-- For class_type, extract the beverage classification designation (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation.
-- For alcohol_content, include the format (e.g. "45% Alc./Vol.")
-- For alcohol_proof, extract proof if separately stated (e.g. "90 Proof")
-- GOVERNMENT WARNING is critical: always include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim -- do NOT summarize, paraphrase, or omit the prefix.
+
+Field-specific guidance:
+- brand_name: The product brand name, usually the most prominent text on the label
+- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation
+- alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
+- alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
+- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ"). Read the number carefully
+- producer_name: The company that produced/distilled/bottled the product. Look near phrases like "Produced by", "Bottled by", "Distilled by", "Made by". Extract ONLY the company name, not the surrounding phrase
+- producer_address: The physical location (city, state/country) of the producer. Do NOT extract production statements like "Produced and Bottled in Germany" -- look for an actual city name
+- country_of_origin: The country where the product was made. Look for "Product of [country]", "Made in [country]", "Produced in [country]"
+- importer_name: The importing company name. Look for text AFTER "Imported by" -- extract the company name (e.g. "Sidney Frank Importing Co., Inc."), NOT the "Imported by" prefix itself
+- importer_address: The city and state of the importer, usually printed directly after the importer company name (e.g. "New Rochelle, N.Y.")
+- government_warning: CRITICAL -- include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim
+- sulfites_declaration: Look for "Contains Sulfites" or similar declaration
 - Return ONLY the JSON object"""
 
 # Focused prompt for government warning re-extraction (fix #2)

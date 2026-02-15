@@ -16,6 +16,18 @@ from app.services.pdf_parser import PDFApplicationParser
 
 router = APIRouter()
 
+
+def _assign_panels(count: int) -> list[str]:
+    """Assign panel names: front, back, then other_N for additional images."""
+    if count == 0:
+        return []
+    names = ["front"]
+    if count >= 2:
+        names.append("back")
+    for i in range(2, count):
+        names.append(f"other_{i - 1}")
+    return names
+
 _pdf_parser = PDFApplicationParser()
 
 
@@ -102,7 +114,7 @@ async def create_batch(
     for i, app_data in enumerate(app_data_list):
         assigned_indices = parsed_assignments[i]
         item_images = [image_bytes_list[idx] for idx in assigned_indices]
-        panels = ["front"] + ["other"] * (len(item_images) - 1)
+        panels = _assign_panels(len(item_images))
         batch_items.append((app_data, item_images, panels))
 
     # Single background task that processes all items in parallel
