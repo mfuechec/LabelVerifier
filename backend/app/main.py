@@ -5,6 +5,7 @@ import os
 
 from app.config import settings
 from app.api.routes import verify, history, feedback, health
+from app.db.setup import get_db, create_tables
 
 
 def create_app() -> FastAPI:
@@ -30,6 +31,11 @@ def create_app() -> FastAPI:
     # Ensure data directories exist
     os.makedirs("data/uploads", exist_ok=True)
     os.makedirs("data/annotated", exist_ok=True)
+
+    # Create database tables on startup
+    conn = get_db()
+    create_tables(conn)
+    conn.close()
 
     return app
 

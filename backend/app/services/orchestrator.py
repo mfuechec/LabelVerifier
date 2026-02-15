@@ -21,7 +21,7 @@ from app.services.annotation import AnnotationService
 class VerificationOrchestrator:
     def __init__(self, db_path: str = "data/labelverify.db"):
         self.db_path = db_path
-        self.extraction_service = ExtractionService(api_key=settings.anthropic_api_key)
+        self.extraction_service = ExtractionService(api_key=settings.groq_api_key)
         self.comparison_service = ComparisonService()
         self.compliance_checker = ComplianceChecker()
         self.merger = ImageMerger()

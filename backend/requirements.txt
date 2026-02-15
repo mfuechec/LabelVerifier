@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-anthropic
+groq
 pillow
 rapidfuzz
 pydantic
