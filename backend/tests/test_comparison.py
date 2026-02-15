@@ -5,6 +5,7 @@ from app.services.comparison import (
     numeric_match_abv,
     numeric_match_net_contents,
     presence_check,
+    class_type_match,
     ComparisonService,
     CANONICAL_WARNING,
 )
@@ -407,6 +408,89 @@ class TestComparisonServiceConfidenceReasons:
         )
         brand = next(r for r in results if r.field_name == "brand_name")
         assert brand.extraction_confidence == "high"
+
+
+class TestClassTypeMatch:
+    def test_same_canonical_class_both_known(self):
+        """Both values resolve to the same canonical class -- match."""
+        status, score, reason = class_type_match(
+            "Kentucky Straight Bourbon Whiskey", "Straight Bourbon Whiskey", "distilled_spirits"
+        )
+        assert status == "match"
+        assert score == 100.0
+
+    def test_same_canonical_different_qualifiers(self):
+        """Same base class, different finishing qualifiers -- match."""
+        status, score, reason = class_type_match(
+            "Bourbon Whiskey Finished in Port Wine Barrels",
+            "Bourbon Whiskey",
+            "distilled_spirits",
+        )
+        assert status == "match"
+        assert score == 100.0
+
+    def test_different_canonical_classes(self):
+        """Different canonical classes -- content_mismatch."""
+        status, score, reason = class_type_match(
+            "Vodka", "Bourbon Whiskey", "distilled_spirits"
+        )
+        assert status == "content_mismatch"
+
+    def test_declared_not_in_ttb_list_fuzzy_fallback_match(self):
+        """Declared class not in TTB list -- falls back to fuzzy, should still match if similar."""
+        status, score, reason = class_type_match(
+            "Artisanal Moonshine", "Artisanal Moonshine", "distilled_spirits"
+        )
+        assert status == "match"
+
+    def test_declared_not_in_ttb_list_fuzzy_fallback_mismatch(self):
+        """Both unknown and different -- fuzzy mismatch."""
+        status, score, reason = class_type_match(
+            "Artisanal Moonshine", "Craft Cider", "distilled_spirits"
+        )
+        assert status == "content_mismatch"
+
+    def test_none_extracted(self):
+        """None extracted value -- field_missing."""
+        status, score, reason = class_type_match(
+            None, "Bourbon Whiskey", "distilled_spirits"
+        )
+        assert status == "field_missing"
+
+    def test_empty_extracted(self):
+        """Empty extracted value -- field_missing."""
+        status, score, reason = class_type_match(
+            "", "Bourbon Whiskey", "distilled_spirits"
+        )
+        assert status == "field_missing"
+
+    def test_whisky_vs_whiskey_spelling(self):
+        """Whisky and whiskey variants should match via normalization."""
+        status, score, reason = class_type_match(
+            "Bourbon Whisky", "Bourbon Whiskey", "distilled_spirits"
+        )
+        assert status == "match"
+        assert score == 100.0
+
+    def test_wine_class_match(self):
+        status, score, reason = class_type_match("Red Wine", "Red Wine", "wine")
+        assert status == "match"
+        assert score == 100.0
+
+    def test_beer_class_match(self):
+        status, score, reason = class_type_match("Ale", "Ale", "malt_beverages")
+        assert status == "match"
+        assert score == 100.0
+
+    def test_reason_explains_normalization(self):
+        """Reason should mention normalization when qualifiers are stripped."""
+        status, score, reason = class_type_match(
+            "Bourbon Whiskey Finished in Oak Barrels",
+            "Bourbon Whiskey",
+            "distilled_spirits",
+        )
+        assert status == "match"
+        assert "normaliz" in reason.lower() or "canonical" in reason.lower() or "class" in reason.lower()
 
 
 class TestComparisonService:

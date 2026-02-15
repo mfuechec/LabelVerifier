@@ -24,6 +24,7 @@ Rules:
 - Replace null with the extracted string value, or keep null if not found
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
+- For class_type, extract the beverage classification designation (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation.
 - For alcohol_content, include the format (e.g. "45% Alc./Vol.")
 - For alcohol_proof, extract proof if separately stated (e.g. "90 Proof")
 - GOVERNMENT WARNING is critical: always include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim -- do NOT summarize, paraphrase, or omit the prefix.

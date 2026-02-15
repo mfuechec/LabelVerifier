@@ -6,6 +6,7 @@ from app.services.normalizer import (
     extract_proof,
     normalize_net_contents,
 )
+from app.services.ttb_classes import normalize_class_type
 from app.models.schemas import ApplicationData, FieldComparisonResult
 
 
@@ -54,6 +55,65 @@ def fuzzy_match(
     if best_ratio >= threshold:
         return ("match", best_ratio, f"Fuzzy match: {best_ratio:.0f}% (threshold: {threshold:.0f}%)")
     return ("content_mismatch", best_ratio, f"Fuzzy match: {best_ratio:.0f}% -- below {threshold:.0f}% threshold")
+
+
+def class_type_match(
+    extracted: str | None, declared: str, beverage_type: str
+) -> tuple[str, float, str]:
+    """TTB-aware class/type comparison with normalization and fuzzy fallback."""
+    if not extracted or not extracted.strip():
+        return ("field_missing", 0.0, "Class/type not found on label")
+
+    ext_canonical, ext_qualifier = normalize_class_type(extracted, beverage_type)
+    dec_canonical, dec_qualifier = normalize_class_type(declared, beverage_type)
+
+    # Both resolve to known TTB classes
+    if ext_canonical is not None and dec_canonical is not None:
+        if ext_canonical == dec_canonical:
+            parts = [f"TTB class match: both normalize to '{ext_canonical}'"]
+            if ext_qualifier:
+                parts.append(f"(extracted qualifier stripped: {ext_qualifier})")
+            if dec_qualifier:
+                parts.append(f"(declared qualifier stripped: {dec_qualifier})")
+            return ("match", 100.0, " ".join(parts))
+        else:
+            return (
+                "content_mismatch",
+                0.0,
+                f"TTB class mismatch: extracted='{ext_canonical}' vs declared='{dec_canonical}'",
+            )
+
+    # At least one didn't resolve -- fall back to fuzzy on stripped text
+    # Use the stripped base text (without qualifiers) for fairer comparison
+    ext_base = extracted.strip()
+    dec_base = declared.strip()
+
+    # If we got canonicals, use them for fuzzy; otherwise use raw
+    if ext_canonical:
+        ext_base = ext_canonical
+    elif ext_qualifier:
+        # Qualifiers were stripped but no canonical found; use text minus qualifiers
+        from app.services.ttb_classes import _strip_qualifiers
+        ext_base, _ = _strip_qualifiers(extracted.strip())
+
+    if dec_canonical:
+        dec_base = dec_canonical
+    elif dec_qualifier:
+        from app.services.ttb_classes import _strip_qualifiers
+        dec_base, _ = _strip_qualifiers(declared.strip())
+
+    status, score, fuzzy_reason = fuzzy_match(ext_base, dec_base)
+
+    # Add context about TTB lookup
+    notes = []
+    if ext_canonical is None:
+        notes.append(f"extracted class '{extracted.strip()}' not in TTB list")
+    if dec_canonical is None:
+        notes.append(f"declared class '{declared.strip()}' not in TTB list")
+    ttb_note = "; ".join(notes)
+
+    reason = f"{fuzzy_reason} (fuzzy fallback: {ttb_note})"
+    return (status, score, reason)
 
 
 def numeric_match_abv(
@@ -138,7 +198,7 @@ class ComparisonService:
 
     FIELD_STRATEGIES = {
         "brand_name": "fuzzy",
-        "class_type": "fuzzy",
+        "class_type": "class_type",
         "alcohol_content": "numeric_abv",
         "net_contents": "numeric_net",
         "producer_name": "fuzzy",
@@ -237,6 +297,24 @@ class ComparisonService:
                             status=status,
                             confidence=score,
                             match_strategy="numeric",
+                            confidence_reason=reason,
+                        )
+                    )
+
+            elif strategy == "class_type":
+                dec_value = declared_map.get(field_name)
+                if dec_value:
+                    status, score, reason = class_type_match(
+                        ext_value, dec_value, beverage_type
+                    )
+                    results.append(
+                        FieldComparisonResult(
+                            field_name=field_name,
+                            declared_value=dec_value,
+                            extracted_value=ext_value,
+                            status=status,
+                            confidence=score,
+                            match_strategy="class_type",
                             confidence_reason=reason,
                         )
                     )
