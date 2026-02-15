@@ -6,8 +6,14 @@
       "scenario_category": "pass",
       "category": "good spirits",
       "images": [
-        {"filename": "Angels Envy burbon front.jpg", "panel": "front"},
-        {"filename": "Angels Envy burbon back.jpg", "panel": "back"}
+        {
+          "filename": "Angels Envy burbon front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Angels Envy burbon back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00001",
@@ -15,7 +21,7 @@
         "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
         "alcohol_content": "43.3%",
         "net_contents": "750 mL",
-        "producer_name": "Louisville Distilling Company",
+        "producer_name": "Louisville Spirits Group",
         "producer_address": "Louisville, Kentucky",
         "country_of_origin": null,
         "importer_name": null,
@@ -41,8 +47,14 @@
       "scenario_category": "pass",
       "category": "good spirits",
       "images": [
-        {"filename": "Den of Thieves chocolate whiskey front.jpg", "panel": "front"},
-        {"filename": "Den of Thieves chocolate whiskey back.jpg", "panel": "back"}
+        {
+          "filename": "Den of Thieves chocolate whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Den of Thieves chocolate whiskey back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00002",
@@ -71,13 +83,19 @@
       }
     },
     {
-      "id": "pass-hanami-gin",
-      "description": "Good spirits - imported gin from Holland, all fields match",
-      "scenario_category": "pass",
+      "id": "edge-hanami-gin-miniature",
+      "description": "Miniature bottle (50mL) - net contents mismatch with 750mL application, importer not visible, gov warning punctuation",
+      "scenario_category": "edge_cases",
       "category": "good spirits",
       "images": [
-        {"filename": "Hanami gin front.jpg", "panel": "front"},
-        {"filename": "Hanami gin back.jpg", "panel": "back"}
+        {
+          "filename": "Hanami gin front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Hanami gin back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00003",
@@ -94,27 +112,33 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
-          "net_contents": "match",
+          "net_contents": "content_mismatch",
           "producer_name": "match",
           "country_of_origin": "match",
-          "importer_name": "match",
-          "government_warning": "match"
+          "importer_name": "field_missing",
+          "government_warning": "content_mismatch"
         }
       }
     },
     {
-      "id": "pass-rosso-veneto",
-      "description": "Good wine - imported Italian red wine with sulfites",
-      "scenario_category": "pass",
+      "id": "review-rosso-veneto-brand-confusion",
+      "description": "LLM extracts brand as 'DUO' (sub-brand) instead of 'Rosso Veneto', class/country in Italian",
+      "scenario_category": "needs_review",
       "category": "good wine+beer",
       "images": [
-        {"filename": "Rosso Veneto wine front.jpg", "panel": "front"},
-        {"filename": "Rosso Veneto wine back.jpg", "panel": "back"}
+        {
+          "filename": "Rosso Veneto wine front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Rosso Veneto wine back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00004",
@@ -131,16 +155,16 @@
         "has_sulfites_declaration": true
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
-          "class_type": "match",
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
           "alcohol_content": "match",
           "net_contents": "match",
-          "country_of_origin": "match",
+          "country_of_origin": "extraction_uncertain",
           "importer_name": "match",
           "sulfites_declaration": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         }
       }
     },
@@ -150,9 +174,18 @@
       "scenario_category": "pass",
       "category": "good spirits",
       "images": [
-        {"filename": "Black Maple Hill whiskey front.jpg", "panel": "front"},
-        {"filename": "Black Maple Hill whiskey back.jpg", "panel": "back"},
-        {"filename": "Black Maple Hill whiskey other.jpg", "panel": "other"}
+        {
+          "filename": "Black Maple Hill whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Black Maple Hill whiskey back.jpg",
+          "panel": "back"
+        },
+        {
+          "filename": "Black Maple Hill whiskey other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00005",
@@ -186,7 +219,10 @@
       "scenario_category": "pass",
       "category": "good spirits",
       "images": [
-        {"filename": "Fuel moonshine.jpg", "panel": "front"}
+        {
+          "filename": "Fuel moonshine.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00006",
@@ -215,13 +251,19 @@
       }
     },
     {
-      "id": "pass-market-alley",
-      "description": "Good spirits - barrel rested gin",
-      "scenario_category": "pass",
+      "id": "edge-market-alley-warning-punct",
+      "description": "Gov warning on label missing colon after 'GOVERNMENT WARNING' - punctuation mismatch",
+      "scenario_category": "edge_cases",
       "category": "good spirits",
       "images": [
-        {"filename": "Market Alley gin (front).jpg", "panel": "front"},
-        {"filename": "Market Alley gin (back).jpg", "panel": "back"}
+        {
+          "filename": "Market Alley gin (front).jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Market Alley gin (back).jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00007",
@@ -238,25 +280,31 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         }
       }
     },
     {
-      "id": "pass-misunderstood",
-      "description": "Good spirits - ginger spiced whiskey",
-      "scenario_category": "pass",
+      "id": "review-misunderstood-warning",
+      "description": "Gov warning extraction uncertain - possible word difference ('THE ABILITY' vs 'YOUR ABILITY')",
+      "scenario_category": "needs_review",
       "category": "good spirits",
       "images": [
-        {"filename": "Misunderstood ginger whiskey front.jpg", "panel": "front"},
-        {"filename": "Misunderstood ginger whiskey other.jpg", "panel": "other"}
+        {
+          "filename": "Misunderstood ginger whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Misunderstood ginger whiskey other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00008",
@@ -273,24 +321,27 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "extraction_uncertain"
         }
       }
     },
     {
-      "id": "pass-cascade-val",
-      "description": "Good wine - domestic red wine with sulfites",
-      "scenario_category": "pass",
+      "id": "edge-cascade-val-no-back",
+      "description": "Wine with only front image - government warning not visible (on back)",
+      "scenario_category": "edge_cases",
       "category": "good wine+beer",
       "images": [
-        {"filename": "Cascade Val wine.jpg", "panel": "front"}
+        {
+          "filename": "Cascade Val wine.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00009",
@@ -307,7 +358,7 @@
         "has_sulfites_declaration": true
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
@@ -315,18 +366,24 @@
           "net_contents": "match",
           "producer_name": "match",
           "sulfites_declaration": "match",
-          "government_warning": "match"
+          "government_warning": "field_missing"
         }
       }
     },
     {
-      "id": "pass-lenz-moser",
-      "description": "Good wine - imported Austrian white wine",
-      "scenario_category": "pass",
+      "id": "review-lenz-moser-class-extraction",
+      "description": "Label shows grape variety 'Gr\u00fcner Veltliner' instead of TTB class 'Dry White Wine', importer name hard to read",
+      "scenario_category": "needs_review",
       "category": "good wine+beer",
       "images": [
-        {"filename": "Lenz Moser wine front.jpg", "panel": "front"},
-        {"filename": "Lenz Moser wine back.jpg", "panel": "back"}
+        {
+          "filename": "Lenz Moser wine front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Lenz Moser wine back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00010",
@@ -343,28 +400,33 @@
         "has_sulfites_declaration": true
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
+          "class_type": "content_mismatch",
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
-          "importer_name": "match",
+          "importer_name": "extraction_uncertain",
           "sulfites_declaration": "match",
           "government_warning": "match"
         }
       }
     },
-
     {
       "id": "mismatch-angels-envy-wrong-abv",
       "description": "App declares 40% ABV but label shows 43.3% - ABV mismatch",
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Angels Envy burbon front.jpg", "panel": "front"},
-        {"filename": "Angels Envy burbon back.jpg", "panel": "back"}
+        {
+          "filename": "Angels Envy burbon front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Angels Envy burbon back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00101",
@@ -372,7 +434,7 @@
         "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
         "alcohol_content": "40%",
         "net_contents": "750 mL",
-        "producer_name": "Louisville Distilling Company",
+        "producer_name": "Louisville Spirits Group",
         "producer_address": "Louisville, Kentucky",
         "country_of_origin": null,
         "importer_name": null,
@@ -399,8 +461,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Den of Thieves chocolate whiskey front.jpg", "panel": "front"},
-        {"filename": "Den of Thieves chocolate whiskey back.jpg", "panel": "back"}
+        {
+          "filename": "Den of Thieves chocolate whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Den of Thieves chocolate whiskey back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00102",
@@ -435,8 +503,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Hanami gin front.jpg", "panel": "front"},
-        {"filename": "Hanami gin back.jpg", "panel": "back"}
+        {
+          "filename": "Hanami gin front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Hanami gin back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00103",
@@ -473,9 +547,18 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Black Maple Hill whiskey front.jpg", "panel": "front"},
-        {"filename": "Black Maple Hill whiskey back.jpg", "panel": "back"},
-        {"filename": "Black Maple Hill whiskey other.jpg", "panel": "other"}
+        {
+          "filename": "Black Maple Hill whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Black Maple Hill whiskey back.jpg",
+          "panel": "back"
+        },
+        {
+          "filename": "Black Maple Hill whiskey other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00104",
@@ -510,7 +593,10 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Fuel moonshine.jpg", "panel": "front"}
+        {
+          "filename": "Fuel moonshine.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00105",
@@ -545,8 +631,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Market Alley gin (front).jpg", "panel": "front"},
-        {"filename": "Market Alley gin (back).jpg", "panel": "back"}
+        {
+          "filename": "Market Alley gin (front).jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Market Alley gin (back).jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00106",
@@ -581,7 +673,10 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "McKenzie Brew House vodka.jpg", "panel": "front"}
+        {
+          "filename": "McKenzie Brew House vodka.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00107",
@@ -616,8 +711,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Misunderstood ginger whiskey front.jpg", "panel": "front"},
-        {"filename": "Misunderstood ginger whiskey other.jpg", "panel": "other"}
+        {
+          "filename": "Misunderstood ginger whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Misunderstood ginger whiskey other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00108",
@@ -652,8 +753,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good wine+beer",
       "images": [
-        {"filename": "Rosso Veneto wine front.jpg", "panel": "front"},
-        {"filename": "Rosso Veneto wine back.jpg", "panel": "back"}
+        {
+          "filename": "Rosso Veneto wine front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Rosso Veneto wine back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00109",
@@ -690,7 +797,10 @@
       "scenario_category": "fail_mismatch",
       "category": "good wine+beer",
       "images": [
-        {"filename": "Cascade Val wine.jpg", "panel": "front"}
+        {
+          "filename": "Cascade Val wine.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00110",
@@ -726,8 +836,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good wine+beer",
       "images": [
-        {"filename": "Lenz Moser wine front.jpg", "panel": "front"},
-        {"filename": "Lenz Moser wine back.jpg", "panel": "back"}
+        {
+          "filename": "Lenz Moser wine front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Lenz Moser wine back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00111",
@@ -764,8 +880,14 @@
       "scenario_category": "fail_mismatch",
       "category": "good spirits",
       "images": [
-        {"filename": "Nicks & Bruce aged rum front.jpg", "panel": "front"},
-        {"filename": "Nicks & Bruce aged rum back.jpg", "panel": "back"}
+        {
+          "filename": "Nicks & Bruce aged rum front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Nicks & Bruce aged rum back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00112",
@@ -794,14 +916,16 @@
         "mismatch_description": "Application declares '375 mL' but label shows '750 mL'"
       }
     },
-
     {
       "id": "missing-collabor-and-tion",
       "description": "Single front image only, government warning missing (no back label)",
       "scenario_category": "fail_missing",
       "category": "bad spirits label",
       "images": [
-        {"filename": "Collabor&tion whiskey.jpg", "panel": "front"}
+        {
+          "filename": "Collabor&tion whiskey.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00201",
@@ -835,8 +959,14 @@
       "scenario_category": "fail_missing",
       "category": "bad spirits label",
       "images": [
-        {"filename": "Cotton Hollow burbon front.jpg", "panel": "front"},
-        {"filename": "Cotton Hollow burbon other.jpg", "panel": "other"}
+        {
+          "filename": "Cotton Hollow burbon front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Cotton Hollow burbon other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00202",
@@ -871,8 +1001,14 @@
       "scenario_category": "fail_missing",
       "category": "bad spirits label",
       "images": [
-        {"filename": "Resilient burbon front.jpg", "panel": "front"},
-        {"filename": "Resilient burbon other.jpg", "panel": "other"}
+        {
+          "filename": "Resilient burbon front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Resilient burbon other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00203",
@@ -906,7 +1042,10 @@
       "scenario_category": "fail_missing",
       "category": "bad spirits label",
       "images": [
-        {"filename": "Warm whiskey.jpg", "panel": "front"}
+        {
+          "filename": "Warm whiskey.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00204",
@@ -940,7 +1079,10 @@
       "scenario_category": "fail_missing",
       "category": "bad wine+beer",
       "images": [
-        {"filename": "Cerveza Barrilito.jpg", "panel": "front"}
+        {
+          "filename": "Cerveza Barrilito.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00205",
@@ -976,8 +1118,14 @@
       "scenario_category": "fail_missing",
       "category": "bad wine+beer",
       "images": [
-        {"filename": "Forte Masso beer front.jpg", "panel": "front"},
-        {"filename": "Forte Masso beer back.jpg", "panel": "back"}
+        {
+          "filename": "Forte Masso beer front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Forte Masso beer back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00206",
@@ -1008,16 +1156,24 @@
         "mismatch_description": "Importer name on label differs from application (non-critical field)"
       }
     },
-
     {
       "id": "review-mokka",
       "description": "Stylized/decorative fonts make brand and class extraction difficult",
       "scenario_category": "needs_review",
       "category": "bad spirits photo",
       "images": [
-        {"filename": "Mokka whiskey front.jpg", "panel": "front"},
-        {"filename": "Mokka whiskey back.jpg", "panel": "back"},
-        {"filename": "Mokka whiskey other.jpg", "panel": "other"}
+        {
+          "filename": "Mokka whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Mokka whiskey back.jpg",
+          "panel": "back"
+        },
+        {
+          "filename": "Mokka whiskey other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00301",
@@ -1048,7 +1204,10 @@
       "scenario_category": "needs_review",
       "category": "bad spirits photo",
       "images": [
-        {"filename": "Alpine Lafayette whiskey.jpg", "panel": "front"}
+        {
+          "filename": "Alpine Lafayette whiskey.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00302",
@@ -1083,8 +1242,14 @@
       "scenario_category": "needs_review",
       "category": "bad spirits photo",
       "images": [
-        {"filename": "Howling Moon whiskey front.jpg", "panel": "front"},
-        {"filename": "Howling Moon whiskey back.jpg", "panel": "back"}
+        {
+          "filename": "Howling Moon whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Howling Moon whiskey back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00303",
@@ -1119,8 +1284,14 @@
       "scenario_category": "needs_review",
       "category": "bad spirits photo",
       "images": [
-        {"filename": "Rocky Mount whiskey front.jpg", "panel": "front"},
-        {"filename": "Rocky Mount whiskey back.jpg", "panel": "back"}
+        {
+          "filename": "Rocky Mount whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Rocky Mount whiskey back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00304",
@@ -1155,7 +1326,10 @@
       "scenario_category": "needs_review",
       "category": "bad spirits photo",
       "images": [
-        {"filename": "Sailor Jerry rum.jpg", "panel": "front"}
+        {
+          "filename": "Sailor Jerry rum.jpg",
+          "panel": "front"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00305",
@@ -1189,9 +1363,18 @@
       "scenario_category": "needs_review",
       "category": "bad spirits photo",
       "images": [
-        {"filename": "Salted Caramel whiskey front.jpg", "panel": "front"},
-        {"filename": "Salted Caramel whiskey back.jpg", "panel": "back"},
-        {"filename": "Salted Caramel whiskey other.jpg", "panel": "other"}
+        {
+          "filename": "Salted Caramel whiskey front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Salted Caramel whiskey back.jpg",
+          "panel": "back"
+        },
+        {
+          "filename": "Salted Caramel whiskey other.jpg",
+          "panel": "other"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00306",
@@ -1220,16 +1403,24 @@
         "extraction_challenge": "Dripping caramel illustration overlaps brand text; mixed decorative fonts; wood-grain background"
       }
     },
-
     {
       "id": "edge-woodford-warning-omission",
       "description": "Warning text omits 'during pregnancy' phrase",
       "scenario_category": "edge_cases",
       "category": "bad spirits warning",
       "images": [
-        {"filename": "Woodford Reserve burbon front.jpg", "panel": "front"},
-        {"filename": "Woodford Reserve burbon front2.jpg", "panel": "other"},
-        {"filename": "Woodford Reserve burbon back.jpg", "panel": "back"}
+        {
+          "filename": "Woodford Reserve burbon front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Woodford Reserve burbon front2.jpg",
+          "panel": "other"
+        },
+        {
+          "filename": "Woodford Reserve burbon back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00401",
@@ -1264,8 +1455,14 @@
       "scenario_category": "edge_cases",
       "category": "bad wine+beer",
       "images": [
-        {"filename": "Fete Rose wine.jpg", "panel": "front"},
-        {"filename": "Fete Rose wine back.jpg", "panel": "back"}
+        {
+          "filename": "Fete Rose wine.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Fete Rose wine back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00402",
@@ -1296,8 +1493,14 @@
       "scenario_category": "edge_cases",
       "category": "bad spirits warning",
       "images": [
-        {"filename": "Barenjager front.jpg", "panel": "front"},
-        {"filename": "Barenjager back.jpg", "panel": "back"}
+        {
+          "filename": "Barenjager front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Barenjager back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00403",
@@ -1333,8 +1536,14 @@
       "scenario_category": "edge_cases",
       "category": "bad spirits warning",
       "images": [
-        {"filename": "Seven Fathoms rum front.jpg", "panel": "front"},
-        {"filename": "Seven Fathoms rum back.jpg", "panel": "back"}
+        {
+          "filename": "Seven Fathoms rum front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Seven Fathoms rum back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00404",
@@ -1369,8 +1578,14 @@
       "scenario_category": "edge_cases",
       "category": "bad spirits label",
       "images": [
-        {"filename": "Monkey 47 gin front.jpg", "panel": "front"},
-        {"filename": "Monkey 47 gin back.jpg", "panel": "back"}
+        {
+          "filename": "Monkey 47 gin front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Monkey 47 gin back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00405",
@@ -1406,8 +1621,14 @@
       "scenario_category": "edge_cases",
       "category": "bad spirits label",
       "images": [
-        {"filename": "Casamigos tequila front.jpg", "panel": "front"},
-        {"filename": "Casamigos tequila back.jpg", "panel": "back"}
+        {
+          "filename": "Casamigos tequila front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Casamigos tequila back.jpg",
+          "panel": "back"
+        }
       ],
       "application_data": {
         "application_id": "APP-2026-00406",

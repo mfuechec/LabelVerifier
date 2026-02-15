@@ -80,7 +80,7 @@ MOCK_EXTRACTIONS = {
         "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
         "alcohol_content": "43.3% Alc./Vol. (86.6 Proof)",
         "net_contents": "750 mL",
-        "producer_name": "Louisville Distilling Company",
+        "producer_name": "Louisville Spirits Group",
         "producer_address": "Louisville, Kentucky",
         "government_warning": CANONICAL_WARNING,
     },
@@ -93,28 +93,28 @@ MOCK_EXTRACTIONS = {
         "producer_address": "Bardstown, KY",
         "government_warning": CANONICAL_WARNING,
     },
-    "pass-hanami-gin": {
+    # hanami-gin moved to edge_cases (miniature bottle, importer not visible, warning punctuation)
+    "edge-hanami-gin-miniature": {
         "brand_name": "Hanami",
         "class_type": "Dry Gin",
         "alcohol_content": "43% Alc./Vol. (86 Proof)",
-        "net_contents": "750 mL",
+        "net_contents": "50 mL",
         "producer_name": "P. Melchers Distilleries BV",
         "producer_address": "Lelystad, The Netherlands",
         "country_of_origin": "Holland",
-        "importer_name": "The Red Sea Import Company",
-        "importer_address": "Princeton, MN",
-        "government_warning": CANONICAL_WARNING,
+        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING"),
     },
-    "pass-rosso-veneto": {
-        "brand_name": "Rosso Veneto",
-        "class_type": "Red Wine",
+    # rosso-veneto moved to needs_review (brand confusion, Italian text)
+    "review-rosso-veneto-brand-confusion": {
+        "brand_name": "DUO",
+        "class_type": "Rosso Veneto",
         "alcohol_content": "14.5%",
         "net_contents": "750 mL",
-        "country_of_origin": "Italy",
+        "country_of_origin": "Italia",
         "importer_name": "Marcato Direct",
         "importer_address": "Addison, IL 60108",
         "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
+        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING:").rstrip() + "",
     },
     "pass-black-maple-hill": {
         "brand_name": "Black Maple Hill",
@@ -134,25 +134,28 @@ MOCK_EXTRACTIONS = {
         "producer_address": "Bardstown, KY",
         "government_warning": CANONICAL_WARNING,
     },
-    "pass-market-alley": {
+    # market-alley moved to edge_cases (gov warning missing colon)
+    "edge-market-alley-warning-punct": {
         "brand_name": "Market Alley",
         "class_type": "Barrel Rested Gin",
         "alcohol_content": "45% Alc./Vol. (90 Proof)",
         "net_contents": "750 mL",
         "producer_name": "Thistle Finch Distilling LLC",
         "producer_address": "Lancaster, PA",
-        "government_warning": CANONICAL_WARNING,
+        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING"),
     },
-    "pass-misunderstood": {
+    # misunderstood moved to needs_review (gov warning word difference)
+    "review-misunderstood-warning": {
         "brand_name": "Misunderstood",
         "class_type": "Ginger Spiced Whiskey",
         "alcohol_content": "40% Alc./Vol. (80 Proof)",
         "net_contents": "750 mL",
         "producer_name": "Misunderstood Whiskey",
         "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
+        "government_warning": CANONICAL_WARNING.replace("your ability", "the ability"),
     },
-    "pass-cascade-val": {
+    # cascade-val moved to edge_cases (only front image, no gov warning)
+    "edge-cascade-val-no-back": {
         "brand_name": "Cascade",
         "class_type": "Red Wine",
         "alcohol_content": "11.5%",
@@ -160,15 +163,15 @@ MOCK_EXTRACTIONS = {
         "producer_name": "Cascade Winery",
         "producer_address": "Grand Rapids, MI",
         "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
     },
-    "pass-lenz-moser": {
+    # lenz-moser moved to needs_review (class mismatch, importer uncertain)
+    "review-lenz-moser-class-extraction": {
         "brand_name": "Lenz Moser",
-        "class_type": "Dry White Wine",
+        "class_type": "Grüner Veltliner",
         "alcohol_content": "12%",
         "net_contents": "1.0 L",
         "country_of_origin": "Austria",
-        "importer_name": "Niche Import Co.",
+        "importer_name": "Nich W&S",
         "importer_address": "Cedar Knolls, NJ",
         "sulfites_declaration": "Contains Sulfites",
         "government_warning": CANONICAL_WARNING,
@@ -181,7 +184,7 @@ MOCK_EXTRACTIONS = {
         "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
         "alcohol_content": "43.3% Alc./Vol. (86.6 Proof)",
         "net_contents": "750 mL",
-        "producer_name": "Louisville Distilling Company",
+        "producer_name": "Louisville Spirits Group",
         "producer_address": "Louisville, Kentucky",
         "government_warning": CANONICAL_WARNING,
     },
@@ -496,6 +499,22 @@ def build_mock_extraction(fixture_id: str) -> dict[str, str | None]:
     return MOCK_EXTRACTIONS.get(fixture_id, {})
 
 
+# Extraction confidence overrides for fixtures with uncertain extraction.
+# Fields marked "medium" that produce content_mismatch become extraction_uncertain.
+MOCK_EXTRACTION_CONFIDENCES: dict[str, dict[str, str]] = {
+    "review-rosso-veneto-brand-confusion": {
+        "brand_name": "medium",
+        "class_type": "medium",
+        "country_of_origin": "medium",
+    },
+    "review-misunderstood-warning": {
+        "government_warning": "medium",
+    },
+    "review-lenz-moser-class-extraction": {
+        "importer_name": "medium",
+    },
+}
+
 # --- Real service instances (no mocks) ---
 comparison_service = ComparisonService()
 confidence_scorer = ConfidenceScorer()
@@ -511,9 +530,11 @@ def run_pipeline(fixture_id: str) -> tuple[list[FieldComparisonResult], float, s
     fixture = get_fixture(fixture_id)
     app_data = build_app_data(fixture)
     extracted = build_mock_extraction(fixture_id)
+    extraction_confidences = MOCK_EXTRACTION_CONFIDENCES.get(fixture_id)
 
     field_results = comparison_service.compare_fields(
-        extracted, app_data, app_data.beverage_type
+        extracted, app_data, app_data.beverage_type,
+        extraction_confidences=extraction_confidences,
     )
 
     overall_confidence, status = confidence_scorer.calculate(field_results)
@@ -794,14 +815,14 @@ class TestComplianceIntegration:
         assert len(issues) == 0
 
     def test_imported_spirits_no_issues(self):
-        extracted = build_mock_extraction("pass-hanami-gin")
+        extracted = build_mock_extraction("edge-hanami-gin-miniature")
         issues = compliance_checker.check_compliance(
             extracted, "distilled_spirits", is_imported=True
         )
         assert len(issues) == 0
 
     def test_imported_wine_sulfites_not_flagged(self):
-        extracted = build_mock_extraction("pass-rosso-veneto")
+        extracted = build_mock_extraction("review-rosso-veneto-brand-confusion")
         issues = compliance_checker.check_compliance(
             extracted, "wine", is_imported=True, requires_sulfites=True
         )
@@ -834,7 +855,7 @@ class TestMergerIntegration:
             "net_contents": {"value": "750 mL", "confidence": 98.0},
         }
         back = {
-            "producer_name": {"value": "Louisville Distilling Company", "confidence": 90.0},
+            "producer_name": {"value": "Louisville Spirits Group", "confidence": 90.0},
             "government_warning": {"value": CANONICAL_WARNING, "confidence": 85.0},
         }
         merged = merger.merge_panels({"front": front, "back": back})
