@@ -1,0 +1,3173 @@
+{
+  "date": "2026-02-15T02:39:01.855925+00:00",
+  "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+  "elapsed_seconds": 190.3827188014984,
+  "total": 46,
+  "correct": 20,
+  "results": [
+    {
+      "fixture_id": "fixture-1-angels-envy",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 61.62377994676131,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 95.65217391304348,
+          "declared": "Angel's Envy",
+          "extracted": "ANGELS ENVY"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
+          "extracted": "KENTUCKY STRAIGHT BOURBON WHISKEY FINISHED IN PORT WINE BARRELS"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "43.3%",
+          "extracted": "43.3% ALCOHOL BY VOLUME"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 35.71428571428571,
+          "declared": "Louisville Distilling Company",
+          "extracted": "FROM THE CELLARS OF LincolnHenderson"
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Louisville, Kentucky",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-2-den-of-thieves",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 88.59236002093145,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Den of Thieves",
+          "extracted": "Den of Thieves"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Chocolate Flavored Whiskey",
+          "extracted": "Chocolate Flavored Whiskey"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "40%",
+          "extracted": "40% ALC. BY VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Strong Spirits",
+          "extracted": "Strong Spirits"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Bardstown, KY",
+          "extracted": "Bardstown, KY"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-3-hanami-gin",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 85.34798534798534,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Hanami",
+          "extracted": "HANAMI"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Dry Gin",
+          "extracted": "DRY GIN"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "43%",
+          "extracted": "43% ALC/VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ML"
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 33.333333333333336,
+          "declared": "P. Melchers Distilleries BV",
+          "extracted": "PRODUCT OF HOLLAND"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Lelystad, The Netherlands",
+          "extracted": "Lelystad - The Netherlands"
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Holland",
+          "extracted": "PRODUCT OF HOLLAND"
+        },
+        "importer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "The Red Sea Import Company",
+          "extracted": "THE RED SEA IMPORT COMPANY"
+        },
+        "importer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Princeton, MN",
+          "extracted": "PRINCETON, MN USA"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-4-rosso-veneto",
+      "category": "good wine+beer",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 81.77287581699346,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Rosso Veneto",
+          "extracted": "ROSSO VENETO"
+        },
+        "class_type": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 40.0,
+          "declared": "Red Wine",
+          "extracted": "Indicazione Geografica Tipica"
+        },
+        "alcohol_content": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "14.5%",
+          "extracted": "Alc. 14,5% by Vol."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "Net Cont. 750 mL"
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Italy",
+          "extracted": "PRODUCT OF ITALY"
+        },
+        "importer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Marcato Direct",
+          "extracted": "MARCATO DIRECT"
+        },
+        "importer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Addison, IL 60108",
+          "extracted": "Addison, IL 60108"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 95.95588235294117,
+          "declared": null,
+          "extracted": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcohol beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        },
+        "sulfites_declaration": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Required",
+          "extracted": "RED WINE - CONTAINS SULPHITES"
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-5-woodford-reserve",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 30.878074306645736,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Woodford Reserve",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Kentucky Straight Bourbon Whiskey",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "45.2%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "The Woodford Reserve Distillery",
+          "extracted": "WOODFORD RESERVE DISTILLERY"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 96.0,
+          "declared": "Versailles, KY",
+          "extracted": "VERSAILLES, KENTUCKY"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-6-casamigos",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 78.1181089632555,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Casamigos",
+          "extracted": "CASAMIGOS"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Blanco Tequila",
+          "extracted": "Blanco"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "40%",
+          "extracted": "40% ALC. / VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 44.44444444444444,
+          "declared": "Productos Finos de Agave",
+          "extracted": "CASAMIGOS"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Jalisco, Mexico",
+          "extracted": "Jalisco, Mexico"
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Mexico",
+          "extracted": "Mexico"
+        },
+        "importer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 40.0,
+          "declared": "Casamigos Spirits Company",
+          "extracted": "SIDNEY FRANK IMPORTING CO., INC."
+        },
+        "importer_address": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 70.58823529411765,
+          "declared": "New York, NY",
+          "extracted": "NEW ROCHELLE, NY"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 26.14840989399293,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-7-fete-rose",
+      "category": "bad wine+beer",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 17.575757575757574,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 33.333333333333336,
+          "declared": "Fete",
+          "extracted": "Lenz Moser"
+        },
+        "class_type": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 53.333333333333336,
+          "declared": "Rose Wine",
+          "extracted": "Qualit\u00e4tswein trocken"
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "12.5%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 36.36363636363637,
+          "declared": "France",
+          "extracted": "\u00d6sterreich"
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        },
+        "sulfites_declaration": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Required",
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-8-mokka-whiskey",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 57.94773128106461,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Mokka",
+          "extracted": "FS"
+        },
+        "class_type": {
+          "actual_status": "content_mismatch",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 63.63636363636363,
+          "declared": "Whiskey with Natural Flavors",
+          "extracted": "BOURBON WHISKEY"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "35%",
+          "extracted": "35% alc by vol"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 26.102292768959433,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISKS OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-9-alpine-lafayette",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "pass",
+      "overall_confidence": 100.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Alpine Lafayette",
+          "extracted": "Alpine"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Spiced Flavored Whiskey",
+          "extracted": "Spiced Flavored Whiskey"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "40%",
+          "extracted": "40% ALC BY VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ML"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Alpine Distilling",
+          "extracted": "Alpine Distilling"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "7132 N Silver Creek Rd, Park City, UT 84098",
+          "extracted": "7132 N Silver Creek Rd, Park City, UT 84098"
+        },
+        "government_warning": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-10-boston-harbor-maple-cream",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 53.48837209302326,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Boston Harbor Distillery",
+          "extracted": "Boston Harbor"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Rum with Cream & Vermont Maple Syrup, Natural Flavor & Caramel Color Added",
+          "extracted": "MAPLE CREAM"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "15%",
+          "extracted": "15% ALC/VOL"
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": "750 MILLILITERS"
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 74.4186046511628,
+          "declared": "Boston Harbor Bottling Co.",
+          "extracted": "Boston Harbor DISTILLERY"
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Bardstown, KY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-11-ginger-sins",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 14.285714285714286,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Ginger Sins",
+          "extracted": "Ginger Sins"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Bourbon Whiskey with Natural Flavors",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "35%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Redline Beverage",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Bardstown, KY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-12-howling-moon",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 57.142857142857146,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Howling Moon",
+          "extracted": "Howling Moon"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Moonshine Whiskey",
+          "extracted": "Moonshine Whiskey"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "40%",
+          "extracted": "40% ALC/VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ml Whiskey"
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Howling Moon",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Asheville, North Carolina",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-13-original-spice",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Original Spice",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Spice Flavored Whiskey",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "35%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Redline Beverage",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Bardstown, KY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-14-rocky-mount",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 36.69540451741857,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 40.0,
+          "declared": "Rocky Mount",
+          "extracted": "Southern Virginia Tradition"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Rye Whiskey",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "50%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Franklin County Distilleries",
+          "extracted": "Franklin County Distilleries, LLC"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 96.72131147540983,
+          "declared": "120 Easy Street at Boones Mill, Franklin County, Virginia 24176",
+          "extracted": "120 Easy Street at Brooks Mill, Franklin County, Virginia 24176"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-15-sailor-jerry",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 31.691086691086692,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Sailor Jerry",
+          "extracted": "Sailor Jerry"
+        },
+        "class_type": {
+          "actual_status": "content_mismatch",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 70.0,
+          "declared": "Caribbean Rum with Spice, Caramel and Other Natural Flavors",
+          "extracted": "Spiced Rum"
+        },
+        "alcohol_content": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "46%",
+          "extracted": "40% ALC./VOL."
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "50 mL",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Edison, NJ",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-16-salted-caramel",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 88.5870984591277,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Salted Caramel",
+          "extracted": "SALTED Caramel"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Bourbon Whiskey with Natural Flavors and Caramel Color",
+          "extracted": "BOURBON WHISKEY"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "35%",
+          "extracted": "35% alc by vol"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Redline Beverage",
+          "extracted": "Redline Beverage"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Bardstown, KY",
+          "extracted": "Bardstown, KY"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 20.109689213893965,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISKS OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-17-sortilege",
+      "category": "bad spirits photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "overall_confidence": 50.5910409035409,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "extraction_uncertain",
+          "correct": false,
+          "confidence": 88.88888888888889,
+          "declared": "Sortilege",
+          "extracted": "SORTIL\u00c8GE"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Maple Cream Liqueur",
+          "extracted": "MAPLE CREAM LIQUEUR"
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "17%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 96.875,
+          "declared": "La Maison des Futailles Montreal",
+          "extracted": "LA MAISON DES FUTAILLES MONTR\u00c9AL, QU\u00c9BEC, CANADA"
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Quebec, Canada",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Canada",
+          "extracted": "Canada"
+        },
+        "importer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Sidney Frank Importing Co., Inc.",
+          "extracted": "SIDNEY FRANK IMPORTING CO., INC., NEW ROCHELLE, NY"
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "New Rochelle, NY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-18-black-maple-hill",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 60.87834427057042,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Black Maple Hill",
+          "extracted": "Black Maple Hill"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Oregon Straight Rye Whiskey",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "47.5%",
+          "extracted": "47.5% by Vol."
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Stein Distillery",
+          "extracted": "Stein Distillery"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Joseph, Oregon",
+          "extracted": "Joseph, Oregon"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 26.14840989399293,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-19-fuel-moonshine",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Fuel",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Grain Neutral Spirits with Natural Flavor Added",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "40%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Redline Beverage",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Bardstown, KY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-20-market-alley",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 85.71428571428571,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Market Alley",
+          "extracted": "Market Alley"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Barrel Rested Gin",
+          "extracted": "Gin"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "45%",
+          "extracted": "45% ALC by VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Thistle Finch Distilling LLC",
+          "extracted": "Thistle Finch"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Lancaster, PA",
+          "extracted": "Distilled in Lancaster, PA"
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-21-mckenzie-brew-house",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "McKenzie Brew House",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Locally Crafted Vodka",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "40%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "1 Liter",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Kiki Vodka Company LLC",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Hatfield, PA",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-22-misunderstood",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 69.04193115373239,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Misunderstood",
+          "extracted": "Misunderstood"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Ginger Spiced Whiskey",
+          "extracted": "Ginger Spiced Whiskey"
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "40%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Misunderstood Whiskey",
+          "extracted": "Misunderstood Whiskey Co."
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 86.95652173913044,
+          "declared": "Bardstown, KY",
+          "extracted": "Handstown, KY"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 96.33699633699634,
+          "declared": null,
+          "extracted": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-23-nicks-bruce",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Gordian Knot",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Aged Rum",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "42%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Nicks and Bruce",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Bardstown, KY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-24-twelv-31",
+      "category": "good spirits",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 77.5,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 87.5,
+          "declared": "Twelv 31",
+          "extracted": "Twelve31"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Velvet Berry Liqueur",
+          "extracted": "Liqueur"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "20%",
+          "extracted": "20% ALC./VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-25-cascade-val",
+      "category": "good wine+beer",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 99.97787610619469,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Cascade",
+          "extracted": "Cascade Winery"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Red Wine",
+          "extracted": "Red Wine"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "11.5%",
+          "extracted": "11.5% by volume"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ML"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Cascade Winery",
+          "extracted": "Cascade Winery"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Grand Rapids, MI",
+          "extracted": "Grand Rapids, MI 49546"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 99.82300884955752,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        },
+        "sulfites_declaration": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Required",
+          "extracted": "Contains Sulfities"
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-26-lenz-moser",
+      "category": "good wine+beer",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 49.77777777777778,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Lenz Moser",
+          "extracted": "Lenz Moser"
+        },
+        "class_type": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 48.0,
+          "declared": "Dry White Wine",
+          "extracted": "GR\u00dcNER VELTLINER"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "12%",
+          "extracted": "12%ALC./VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "1.0 L",
+          "extracted": "1.0L"
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Austria",
+          "extracted": "PRODUCT OF AUSTRIA"
+        },
+        "importer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Niche Import Co.",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Cedar Knolls, NJ",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        },
+        "sulfites_declaration": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Required",
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-27-barenjager-bourbon",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 46.38655462184874,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 35.29411764705882,
+          "declared": "Barenjager",
+          "extracted": "HONEY & BOURBON"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Honey Liqueur and Bourbon",
+          "extracted": "B\u00c4RENJ\u00c4GER HONEY LIQUEUR AND BOURBON WHISKEY"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "35%",
+          "extracted": "35% ALC / VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "1 L",
+          "extracted": "1L"
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 28.57142857142857,
+          "declared": "Schwarze und Schlichte GmbH",
+          "extracted": "TEU\u0106KE + KOENIG B\u00c4RENFANGFABRIK"
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Oelde, Germany",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Germany",
+          "extracted": "RINTELN GERMANY"
+        },
+        "importer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Sidney Frank Importing Co., Inc.",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "New Rochelle, NY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-28-collaboration",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 84.02930402930403,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Collabor&tion",
+          "extracted": "COLLABOR& TION"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Straight Bourbon Whiskey Finished in Brandy Barrels",
+          "extracted": "STRAIGHT BOURBON WHISKEY FINISHED IN AMERICAN BRANDY BARRELS"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "60%",
+          "extracted": "60% ALC. BY VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "field_missing",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-29-cotton-hollow",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 57.142857142857146,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Cotton Hollow",
+          "extracted": "COTTON HOLLOW"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Straight Bourbon Whiskey",
+          "extracted": "STRAIGHT BOURBON WHISKEY"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "46.5%",
+          "extracted": "46.5% alc./vol."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ml"
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Cotton Hollow Distillery",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Indiana",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "field_missing",
+          "correct": true,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-30-gordian-knot-rum",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 60.020931449502875,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Gordian Knot",
+          "extracted": "GORDIAN KNOT | RESERVE RUM"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Reserve Rum",
+          "extracted": "RESERVE RUM"
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "42%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Nicks and Bruce",
+          "extracted": "BOTTLED BY NICKS AND BRUCE"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Bardstown, KY",
+          "extracted": "BARDSTOWN, KY"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-31-monkey-47",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 40.0,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Monkey 47",
+          "extracted": "Monkey 47"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Schwarzwald Dry Gin",
+          "extracted": "Dry Gin"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "47%",
+          "extracted": "47% ALC./VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "375 mL",
+          "extracted": "375 ML"
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Black Forest Distillers",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Lossburg, Germany",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Germany",
+          "extracted": null
+        },
+        "importer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Sidney Frank Importing Co., Inc.",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "New Rochelle, NY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-32-resilient",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 79.57446808510637,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Resilient",
+          "extracted": "RESILIENT"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 97.87234042553192,
+          "declared": "Straight Bourbon Whiskey",
+          "extracted": "STRAIGHT BOURBON WHISKY"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "53.5%",
+          "extracted": "53.5% ALC/VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ML"
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "field_missing",
+          "correct": true,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-33-sortilege-label",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Sortilege",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Liqueur with Canadian Whisky and Maple Syrup",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "30%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "375 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "La Maison des Futailles",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Montreal, Quebec, Canada",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Canada",
+          "extracted": null
+        },
+        "importer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Sidney Frank Importing Co., Inc.",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "New Rochelle, NY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-34-uncle-nearest",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 57.142857142857146,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Uncle Nearest",
+          "extracted": "UNCLE NEAREST"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 100.0,
+          "declared": "Premium Whiskey",
+          "extracted": "PREMIUM WHISKEY"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "50%",
+          "extracted": "50% ALC./VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML"
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Uncle Nearest, Inc.",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Shelbyville, TN",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-35-warm",
+      "category": "bad spirits label",
+      "expected_status": "fail",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Warm",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Bourbon Whiskey",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "48%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "field_missing",
+          "correct": true,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-36-barenjager-warning",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Barenjager",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Honey Liqueur",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "35%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "50 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Schwarze und Schlichte GmbH",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Oelde, Germany",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Germany",
+          "extracted": null
+        },
+        "importer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Sidney Frank Importing Co., Inc.",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "New Rochelle, NY",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-37-dutch-courage",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 64.37966234786023,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Dutch Courage",
+          "extracted": "Small Batch Dutch Courage Dry Gin"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Dry Gin",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "44.5%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ml"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Zuidam Distillers BV",
+          "extracted": "Zuidam Distillers Export BV"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 88.88888888888889,
+          "declared": "Baarle-Nassau, Netherlands",
+          "extracted": "The Netherlands"
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Netherlands",
+          "extracted": "The Netherlands"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 26.14840989399293,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-38-howling-moon-moonshine",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 55.99845289286283,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Howling Moon",
+          "extracted": "Howling Moon"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Spirits Distilled From Grain",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "50%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Howling Moon Distillery",
+          "extracted": "Howling Moon"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 95.65217391304348,
+          "declared": "Asheville, NC",
+          "extracted": "Asheville, North Carolina"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 96.33699633699634,
+          "declared": null,
+          "extracted": "(1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-39-jacques-cardin",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 37.69140164899882,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Jacques Cardin",
+          "extracted": "Jacques Cardin Apple VSOP"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Apple VSOP Cognac",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "40%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "France",
+          "extracted": "FRANCE"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 26.14840989399293,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-40-presidential-dram",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 80.0,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Presidential Dram",
+          "extracted": "THE PRESIDENTIAL DRAM"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Straight Rye Whiskey",
+          "extracted": "Straight Rye Whiskey"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "60%",
+          "extracted": "60% Alc. by Vol."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ml"
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-41-sailor-jerry-warning",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 65.78327444051826,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Sailor Jerry",
+          "extracted": "Sailor Jerry"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Spiced Rum",
+          "extracted": "Spiced Rum"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "46%",
+          "extracted": "46% ALC./VOL."
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "50 mL",
+          "extracted": null
+        },
+        "importer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Edison, NJ",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 94.69964664310953,
+          "declared": null,
+          "extracted": "Government Warning: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-42-seven-fathoms",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 73.58950791855203,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Seven Fathoms",
+          "extracted": "SEVEN FATHOMS"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Cayman Islands Premium Rum",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "40%",
+          "extracted": "40% ALC.BY VOL."
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750ML"
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 69.23076923076923,
+          "declared": "Cayman Spirits Co.",
+          "extracted": "Cayman Island Distilleries Ltd."
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Grand Cayman, Cayman Islands",
+          "extracted": "Grand Cayman, Cayman Islands"
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Cayman Islands",
+          "extracted": "Product of the Cayman Islands"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 19.485294117647058,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS"
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-43-stoll-wolfe",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "needs_review",
+      "overall_confidence": 0.0,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Stoll & Wolfe",
+          "extracted": null
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Blend of American Straight Whiskeys",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "43%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "producer_name": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Stoll and Wolfe Distillery",
+          "extracted": null
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Lititz, PA",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "field_missing",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": null,
+          "extracted": null
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-44-white-label",
+      "category": "bad spirits warning",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 11.3020313020313,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 36.36363636363637,
+          "declared": "White Label",
+          "extracted": "Southern Virginia Tradition for Three Centuries"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Corn Whiskey",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "50%",
+          "extracted": null
+        },
+        "net_contents": {
+          "actual_status": "field_missing",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "750 mL",
+          "extracted": null
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 20.146520146520142,
+          "declared": null,
+          "extracted": "(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-45-cerveza-barrilito",
+      "category": "bad wine+beer",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 57.872996890696,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Barrilito",
+          "extracted": "CERVEZA BARRILITO"
+        },
+        "class_type": {
+          "actual_status": "field_missing",
+          "expected_status": "content_mismatch",
+          "correct": false,
+          "confidence": 0.0,
+          "declared": "Beer",
+          "extracted": null
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "3.6%",
+          "extracted": "ALC 3.6% BY VOL"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "1 QT 8 FL.OZ.",
+          "extracted": "1 QT., 8FL.OZ."
+        },
+        "producer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 80.0,
+          "declared": "Cerveceria Moctezuma",
+          "extracted": "CERVECERIA MODELO S. DE R.L DE C.V."
+        },
+        "producer_address": {
+          "actual_status": "field_missing",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 0.0,
+          "declared": "Monterrey, Mexico",
+          "extracted": null
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Mexico",
+          "extracted": "PRODUCT OF MEXICO"
+        },
+        "importer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 43.24324324324324,
+          "declared": "Labatt USA Operating Co. LLC",
+          "extracted": "RR IMPORTACIONES INC."
+        },
+        "importer_address": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 30.000000000000004,
+          "declared": "Norwalk, CT",
+          "extracted": "141 3RD ST, UNIT. # 143 Passaic. N.J. 07055-0000"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 25.486725663716815,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS, (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS"
+        }
+      }
+    },
+    {
+      "fixture_id": "fixture-46-forte-masso",
+      "category": "bad wine+beer",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "overall_confidence": 77.98881396054541,
+      "correct": true,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 95.23809523809524,
+          "declared": "Forte Masso",
+          "extracted": "FORTEMASSO"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Red Wine",
+          "extracted": "RED WINE"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "13.5%",
+          "extracted": "13.5% vol"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 ML."
+        },
+        "country_of_origin": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Italy",
+          "extracted": "PRODUCT OF ITALY"
+        },
+        "importer_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "content_mismatch",
+          "correct": true,
+          "confidence": 26.66666666666667,
+          "declared": "Pacific Highway Wines",
+          "extracted": "DUE FRATELLI IMPORTS, LLC"
+        },
+        "importer_address": {
+          "actual_status": "content_mismatch",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 53.84615384615385,
+          "declared": "San Rafael, CA",
+          "extracted": "PORTLAND MAINE BRESCIA - ITALIA"
+        },
+        "government_warning": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 26.14840989399293,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        },
+        "sulfites_declaration": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Required",
+          "extracted": "CONTIENE SOLFITI - CONTAINS SULPHITES - ENTH\u00c4LT SULFITE - CONTIENT SULFITES"
+        }
+      }
+    }
+  ]
+}

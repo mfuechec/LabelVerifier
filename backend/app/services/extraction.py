@@ -1,28 +1,31 @@
+import asyncio
 import base64
 import json
 import logging
 import re
 from dataclasses import dataclass, field
 
-from groq import AsyncGroq
+from groq import AsyncGroq, RateLimitError
 
 logger = logging.getLogger(__name__)
 
+MAX_RETRIES = 3
+INITIAL_BACKOFF_SECONDS = 2
 
-EXTRACTION_PROMPT = """You are an alcohol beverage label analysis system for the US TTB (Alcohol and Tobacco Tax and Trade Bureau). Extract all compliance-relevant fields from this label image.
+# Single combined prompt: all fields + government warning in one call
+EXTRACTION_PROMPT = """You are an alcohol beverage label analysis system for the US TTB. Extract ALL compliance-relevant fields from this label image.
 
-Return a JSON object with the following structure. For each field found, include the extracted text and an approximate bounding box (x, y, width, height as percentages of image dimensions, 0-100). If a field is not found, set its value to null and omit the bounding_box.
-
-{"fields":{"brand_name":{"value":"string or null","bounding_box":{"x":0,"y":0,"width":0,"height":0}},"class_type":{"value":null,"bounding_box":null},"alcohol_content":{"value":null,"bounding_box":null},"alcohol_proof":{"value":null,"bounding_box":null},"net_contents":{"value":null,"bounding_box":null},"producer_name":{"value":null,"bounding_box":null},"producer_address":{"value":null,"bounding_box":null},"country_of_origin":{"value":null,"bounding_box":null},"importer_name":{"value":null,"bounding_box":null},"importer_address":{"value":null,"bounding_box":null},"government_warning":{"value":null,"bounding_box":null},"sulfites_declaration":{"value":null,"bounding_box":null}},"extraction_notes":"observations"}
+Return ONLY a JSON object exactly like this (no markdown, no extra text):
+{"brand_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
 
 Rules:
-- Extract text EXACTLY as it appears on the label (preserve capitalization)
-- For alcohol_content, extract the percentage value including format (e.g. "45% Alc./Vol.")
+- Replace null with the extracted string value, or keep null if not found
+- conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
+- Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
+- For alcohol_content, include the format (e.g. "45% Alc./Vol.")
 - For alcohol_proof, extract proof if separately stated (e.g. "90 Proof")
-- For government_warning, extract the COMPLETE warning text verbatim
-- Bounding boxes are percentage-based: x=0,y=0 is top-left; x=100,y=100 is bottom-right
-- If text is partially obscured or hard to read, extract best reading and note in extraction_notes
-- Return ONLY the JSON object, no other text"""
+- GOVERNMENT WARNING is critical: always include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim -- do NOT summarize, paraphrase, or omit the prefix.
+- Return ONLY the JSON object"""
 
 
 @dataclass
@@ -33,8 +36,57 @@ class ExtractionResult:
     error: str | None = None
 
 
+def _repair_json(text: str) -> dict | None:
+    """Attempt to repair truncated or malformed JSON from LLM output."""
+    cleaned = text.strip()
+
+    # Strip markdown code fences
+    fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", cleaned, re.DOTALL)
+    if fence_match:
+        cleaned = fence_match.group(1).strip()
+    elif cleaned.startswith("```"):
+        # Unclosed code fence (truncated) -- strip the opening fence
+        cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned).strip()
+
+    # Try parsing as-is first
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Attempt to close truncated JSON by adding missing braces/brackets
+    repaired = cleaned
+    open_braces = repaired.count("{") - repaired.count("}")
+    open_brackets = repaired.count("[") - repaired.count("]")
+
+    # Trim trailing comma or incomplete key/value
+    repaired = re.sub(r',\s*$', '', repaired)
+    # Trim incomplete string value (trailing unclosed quote)
+    repaired = re.sub(r':\s*"[^"]*$', ': null', repaired)
+    # Trim incomplete key
+    repaired = re.sub(r',\s*"[^"]*$', '', repaired)
+
+    repaired += "]" * max(0, open_brackets) + "}" * max(0, open_braces)
+
+    try:
+        return json.loads(repaired)
+    except json.JSONDecodeError:
+        pass
+
+    # Last resort: extract individual field values with regex
+    extracted = {}
+    # Match "field_name": "value" or "field_name": null
+    for match in re.finditer(r'"(\w+)"\s*:\s*(?:"((?:[^"\\]|\\.)*)"|null)', cleaned):
+        key, val = match.group(1), match.group(2)
+        extracted[key] = val  # val is None if null was matched
+    if extracted:
+        return extracted
+
+    return None
+
+
 class ExtractionService:
-    def __init__(self, api_key: str, model: str = "meta-llama/llama-4-scout-17b-16e-instruct"):
+    def __init__(self, api_key: str, model: str = "meta-llama/llama-4-maverick-17b-128e-instruct"):
         self.client = AsyncGroq(api_key=api_key)
         self.model = model
 
@@ -44,8 +96,71 @@ class ExtractionService:
         panel_type: str,
         mime_type: str = "image/jpeg",
     ) -> ExtractionResult:
+        """Extract all fields from a label image using a single LLM call."""
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        image_url = f"data:{mime_type};base64,{base64_image}"
 
+        try:
+            parsed = await self._call_llm_with_retry(image_url, EXTRACTION_PROMPT, panel_type)
+        except Exception as e:
+            return ExtractionResult(
+                panel_type=panel_type,
+                error=f"Extraction failed: {e}",
+            )
+
+        # Convert parsed JSON to the expected format: {"field": {"value": ..., "bounding_box": None, "extraction_confidence": ...}}
+        fields = {}
+        for key, value in parsed.items():
+            if key in ("fields", "extraction_notes"):
+                continue
+            # Handle nested confidence format: {"value": "...", "conf": "high"}
+            if isinstance(value, dict) and "value" in value:
+                fields[key] = {
+                    "value": value["value"],
+                    "bounding_box": None,
+                    "extraction_confidence": value.get("conf", "high"),
+                }
+            else:
+                # Legacy flat format: plain string or null
+                fields[key] = {
+                    "value": value,
+                    "bounding_box": None,
+                    "extraction_confidence": "high",
+                }
+
+        return ExtractionResult(
+            fields=fields,
+            panel_type=panel_type,
+        )
+
+    async def _call_llm_with_retry(
+        self, image_url: str, prompt: str, panel_type: str
+    ) -> dict:
+        """Call LLM with exponential backoff retry on rate limit errors."""
+        last_error = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                return await self._call_llm(image_url, prompt, panel_type)
+            except RateLimitError as e:
+                last_error = e
+                if attempt >= MAX_RETRIES:
+                    break
+                # Use retry-after header if available, otherwise exponential backoff
+                retry_after = e.response.headers.get("retry-after")
+                if retry_after:
+                    delay = float(retry_after)
+                else:
+                    delay = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
+                logger.warning(
+                    "Rate limited (attempt %d/%d, %s), retrying in %.1fs...",
+                    attempt + 1, MAX_RETRIES, panel_type, delay,
+                )
+                await asyncio.sleep(delay)
+
+        raise last_error
+
+    async def _call_llm(self, image_url: str, prompt: str, panel_type: str) -> dict:
+        """Make a single LLM call and return parsed JSON dict."""
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -56,13 +171,11 @@ class ExtractionService:
                         "content": [
                             {
                                 "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{base64_image}",
-                                },
+                                "image_url": {"url": image_url},
                             },
                             {
                                 "type": "text",
-                                "text": EXTRACTION_PROMPT,
+                                "text": prompt,
                             },
                         ],
                     }
@@ -72,29 +185,15 @@ class ExtractionService:
             response_text = response.choices[0].message.content
             logger.info("Groq response (%s): %s", panel_type, response_text[:200])
 
-            # Strip markdown code fences if present
-            cleaned = response_text.strip()
-            fence_match = re.search(r"```(?:json)?\s*\n?(.*?)```", cleaned, re.DOTALL)
-            if fence_match:
-                cleaned = fence_match.group(1).strip()
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
+                return {}
 
-            try:
-                data = json.loads(cleaned)
-                return ExtractionResult(
-                    fields=data.get("fields", {}),
-                    panel_type=panel_type,
-                    extraction_notes=data.get("extraction_notes", ""),
-                )
-            except json.JSONDecodeError:
-                logger.error("JSON parse error (%s): %s", panel_type, cleaned[:200])
-                return ExtractionResult(
-                    panel_type=panel_type,
-                    error=f"Failed to parse extraction response as JSON: {cleaned[:200]}",
-                )
+            return parsed
 
+        except RateLimitError:
+            raise
         except Exception as e:
             logger.exception("Extraction API call failed (%s): %s", panel_type, e)
-            return ExtractionResult(
-                panel_type=panel_type,
-                error=f"Extraction API call failed: {str(e)}",
-            )
+            raise

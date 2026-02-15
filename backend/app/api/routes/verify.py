@@ -1,11 +1,13 @@
-import json
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Request
-from app.models.schemas import ApplicationData, VerificationResult
+from app.models.schemas import VerificationResult
 from app.services.orchestrator import VerificationOrchestrator
+from app.services.pdf_parser import PDFApplicationParser
 from app.config import settings
 from app.api.dependencies import get_db, get_db_path
 
 router = APIRouter()
+
+_pdf_parser = PDFApplicationParser()
 
 
 def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
@@ -16,16 +18,25 @@ def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator
 @router.post("/verify")
 async def verify_label(
     request: Request,
-    application_data: str = Form(...),
+    application_pdf: UploadFile = File(..., alias="application_pdf"),
     images: list[UploadFile] = File(..., alias="images[]"),
     panels: list[str] = Form(None, alias="panels[]"),
 ):
-    # Parse application data
+    # Parse application data from PDF
+    pdf_bytes = await application_pdf.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=422, detail="Application PDF is empty")
+
+    if application_pdf.content_type and application_pdf.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Application file must be a PDF, got: {application_pdf.content_type}",
+        )
+
     try:
-        app_data_dict = json.loads(application_data)
-        app_data = ApplicationData(**app_data_dict)
-    except (json.JSONDecodeError, Exception) as e:
-        raise HTTPException(status_code=422, detail=f"Invalid application data: {str(e)}")
+        app_data = _pdf_parser.parse_application_pdf(pdf_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     if not images:
         raise HTTPException(status_code=422, detail="At least one image is required")

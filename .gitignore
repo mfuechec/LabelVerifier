@@ -48,5 +48,8 @@ coverage/
 # Vercel
 .vercel/
 
+# Benchmark cache
+.benchmark_cache/
+
 # Misc
 *.log

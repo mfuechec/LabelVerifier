@@ -59,12 +59,15 @@ class VerificationOrchestrator:
         has_error = any(r.error for r in extraction_results)
 
         # 3. Merge panels
+        extraction_confidences = {}
         if len(extraction_results) == 1:
             merged_fields = {}
             result = extraction_results[0]
             for field_name, field_data in result.fields.items():
                 if isinstance(field_data, dict):
                     merged_fields[field_name] = field_data.get("value")
+                    ext_conf = field_data.get("extraction_confidence", "high")
+                    extraction_confidences[field_name] = ext_conf
             panel_bboxes = {
                 fn: {
                     "panel": result.panel_type,
@@ -84,6 +87,7 @@ class VerificationOrchestrator:
                             "value": field_data.get("value"),
                             "confidence": 90.0,
                             "bounding_box": field_data.get("bounding_box"),
+                            "extraction_confidence": field_data.get("extraction_confidence", "high"),
                         }
                         if field_data.get("bounding_box"):
                             panel_bboxes[field_name] = {
@@ -96,10 +100,14 @@ class VerificationOrchestrator:
             merged_fields = {
                 fn: fv.value for fn, fv in merged.fields.items()
             }
+            extraction_confidences = {
+                fn: fv.extraction_confidence for fn, fv in merged.fields.items()
+            }
 
         # 4. Compare against application data
         comparison_results = self.comparison_service.compare_fields(
-            merged_fields, application_data, application_data.beverage_type
+            merged_fields, application_data, application_data.beverage_type,
+            extraction_confidences=extraction_confidences,
         )
 
         # 5. Add bounding boxes to comparison results

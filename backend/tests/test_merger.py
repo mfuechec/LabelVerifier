@@ -63,3 +63,65 @@ class TestImageMerger:
         # Should flag conflict
         assert len(merged.conflicts) == 1
         assert merged.conflicts[0].field_name == "brand_name"
+
+    def test_extraction_confidence_propagated(self):
+        """extraction_confidence should be propagated through merge."""
+        panel_results = {
+            "front": {
+                "brand_name": {
+                    "value": "Test Brand",
+                    "confidence": 95.0,
+                    "extraction_confidence": "medium",
+                },
+            }
+        }
+        merged = self.merger.merge_panels(panel_results)
+        assert merged.fields["brand_name"].extraction_confidence == "medium"
+
+    def test_extraction_confidence_defaults_to_high(self):
+        """Missing extraction_confidence should default to 'high'."""
+        panel_results = {
+            "front": {
+                "brand_name": {"value": "Test Brand", "confidence": 95.0},
+            }
+        }
+        merged = self.merger.merge_panels(panel_results)
+        assert merged.fields["brand_name"].extraction_confidence == "high"
+
+    def test_higher_confidence_tier_preferred_in_conflict(self):
+        """When panels conflict, prefer higher extraction_confidence tier."""
+        panel_results = {
+            "front": {
+                "brand_name": {
+                    "value": "Brand A",
+                    "confidence": 90.0,
+                    "extraction_confidence": "low",
+                },
+            },
+            "back": {
+                "brand_name": {
+                    "value": "Brand B",
+                    "confidence": 90.0,
+                    "extraction_confidence": "high",
+                },
+            },
+        }
+        merged = self.merger.merge_panels(panel_results)
+        # Should prefer high confidence over panel priority
+        assert merged.fields["brand_name"].value == "Brand B"
+        assert merged.fields["brand_name"].extraction_confidence == "high"
+
+    def test_null_front_uses_back_value(self):
+        """When front returns None and back has a value, use back's value."""
+        panel_results = {
+            "front": {
+                "government_warning": {"value": None, "confidence": 90.0},
+            },
+            "back": {
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "confidence": 90.0},
+            },
+        }
+        merged = self.merger.merge_panels(panel_results)
+        assert merged.fields["government_warning"].value == "GOVERNMENT WARNING: ..."
+        assert merged.fields["government_warning"].source_panel == "back"
+        assert len(merged.conflicts) == 0

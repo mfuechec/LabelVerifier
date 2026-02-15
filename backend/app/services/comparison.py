@@ -21,9 +21,9 @@ FUZZY_THRESHOLD = 85.0
 
 
 def exact_match(extracted: str, canonical: str) -> tuple[str, float]:
-    """Exact match after whitespace normalization. Used for government warning."""
-    norm_ext = normalize_whitespace(extracted)
-    norm_can = normalize_whitespace(canonical)
+    """Case-insensitive exact match after whitespace normalization. Used for government warning."""
+    norm_ext = normalize_whitespace(extracted).lower()
+    norm_can = normalize_whitespace(canonical).lower()
 
     if norm_ext == norm_can:
         return ("match", 100.0)
@@ -46,13 +46,10 @@ def fuzzy_match(
     if not norm_ext:
         return ("field_missing", 0.0)
 
-    ratio = fuzz.ratio(norm_ext, norm_dec)
-    # Also try token_sort_ratio for reordered words and token_set_ratio
-    # for partial matches (e.g., "KY" vs "Kentucky")
-    token_ratio = fuzz.token_sort_ratio(norm_ext, norm_dec)
-    token_set = fuzz.token_set_ratio(norm_ext, norm_dec)
-    partial = fuzz.partial_ratio(norm_ext, norm_dec)
-    best_ratio = max(ratio, token_ratio, token_set, partial)
+    # Blend strict and lenient ratios to prevent short-token inflation
+    strict_ratio = max(fuzz.ratio(norm_ext, norm_dec), fuzz.token_sort_ratio(norm_ext, norm_dec))
+    lenient_ratio = max(fuzz.token_set_ratio(norm_ext, norm_dec), fuzz.partial_ratio(norm_ext, norm_dec))
+    best_ratio = 0.7 * strict_ratio + 0.3 * lenient_ratio
 
     if best_ratio >= threshold:
         return ("match", best_ratio)
@@ -153,6 +150,7 @@ class ComparisonService:
         extracted: dict[str, str | None],
         declared: ApplicationData,
         beverage_type: str,
+        extraction_confidences: dict[str, str] | None = None,
     ) -> list[FieldComparisonResult]:
         results = []
 
@@ -249,11 +247,62 @@ class ComparisonService:
                         )
                     )
 
+        # Apply extraction confidence adjustments
+        if extraction_confidences:
+            adjusted = []
+            for r in results:
+                ext_conf = extraction_confidences.get(r.field_name, "high")
+                status = r.status
+                score = r.confidence
+
+                if ext_conf == "low":
+                    status = "extraction_uncertain"
+                    score = min(score, 50.0)
+                elif ext_conf == "medium":
+                    if status == "content_mismatch":
+                        status = "extraction_uncertain"
+                        score = min(score, 60.0)
+                    elif status == "match" and score < 92.0:
+                        status = "extraction_uncertain"
+                        score = min(score, 75.0)
+
+                adjusted.append(
+                    FieldComparisonResult(
+                        field_name=r.field_name,
+                        declared_value=r.declared_value,
+                        extracted_value=r.extracted_value,
+                        status=status,
+                        confidence=score,
+                        match_strategy=r.match_strategy,
+                        bounding_box=r.bounding_box,
+                    )
+                )
+            results = adjusted
+
         return results
 
 
 class ConfidenceScorer:
     """Calculates overall confidence and verification status."""
+
+    CRITICAL_FIELDS = {
+        "government_warning", "brand_name", "class_type",
+        "alcohol_content", "net_contents",
+    }
+
+    FIELD_WEIGHTS = {
+        "government_warning": 2.0,
+        "brand_name": 1.5,
+        "class_type": 1.5,
+        "alcohol_content": 1.5,
+        "net_contents": 1.0,
+        "producer_name": 1.0,
+        "producer_address": 0.5,
+        "country_of_origin": 0.8,
+        "importer_name": 0.8,
+        "importer_address": 0.5,
+        "sulfites_declaration": 0.5,
+    }
 
     def calculate(
         self, fields: list[FieldComparisonResult]
@@ -261,14 +310,40 @@ class ConfidenceScorer:
         if not fields:
             return (0.0, "fail")
 
-        # Any field_missing or content_mismatch => fail
+        # Weighted average
+        total_weight = 0.0
+        weighted_sum = 0.0
         for f in fields:
-            if f.status in ("field_missing", "content_mismatch"):
-                avg = sum(field.confidence for field in fields) / len(fields)
+            w = self.FIELD_WEIGHTS.get(f.field_name, 1.0)
+            weighted_sum += f.confidence * w
+            total_weight += w
+        avg = weighted_sum / total_weight if total_weight > 0 else 0.0
+
+        # 1. Any critical field with field_missing or content_mismatch => fail
+        for f in fields:
+            if f.field_name in self.CRITICAL_FIELDS and f.status in ("field_missing", "content_mismatch"):
                 return (avg, "fail")
 
-        avg = sum(f.confidence for f in fields) / len(fields)
+        # 2. Any field extraction_uncertain => needs_review
+        has_uncertain = any(f.status == "extraction_uncertain" for f in fields)
 
+        # 3. Non-critical field issues
+        has_noncritical_issues = any(
+            f.status in ("field_missing", "content_mismatch")
+            and f.field_name not in self.CRITICAL_FIELDS
+            for f in fields
+        )
+
+        if has_uncertain:
+            return (avg, "needs_review")
+
+        if has_noncritical_issues:
+            if avg >= 70.0:
+                return (avg, "needs_review")
+            else:
+                return (avg, "fail")
+
+        # All match
         if avg >= 90.0:
             return (avg, "pass")
         elif avg >= 70.0:
