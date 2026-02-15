@@ -157,6 +157,23 @@ class TestNumericMatchNetContents:
         status, score = numeric_match_net_contents("375 mL", "750 mL")
         assert status == "content_mismatch"
 
+    def test_floz_vs_ml_match(self):
+        """25.4 fl oz should match 750 mL (cross-unit conversion)."""
+        status, score = numeric_match_net_contents("25.4 fl oz", "750 mL")
+        assert status == "match"
+        assert score == 100.0
+
+    def test_ml_vs_floz_match(self):
+        """750 mL should match 25.4 fl oz (reverse direction)."""
+        status, score = numeric_match_net_contents("750 mL", "25.4 fl oz")
+        assert status == "match"
+        assert score == 100.0
+
+    def test_floz_vs_ml_mismatch(self):
+        """12 fl oz should NOT match 750 mL."""
+        status, score = numeric_match_net_contents("12 fl oz", "750 mL")
+        assert status == "content_mismatch"
+
     def test_none_extracted(self):
         status, score = numeric_match_net_contents(None, "750 mL")
         assert status == "field_missing"

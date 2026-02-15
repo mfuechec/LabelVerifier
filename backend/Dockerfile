@@ -7,9 +7,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p data/uploads data/annotated
+RUN useradd -m -r appuser && \
+    mkdir -p data/uploads data/annotated && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 ENV PORT=8000
 EXPOSE ${PORT}
 
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

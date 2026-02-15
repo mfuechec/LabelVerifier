@@ -110,6 +110,48 @@ class TestVerifyEndpoint:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
+    async def test_verify_unsupported_mime_type(self, client):
+        app_data = {
+            "brand_name": "Test",
+            "class_type": "Test",
+            "alcohol_content": "5%",
+            "net_contents": "355 mL",
+            "beverage_type": "beer",
+        }
+        response = await client.post(
+            "/api/v1/verify",
+            data={
+                "application_data": json.dumps(app_data),
+                "panels[]": "front",
+            },
+            files={"images[]": ("test.gif", b"fake-image", "image/gif")},
+        )
+        assert response.status_code == 422
+        assert "Unsupported file type" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_verify_image_too_large(self, client):
+        app_data = {
+            "brand_name": "Test",
+            "class_type": "Test",
+            "alcohol_content": "5%",
+            "net_contents": "355 mL",
+            "beverage_type": "beer",
+        }
+        # Create content larger than 10MB
+        large_content = b"x" * (10 * 1024 * 1024 + 1)
+        response = await client.post(
+            "/api/v1/verify",
+            data={
+                "application_data": json.dumps(app_data),
+                "panels[]": "front",
+            },
+            files={"images[]": ("test.jpg", large_content, "image/jpeg")},
+        )
+        assert response.status_code == 422
+        assert "Image too large" in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_get_verification_valid_id(self, client, tmp_db):
         from app.db.setup import get_db
         conn = get_db(tmp_db)

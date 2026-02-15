@@ -104,8 +104,20 @@ def numeric_match_net_contents(
     if dec_val is None:
         return ("content_mismatch", 0.0)
 
-    # Compare normalized values
-    if ext_unit == dec_unit and abs(ext_val - dec_val) < 0.5:
+    # Normalize both to mL for comparison
+    def to_ml(val: float, unit: str | None) -> float:
+        if unit == "fl oz":
+            return val * 29.5735
+        return val  # already mL
+
+    ext_ml = to_ml(ext_val, ext_unit)
+    dec_ml = to_ml(dec_val, dec_unit)
+
+    # Use tighter tolerance for same-unit, wider for cross-unit conversions
+    cross_unit = ext_unit != dec_unit
+    tolerance = 5.0 if cross_unit else 0.5
+
+    if abs(ext_ml - dec_ml) < tolerance:
         return ("match", 100.0)
     return ("content_mismatch", 0.0)
 
@@ -252,7 +264,7 @@ class ConfidenceScorer:
         # Any field_missing or content_mismatch => fail
         for f in fields:
             if f.status in ("field_missing", "content_mismatch"):
-                avg = sum(f.confidence for f in fields) / len(fields)
+                avg = sum(field.confidence for field in fields) / len(fields)
                 return (avg, "fail")
 
         avg = sum(f.confidence for f in fields) / len(fields)

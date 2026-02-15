@@ -2,16 +2,10 @@ import json
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Request
 from app.models.schemas import ApplicationData, VerificationResult
 from app.services.orchestrator import VerificationOrchestrator
-from app.db.setup import get_db
+from app.config import settings
+from app.api.dependencies import get_db, get_db_path
 
 router = APIRouter()
-
-
-def get_db_path(request: Request | None = None) -> str:
-    """Get DB path from app state or default."""
-    if request and hasattr(request.app.state, "db_path"):
-        return request.app.state.db_path
-    return "data/labelverify.db"
 
 
 def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
@@ -44,6 +38,16 @@ async def verify_label(
     image_bytes = []
     for img in images:
         content = await img.read()
+        if img.content_type not in settings.allowed_mime_types:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported file type: {img.content_type}. Allowed: {', '.join(settings.allowed_mime_types)}",
+            )
+        if len(content) > settings.max_image_size:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Image too large: {len(content)} bytes. Maximum: {settings.max_image_size} bytes",
+            )
         image_bytes.append(content)
 
     orchestrator = get_orchestrator(request)
@@ -53,7 +57,7 @@ async def verify_label(
 
 
 @router.get("/verify/{session_id}")
-async def get_verification(session_id: str, request: Request):
+def get_verification(session_id: str, request: Request):
     db_path = get_db_path(request)
     conn = get_db(db_path)
     try:

@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 
 interface ImageUploadZoneProps {
   label: string;
@@ -28,11 +28,15 @@ export default function ImageUploadZone({ label, panelType, file, onFileSelect }
     [onFileSelect, panelType]
   );
 
-  const thumbUrl = useMemo(() => {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+
+  useEffect(() => {
     if (file && file.type.startsWith('image/')) {
-      return URL.createObjectURL(file);
+      const url = URL.createObjectURL(file);
+      setThumbUrl(url);
+      return () => URL.revokeObjectURL(url);
     }
-    return null;
+    setThumbUrl(null);
   }, [file]);
 
   const zoneClass = `upload-zone${file ? ' has-file' : ''}${dragging ? ' dragging' : ''}`;

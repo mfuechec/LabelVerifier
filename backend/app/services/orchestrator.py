@@ -21,7 +21,7 @@ from app.services.annotation import AnnotationService
 class VerificationOrchestrator:
     def __init__(self, db_path: str = "data/labelverify.db"):
         self.db_path = db_path
-        self.extraction_service = ExtractionService(api_key=settings.groq_api_key)
+        self.extraction_service = ExtractionService(api_key=settings.groq_api_key, model=settings.llm_model)
         self.comparison_service = ComparisonService()
         self.compliance_checker = ComplianceChecker()
         self.merger = ImageMerger()
@@ -43,8 +43,17 @@ class VerificationOrchestrator:
             for img, panel in zip(images, panels)
         ]
         extraction_results: list[ExtractionResult] = await asyncio.gather(
-            *extraction_tasks
+            *extraction_tasks, return_exceptions=True
         )
+
+        # Handle any extraction errors
+        valid_results: list[ExtractionResult] = []
+        for r in extraction_results:
+            if isinstance(r, Exception):
+                valid_results.append(ExtractionResult(panel_type="unknown", error=str(r)))
+            else:
+                valid_results.append(r)
+        extraction_results = valid_results
 
         # 2. Check for extraction errors
         has_error = any(r.error for r in extraction_results)
@@ -153,44 +162,43 @@ class VerificationOrchestrator:
     ):
         conn = get_db(self.db_path)
         try:
-            conn.execute(
-                """INSERT INTO verification_sessions
-                   (id, application_id, beverage_type, status,
-                    overall_confidence, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (session_id, app_data.application_id,
-                 app_data.beverage_type, status, confidence, now, now),
-            )
-
-            app_id = str(uuid.uuid4())
-            conn.execute(
-                """INSERT INTO applications
-                   (id, session_id, brand_name, class_type, alcohol_content,
-                    net_contents, producer_name, producer_address,
-                    country_of_origin, importer_name, importer_address,
-                    has_sulfites_declaration, raw_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (app_id, session_id, app_data.brand_name, app_data.class_type,
-                 app_data.alcohol_content, app_data.net_contents,
-                 app_data.producer_name, app_data.producer_address,
-                 app_data.country_of_origin, app_data.importer_name,
-                 app_data.importer_address,
-                 1 if app_data.has_sulfites_declaration else 0,
-                 app_data.model_dump_json()),
-            )
-
-            for field in fields:
-                cr_id = str(uuid.uuid4())
+            with conn:
                 conn.execute(
-                    """INSERT INTO comparison_results
-                       (id, session_id, field_name, declared_value,
-                        extracted_value, match_strategy, status, confidence)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (cr_id, session_id, field.field_name,
-                     field.declared_value, field.extracted_value,
-                     field.match_strategy, field.status, field.confidence),
+                    """INSERT INTO verification_sessions
+                       (id, application_id, beverage_type, status,
+                        overall_confidence, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (session_id, app_data.application_id,
+                     app_data.beverage_type, status, confidence, now, now),
                 )
 
-            conn.commit()
+                app_id = str(uuid.uuid4())
+                conn.execute(
+                    """INSERT INTO applications
+                       (id, session_id, brand_name, class_type, alcohol_content,
+                        net_contents, producer_name, producer_address,
+                        country_of_origin, importer_name, importer_address,
+                        has_sulfites_declaration, raw_json)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (app_id, session_id, app_data.brand_name, app_data.class_type,
+                     app_data.alcohol_content, app_data.net_contents,
+                     app_data.producer_name, app_data.producer_address,
+                     app_data.country_of_origin, app_data.importer_name,
+                     app_data.importer_address,
+                     1 if app_data.has_sulfites_declaration else 0,
+                     app_data.model_dump_json()),
+                )
+
+                for field in fields:
+                    cr_id = str(uuid.uuid4())
+                    conn.execute(
+                        """INSERT INTO comparison_results
+                           (id, session_id, field_name, declared_value,
+                            extracted_value, match_strategy, status, confidence)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (cr_id, session_id, field.field_name,
+                         field.declared_value, field.extracted_value,
+                         field.match_strategy, field.status, field.confidence),
+                    )
         finally:
             conn.close()

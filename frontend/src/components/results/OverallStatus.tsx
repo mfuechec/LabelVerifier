@@ -14,26 +14,16 @@ export default function OverallStatus({ status, confidence, beverageType }: Over
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '1rem',
-        borderRadius: '8px',
-        backgroundColor: '#f9fafb',
-        marginBottom: '1rem',
-      }}
-    >
+    <div className="results-overall">
       <div>
         <StatusBadge status={status} size="lg" />
-        <span style={{ marginLeft: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+        <span className="results-overall-info">
           {typeLabels[beverageType] || beverageType}
         </span>
       </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{confidence.toFixed(0)}%</div>
-        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Overall Confidence</div>
+      <div className="results-confidence">
+        <div className="results-confidence-value">{confidence.toFixed(0)}%</div>
+        <div className="results-confidence-label">Overall Confidence</div>
       </div>
     </div>
   );

@@ -50,9 +50,18 @@ class AnnotationService:
 
             # Draw field label above the box
             label = field_name.replace("_", " ").title()
-            try:
-                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 12)
-            except (OSError, IOError):
+            font = None
+            for font_path in [
+                "/System/Library/Fonts/Helvetica.ttc",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            ]:
+                try:
+                    font = ImageFont.truetype(font_path, 12)
+                    break
+                except (OSError, IOError):
+                    continue
+            if font is None:
                 font = ImageFont.load_default()
 
             text_bbox = draw.textbbox((0, 0), label, font=font)

@@ -34,8 +34,9 @@ class ExtractionResult:
 
 
 class ExtractionService:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, model: str = "meta-llama/llama-4-scout-17b-16e-instruct"):
         self.client = AsyncGroq(api_key=api_key)
+        self.model = model
 
     async def extract_fields(
         self,
@@ -47,7 +48,7 @@ class ExtractionService:
 
         try:
             response = await self.client.chat.completions.create(
-                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                model=self.model,
                 max_tokens=2048,
                 messages=[
                     {

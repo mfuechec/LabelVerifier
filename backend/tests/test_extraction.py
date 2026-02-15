@@ -106,6 +106,32 @@ class TestExtractionService:
             assert "bounding_box" in prompt_text
 
     @pytest.mark.asyncio
+    async def test_uses_configured_model(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
+            mock_client = AsyncMock()
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
+
+            service = ExtractionService(api_key="test-key", model="custom/model-name")
+            await service.extract_fields(b"fake-image-bytes", "front")
+
+            call_kwargs = mock_client.chat.completions.create.call_args
+            assert call_kwargs.kwargs.get("model") == "custom/model-name"
+
+    @pytest.mark.asyncio
+    async def test_default_model(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
+            mock_client = AsyncMock()
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
+
+            service = ExtractionService(api_key="test-key")
+            await service.extract_fields(b"fake-image-bytes", "front")
+
+            call_kwargs = mock_client.chat.completions.create.call_args
+            assert call_kwargs.kwargs.get("model") == "meta-llama/llama-4-scout-17b-16e-instruct"
+
+    @pytest.mark.asyncio
     async def test_image_sent_as_base64(self, mock_groq_response):
         with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
             mock_client = AsyncMock()

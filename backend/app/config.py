@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     groq_api_key: str = ""
+    llm_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     database_url: str = "sqlite:///./data/labelverify.db"
     allowed_origins: str = "http://localhost:5173"
     max_image_size: int = 10 * 1024 * 1024  # 10MB

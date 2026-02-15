@@ -72,6 +72,27 @@ class TestConfidenceScorer:
         overall, status = self.scorer.calculate(fields)
         assert status == "fail"
 
+    def test_field_missing_returns_correct_average(self):
+        """Verify exact average when field_missing triggers early fail path."""
+        fields = [
+            FieldComparisonResult(
+                field_name="brand_name", status="match",
+                confidence=100.0, match_strategy="fuzzy"
+            ),
+            FieldComparisonResult(
+                field_name="class_type", status="match",
+                confidence=90.0, match_strategy="fuzzy"
+            ),
+            FieldComparisonResult(
+                field_name="government_warning", status="field_missing",
+                confidence=0.0, match_strategy="exact"
+            ),
+        ]
+        overall, status = self.scorer.calculate(fields)
+        assert status == "fail"
+        # Average should be (100 + 90 + 0) / 3 = 63.33...
+        assert abs(overall - 63.33) < 0.5
+
     def test_empty_fields(self):
         overall, status = self.scorer.calculate([])
         assert overall == 0.0

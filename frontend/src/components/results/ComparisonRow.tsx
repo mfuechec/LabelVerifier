@@ -10,51 +10,38 @@ interface ComparisonRowProps {
   onOverride: (fieldName: string) => void;
 }
 
-export default function ComparisonRow({ field, isHighlighted, onHover, onOverride }: ComparisonRowProps) {
-  const statusBorder: Record<string, string> = {
-    match: '#22c55e',
-    content_mismatch: '#ef4444',
-    field_missing: '#ef4444',
-    extraction_uncertain: '#eab308',
-  };
+const statusBorder: Record<string, string> = {
+  match: '#22c55e',
+  content_mismatch: '#ef4444',
+  field_missing: '#ef4444',
+  extraction_uncertain: '#eab308',
+};
 
+export default function ComparisonRow({ field, isHighlighted, onHover, onOverride }: ComparisonRowProps) {
   return (
     <tr
       onMouseEnter={() => onHover(field.field_name)}
       onMouseLeave={() => onHover(null)}
-      style={{
-        borderLeft: `4px solid ${statusBorder[field.status] || '#d1d5db'}`,
-        backgroundColor: isHighlighted ? '#eff6ff' : 'transparent',
-        cursor: 'pointer',
-      }}
+      className={`comparison-row${isHighlighted ? ' highlighted' : ''}`}
+      style={{ borderLeft: `4px solid ${statusBorder[field.status] || '#d1d5db'}` }}
     >
-      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 500 }}>
+      <td className="comparison-cell-field">
         {FIELD_LABELS[field.field_name] || field.field_name}
       </td>
-      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.875rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <td className="comparison-cell-value">
         {field.declared_value || '-'}
       </td>
-      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.875rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <td className="comparison-cell-value">
         {field.extracted_value || '-'}
       </td>
-      <td style={{ padding: '0.75rem 0.5rem' }}>
+      <td className="comparison-cell">
         <StatusBadge status={field.status} size="sm" />
       </td>
-      <td style={{ padding: '0.75rem 0.5rem' }}>
+      <td className="comparison-cell">
         <ConfidenceBar value={field.confidence} />
       </td>
-      <td style={{ padding: '0.75rem 0.5rem' }}>
-        <button
-          onClick={() => onOverride(field.field_name)}
-          style={{
-            padding: '4px 8px',
-            fontSize: '0.75rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '4px',
-            backgroundColor: 'white',
-            cursor: 'pointer',
-          }}
-        >
+      <td className="comparison-cell">
+        <button className="btn-override" onClick={() => onOverride(field.field_name)}>
           Override
         </button>
       </td>
