@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -14,6 +16,18 @@ class Settings(BaseSettings):
     ]
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    def validate_required(self):
+        """Call on app startup. Raises if critical env vars are missing.
+
+        Skipped when TESTING env var is set (e.g. in pytest).
+        """
+        if os.environ.get("TESTING"):
+            return
+        if not self.groq_api_key:
+            raise RuntimeError(
+                "GROQ_API_KEY is required. Set it in .env or as an environment variable."
+            )
 
 
 settings = Settings()
