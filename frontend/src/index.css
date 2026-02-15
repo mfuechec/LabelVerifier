@@ -515,6 +515,23 @@ table {
   font-weight: 600;
 }
 
+.view-all-link {
+  font-size: 0.85rem;
+  color: var(--blue-600, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--blue-600, #2563eb);
+  border-radius: var(--radius-sm, 6px);
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.view-all-link:hover {
+  background: var(--blue-600, #2563eb);
+  color: var(--white, #fff);
+  text-decoration: none;
+}
+
 .history-filters {
   display: flex;
   gap: 0.5rem;

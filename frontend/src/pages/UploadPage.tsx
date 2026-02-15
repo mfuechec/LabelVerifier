@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ImageUploadZone from '../components/upload/ImageUploadZone';
 import HistoryFilters from '../components/history/HistoryFilters';
 import HistoryTable from '../components/history/HistoryTable';
@@ -160,6 +160,7 @@ export default function UploadPage() {
       <section className="section-card animate-in-delay-1">
         <div className="history-header">
           <h2>Recent Verifications</h2>
+          <Link to="/history" className="view-all-link">View All &rarr;</Link>
           <HistoryFilters
             status={status}
             beverageType={beverageType}

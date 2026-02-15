@@ -18,47 +18,50 @@ export default function HistoryPage() {
     per_page: 20,
   });
 
+  const totalPages = data ? Math.ceil(data.total / 20) : 0;
+
   return (
     <div>
-      <h2>Verification History</h2>
+      <section className="section-card animate-in">
+        <div className="history-header">
+          <h2>Verification History</h2>
+          <HistoryFilters
+            status={status}
+            beverageType={beverageType}
+            search={search}
+            onStatusChange={setStatus}
+            onBeverageTypeChange={setBeverageType}
+            onSearchChange={setSearch}
+          />
+        </div>
 
-      <HistoryFilters
-        status={status}
-        beverageType={beverageType}
-        search={search}
-        onStatusChange={setStatus}
-        onBeverageTypeChange={setBeverageType}
-        onSearchChange={setSearch}
-      />
-
-      {isLoading ? (
-        <LoadingSpinner message="Loading history..." />
-      ) : (
-        <>
-          <HistoryTable items={data?.items || []} />
-          {data && data.total > 20 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Previous
-              </button>
-              <span style={{ padding: '0.5rem', color: '#6b7280' }}>
-                Page {page} of {Math.ceil(data.total / 20)}
-              </span>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= Math.ceil(data.total / 20)}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      )}
+        {isLoading ? (
+          <LoadingSpinner message="Loading history..." />
+        ) : (
+          <>
+            <HistoryTable items={data?.items || []} />
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </button>
+                <span className="page-info">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 }
