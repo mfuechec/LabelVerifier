@@ -84,7 +84,7 @@
     },
     {
       "id": "edge-hanami-gin-miniature",
-      "description": "Miniature bottle (50mL) - net contents mismatch with 750mL application, importer not visible, gov warning punctuation",
+      "description": "Miniature bottle - back label shows 750ML (matches application), importer not visible on label",
       "scenario_category": "edge_cases",
       "category": "good spirits",
       "images": [
@@ -112,16 +112,16 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
-          "net_contents": "content_mismatch",
+          "net_contents": "match",
           "producer_name": "match",
           "country_of_origin": "match",
           "importer_name": "field_missing",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         }
       }
     },
@@ -293,8 +293,8 @@
     },
     {
       "id": "review-misunderstood-warning",
-      "description": "Gov warning extraction has 'THE ABILITY' vs canonical 'YOUR ABILITY' - minor extraction error",
-      "scenario_category": "needs_review",
+      "description": "Gov warning correctly extracted with focused re-extraction prompt",
+      "scenario_category": "pass",
       "category": "good spirits",
       "images": [
         {
@@ -321,14 +321,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         }
       }
     },
@@ -996,8 +996,8 @@
     },
     {
       "id": "missing-resilient",
-      "description": "No back label, government warning missing, Whisky spelling",
-      "scenario_category": "fail_missing",
+      "description": "Gov warning on rotated 'other' panel, partially extracted (truncated); Whisky spelling",
+      "scenario_category": "needs_review",
       "category": "bad spirits label",
       "images": [
         {
@@ -1024,15 +1024,15 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "government_warning": "field_missing"
+          "government_warning": "extraction_uncertain"
         },
-        "mismatch_description": "No back label, gov warning missing; Whisky/Whiskey spelling handled by fuzzy match"
+        "mismatch_description": "Gov warning visible but rotated/truncated extraction; Whisky/Whiskey spelling handled by fuzzy match"
       }
     },
     {

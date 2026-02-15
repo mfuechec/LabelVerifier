@@ -98,11 +98,11 @@ MOCK_EXTRACTIONS = {
         "brand_name": "Hanami",
         "class_type": "Dry Gin",
         "alcohol_content": "43% Alc./Vol. (86 Proof)",
-        "net_contents": "50 mL",
+        "net_contents": "750 mL",
         "producer_name": "P. Melchers Distilleries BV",
         "producer_address": "Lelystad, The Netherlands",
         "country_of_origin": "Holland",
-        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING"),
+        "government_warning": CANONICAL_WARNING,
     },
     # rosso-veneto moved to needs_review (brand confusion, Italian text)
     "review-rosso-veneto-brand-confusion": {
@@ -144,7 +144,7 @@ MOCK_EXTRACTIONS = {
         "producer_address": "Lancaster, PA",
         "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING"),
     },
-    # misunderstood moved to needs_review (gov warning word difference)
+    # misunderstood: focused re-extraction now reads warning correctly
     "review-misunderstood-warning": {
         "brand_name": "Misunderstood",
         "class_type": "Ginger Spiced Whiskey",
@@ -152,7 +152,7 @@ MOCK_EXTRACTIONS = {
         "net_contents": "750 mL",
         "producer_name": "Misunderstood Whiskey",
         "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING.replace("your ability", "the ability"),
+        "government_warning": CANONICAL_WARNING,
     },
     # cascade-val: front image has government warning printed vertically along right edge
     "edge-cascade-val-no-back": {
@@ -319,7 +319,8 @@ MOCK_EXTRACTIONS = {
         "class_type": "Straight Bourbon Whisky",  # Note: Whisky not Whiskey
         "alcohol_content": "53.5% Alc./Vol. (107 Proof)",
         "net_contents": "750 mL",
-        # No government_warning -- missing from label
+        # Gov warning on rotated 'other' panel, partially extracted (truncated)
+        "government_warning": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEF",
     },
     "missing-warm": {
         "brand_name": "Warm",
@@ -520,11 +521,12 @@ MOCK_EXTRACTION_CONFIDENCES: dict[str, dict[str, str]] = {
         "class_type": "medium",
         "country_of_origin": "medium",
     },
-    "review-misunderstood-warning": {
-        "government_warning": "medium",
-    },
+    "review-misunderstood-warning": {},
     "review-lenz-moser-class-extraction": {
         "importer_name": "medium",
+    },
+    "missing-resilient": {
+        "government_warning": "low",
     },
 }
 

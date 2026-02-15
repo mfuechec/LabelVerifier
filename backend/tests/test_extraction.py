@@ -443,7 +443,8 @@ class TestAnthropicExtractorIsBaseExtractor:
             extractor = AnthropicExtractor(api_key="test-key")
             result = await extractor.extract_fields(b"fake-image-bytes", "front")
 
-            mock_client.messages.create.assert_called_once()
+            # Called twice: initial extraction + warning re-extraction
+            assert mock_client.messages.create.call_count == 2
             assert result.fields["brand_name"]["value"] == "Test Brand"
             assert result.error is None
 

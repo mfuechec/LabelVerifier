@@ -30,6 +30,26 @@ Rules:
 - GOVERNMENT WARNING is critical: always include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim -- do NOT summarize, paraphrase, or omit the prefix.
 - Return ONLY the JSON object"""
 
+# Focused prompt for government warning re-extraction (fix #2)
+WARNING_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to extract the GOVERNMENT WARNING text from this label image.
+
+Focus on finding the block of text that starts with "GOVERNMENT WARNING:" -- it is a legally required statement on all US alcohol labels. It contains two numbered points:
+(1) About women not drinking during pregnancy / risk of birth defects
+(2) About consumption impairing ability to drive / operate machinery / health problems
+
+Read EVERY SINGLE WORD carefully, character by character. Pay special attention to:
+- The exact wording in point (2): it should say "CONSUMPTION OF ALCOHOLIC BEVERAGES" (not just "ALCOHOL")
+- Every word matters for compliance -- do NOT skip, summarize, or paraphrase
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"government_warning": {"value": null, "conf": "high"}}
+
+Rules:
+- Replace null with the full verbatim text starting from "GOVERNMENT WARNING:" through the end of the statement
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- If no government warning is visible on this label, return null
+- Extract EXACTLY as printed -- do NOT correct errors"""
+
 
 @dataclass
 class ExtractionResult:
@@ -282,6 +302,22 @@ class AnthropicExtractor(BaseExtractor):
                 return ExtractionResult(fields={}, panel_type=panel_type)
 
             fields = _convert_parsed_to_fields(parsed)
+
+            # Second pass: re-extract government warning with focused prompt.
+            # Always attempt re-extraction — the focused prompt is more accurate
+            # for reading warnings that are rotated, small, or partially obscured.
+            gw_field = fields.get("government_warning", {})
+            reextracted = await self.reextract_warning(image_bytes, mime_type)
+            if reextracted:
+                old_val = gw_field.get("value") if isinstance(gw_field, dict) else gw_field
+                if old_val != reextracted:
+                    logger.info("Warning re-extraction updated value for %s", panel_type)
+                fields["government_warning"] = {
+                    "value": reextracted,
+                    "bounding_box": None,
+                    "extraction_confidence": gw_field.get("extraction_confidence", "high") if isinstance(gw_field, dict) else "high",
+                }
+
             return ExtractionResult(fields=fields, panel_type=panel_type)
 
         except Exception as e:
@@ -290,6 +326,66 @@ class AnthropicExtractor(BaseExtractor):
                 panel_type=panel_type,
                 error=f"Extraction failed: {e}",
             )
+
+    async def reextract_warning(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        model_override: str | None = None,
+    ) -> str | None:
+        """Re-extract just the government warning with a focused prompt.
+
+        Args:
+            image_bytes: The label image.
+            mime_type: Image MIME type.
+            model_override: Use a different model (e.g. Sonnet) for this call.
+
+        Returns:
+            The extracted warning text, or None on failure.
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        model = model_override or self.model
+
+        try:
+            response = await self.client.messages.create(
+                model=model,
+                max_tokens=1024,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": WARNING_REEXTRACT_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            response_text = response.content[0].text
+            logger.info("Warning re-extraction (%s): %s", model, response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None
+
+            gw = parsed.get("government_warning")
+            if isinstance(gw, dict) and "value" in gw:
+                return gw["value"]
+            return gw
+
+        except Exception as e:
+            logger.exception("Warning re-extraction failed: %s", e)
+            return None
 
 
 # Backward compatibility alias
