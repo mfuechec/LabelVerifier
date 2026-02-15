@@ -4,11 +4,15 @@ import ImageUploadZone from '../components/upload/ImageUploadZone';
 import HistoryFilters from '../components/history/HistoryFilters';
 import HistoryTable from '../components/history/HistoryTable';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
+import ErrorBanner from '../components/shared/ErrorBanner';
 import { useVerify, useVerifications } from '../api/verifications';
+import { getErrorMessage } from '../api/errors';
 
 export default function UploadPage() {
   const navigate = useNavigate();
   const verifyMutation = useVerify();
+
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [images, setImages] = useState<Record<string, File | null>>({
     front: null,
@@ -58,15 +62,16 @@ export default function UploadPage() {
     }
 
     if (imageFiles.length === 0) {
-      alert('Please upload at least one label image.');
+      setSubmitError('Please upload at least one label image.');
       return;
     }
     if (!applicationPdf) {
-      alert('Please upload the application PDF.');
+      setSubmitError('Please upload the application PDF.');
       return;
     }
 
     try {
+      setSubmitError(null);
       const result = await verifyMutation.mutateAsync({
         images: imageFiles,
         panels,
@@ -74,7 +79,7 @@ export default function UploadPage() {
       });
       navigate(`/verify/${result.session_id}`);
     } catch (err) {
-      alert('Verification failed. Please try again.');
+      setSubmitError(getErrorMessage(err));
       console.error(err);
     }
   };
@@ -131,6 +136,7 @@ export default function UploadPage() {
         </div>
 
         <div style={{ borderTop: '1px solid var(--slate-200)', marginTop: '1.5rem', paddingTop: '1.5rem' }}>
+          {submitError && <ErrorBanner message={submitError} />}
           <div className="verify-action">
             <button
               className="btn-verify"

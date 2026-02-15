@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import OverallStatus from '../components/results/OverallStatus';
 import ComparisonTable from '../components/results/ComparisonTable';
 import AnnotatedLabelViewer from '../components/results/AnnotatedLabelViewer';
@@ -7,6 +8,8 @@ import AgentDecisionBar from '../components/results/AgentDecisionBar';
 import FeedbackWidget from '../components/results/FeedbackWidget';
 import OverrideModal from '../components/results/OverrideModal';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
+import ErrorBanner from '../components/shared/ErrorBanner';
+import { getErrorMessage } from '../api/errors';
 import {
   useVerification,
   useOverrideField,
@@ -26,9 +29,12 @@ export default function ResultsPage() {
 
   if (isLoading) return <LoadingSpinner message="Loading results..." />;
   if (error || !result) {
+    const errorMessage = axios.isAxiosError(error) && error.response?.status === 404
+      ? 'Verification session not found.'
+      : 'Failed to load verification results.';
     return (
       <div style={{ padding: '3rem', textAlign: 'center' }}>
-        <p style={{ color: 'var(--red-600)', marginBottom: '1rem' }}>Failed to load verification results.</p>
+        <p style={{ color: 'var(--red-600)', marginBottom: '1rem' }}>{errorMessage}</p>
         <Link to="/" className="back-link">Back to Home</Link>
       </div>
     );
@@ -82,6 +88,7 @@ export default function ResultsPage() {
               }
             }}
           />
+          {decisionMutation.isError && <ErrorBanner message={getErrorMessage(decisionMutation.error)} />}
 
           <div style={{ marginTop: '1rem' }}>
             <FeedbackWidget
@@ -95,6 +102,7 @@ export default function ResultsPage() {
                 }
               }}
             />
+            {feedbackMutation.isError && <ErrorBanner message={getErrorMessage(feedbackMutation.error)} />}
           </div>
         </div>
       </div>
