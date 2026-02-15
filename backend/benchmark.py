@@ -36,7 +36,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.config import Settings
 from app.models.schemas import ApplicationData
-from app.services.extraction import ExtractionService, ExtractionResult, EXTRACTION_PROMPT, _repair_json
+from app.services.extraction import (
+    BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult, EXTRACTION_PROMPT, _repair_json,
+)
 from app.services.comparison import ComparisonService, ConfidenceScorer
 from app.services.merger import ImageMerger
 
@@ -231,7 +233,7 @@ def load_image_paths(fixture: dict) -> tuple[list[str], list[str]]:
 
 async def run_single_fixture(
     fixture: dict,
-    extraction_service: ExtractionService,
+    extraction_service: BaseExtractor,
     comparison_service: ComparisonService,
     merger: ImageMerger,
     scorer: ConfidenceScorer,
@@ -804,14 +806,21 @@ async def main():
     parser.add_argument("--results", dest="batch_results", help="With --batch: retrieve + score a previous batch by ID")
     args = parser.parse_args()
 
-    # Validate env
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        print("ERROR: GROQ_API_KEY env var is required for benchmark (real API calls).")
-        sys.exit(1)
-
+    # Load config and validate env
     config = Settings()
+    provider = config.llm_provider
     model_name = config.llm_model
+
+    if provider == "anthropic":
+        api_key = config.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            print("ERROR: ANTHROPIC_API_KEY env var is required when LLM_PROVIDER=anthropic.")
+            sys.exit(1)
+    else:
+        api_key = config.groq_api_key or os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            print("ERROR: GROQ_API_KEY env var is required when LLM_PROVIDER=groq.")
+            sys.exit(1)
 
     # Set up cache
     cache = BenchmarkCache(enabled=not args.no_cache)
@@ -835,7 +844,10 @@ async def main():
         return
 
     # Sync mode: run sequentially with cache + throttle
-    extraction_service = ExtractionService(api_key=api_key, model=model_name)
+    if provider == "anthropic":
+        extraction_service = AnthropicExtractor(api_key=api_key, model=model_name)
+    else:
+        extraction_service = GroqExtractor(api_key=api_key, model=model_name)
     comparison_service = ComparisonService()
     merger = ImageMerger()
     scorer = ConfidenceScorer()

@@ -1,7 +1,9 @@
 from rapidfuzz import fuzz
 from app.services.normalizer import (
     normalize_whitespace,
+    normalize_warning_text,
     normalize_for_fuzzy,
+    normalize_country,
     extract_abv,
     extract_proof,
     normalize_net_contents,
@@ -29,8 +31,15 @@ def exact_match(extracted: str, canonical: str) -> tuple[str, float, str]:
     if norm_ext == norm_can:
         return ("match", 100.0, "Exact match")
 
-    # Calculate word-level similarity for partial credit
-    ratio = fuzz.ratio(norm_ext, norm_can)
+    # Try again with OCR artifact normalization (mid-word hyphens removed)
+    clean_ext = normalize_warning_text(extracted).lower()
+    clean_can = normalize_warning_text(canonical).lower()
+
+    if clean_ext == clean_can:
+        return ("match", 100.0, "Exact match (after OCR normalization)")
+
+    # Calculate similarity for partial credit
+    ratio = fuzz.ratio(clean_ext, clean_can)
     return ("content_mismatch", ratio, f"Word-level similarity: {ratio:.0f}%")
 
 
@@ -328,7 +337,12 @@ class ComparisonService:
             elif strategy == "fuzzy":
                 dec_value = declared_map.get(field_name)
                 if dec_value:  # Only compare if declared
-                    status, score, reason = fuzzy_match(ext_value, dec_value)
+                    ext_cmp = ext_value
+                    dec_cmp = dec_value
+                    if field_name == "country_of_origin" and ext_cmp:
+                        ext_cmp = normalize_country(ext_cmp)
+                        dec_cmp = normalize_country(dec_cmp)
+                    status, score, reason = fuzzy_match(ext_cmp, dec_cmp)
                     results.append(
                         FieldComparisonResult(
                             field_name=field_name,

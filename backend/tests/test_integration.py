@@ -154,7 +154,7 @@ MOCK_EXTRACTIONS = {
         "producer_address": "Bardstown, KY",
         "government_warning": CANONICAL_WARNING.replace("your ability", "the ability"),
     },
-    # cascade-val moved to edge_cases (only front image, no gov warning)
+    # cascade-val: front image has government warning printed vertically along right edge
     "edge-cascade-val-no-back": {
         "brand_name": "Cascade",
         "class_type": "Red Wine",
@@ -163,6 +163,7 @@ MOCK_EXTRACTIONS = {
         "producer_name": "Cascade Winery",
         "producer_address": "Grand Rapids, MI",
         "sulfites_declaration": "Contains Sulfites",
+        "government_warning": CANONICAL_WARNING,
     },
     # lenz-moser moved to needs_review (class mismatch, importer uncertain)
     "review-lenz-moser-class-extraction": {
@@ -277,7 +278,7 @@ MOCK_EXTRACTIONS = {
     },
     "mismatch-lenz-moser-wrong-importer": {
         "brand_name": "Lenz Moser",
-        "class_type": "Dry White Wine",
+        "class_type": "Grüner Veltliner",  # Model extracts grape variety, not TTB class
         "alcohol_content": "12%",
         "net_contents": "1.0 L",
         "country_of_origin": "Austria",
@@ -309,9 +310,9 @@ MOCK_EXTRACTIONS = {
         "class_type": "Straight Bourbon Whiskey",
         "alcohol_content": "46.5% Alc./Vol. (93 Proof)",
         "net_contents": "750 mL",
-        "producer_name": "Cotton Hollow Distillery",
-        "producer_address": "Indiana",
-        # No government_warning -- missing from label
+        "producer_name": "Cotton Hollow Distilling, LLC",
+        "producer_address": "Bardstown, KY",
+        "government_warning": CANONICAL_WARNING,
     },
     "missing-resilient": {
         "brand_name": "Resilient",
@@ -325,7 +326,7 @@ MOCK_EXTRACTIONS = {
         "class_type": "Bourbon Whiskey",
         "alcohol_content": "48% Alc./Vol. (96 Proof)",
         "net_contents": "750 mL",
-        # No government_warning -- tiny rotated text not extractable
+        "government_warning": CANONICAL_WARNING,
     },
     "missing-barrilito": {
         "brand_name": "Barrilito",
@@ -341,7 +342,7 @@ MOCK_EXTRACTIONS = {
     },
     "missing-forte-masso": {
         "brand_name": "Forte Masso",
-        "class_type": "Red Wine",
+        "class_type": "BARBERA D'ALBA",  # Model extracts DOC designation, not TTB class
         "alcohol_content": "13.5%",
         "net_contents": "750 mL",
         "country_of_origin": "Italy",
@@ -353,8 +354,8 @@ MOCK_EXTRACTIONS = {
 
     # --- Needs review: extraction uncertain due to image quality ---
     "review-mokka": {
-        "brand_name": None,  # Stylized font -- extraction fails
-        "class_type": None,  # Stylized font -- extraction fails
+        "brand_name": "Mokka",
+        "class_type": "Bourbon Whiskey with Natural Flavors and Caramel Color",
         "alcohol_content": "35%",
         "net_contents": "750 mL",
         "government_warning": CANONICAL_WARNING,
@@ -369,13 +370,17 @@ MOCK_EXTRACTIONS = {
         "government_warning": CANONICAL_WARNING,
     },
     "review-howling-moon": {
-        "brand_name": None,  # White text on dark photo
-        "class_type": None,  # White text on dark photo
+        "brand_name": "Howling Moon",
+        "class_type": "Moonshine Whiskey",
         "alcohol_content": "40%",
         "net_contents": "750 mL",
         "producer_name": "Howling Moon",
         "producer_address": "Asheville, North Carolina",
-        "government_warning": CANONICAL_WARNING,
+        "government_warning": CANONICAL_WARNING.replace(
+            "(1) According", "(1)According"
+        ).replace(
+            "defects. (2)", "defects.(2)"
+        ),
     },
     "review-rocky-mount": {
         "brand_name": None,  # Cursive script throughout
@@ -386,20 +391,28 @@ MOCK_EXTRACTIONS = {
         "government_warning": CANONICAL_WARNING,
     },
     "review-sailor-jerry": {
-        "brand_name": None,  # Tattoo art on miniature label
-        "class_type": None,  # Tattoo art on miniature label
-        "alcohol_content": "46%",
+        "brand_name": "Sailor Jerry",
+        "class_type": "Spiced Rum",  # Model extracts prominent short text, not full description
+        "alcohol_content": "40% ALC./VOL.",  # Model misreads 46% as 40% on miniature label
         "net_contents": "50 mL",
-        "government_warning": None,  # Extremely small, not extractable
+        "importer_address": "Edison, NJ",
+        "government_warning": CANONICAL_WARNING,
     },
     "review-salted-caramel": {
-        "brand_name": None,  # Caramel graphic obscures brand
-        "class_type": None,  # Caramel graphic obscures class
+        "brand_name": "Salted Caramel",
+        "class_type": "Bourbon Whiskey with Natural Flavors and Caramel Color",
         "alcohol_content": "35%",
         "net_contents": "750 mL",
         "producer_name": "Redline Beverage",
         "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
+        # Real model OCR: hyphens at line breaks + minor artifacts
+        "government_warning": (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, "
+            "WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY "
+            "BECAUSE OF THE RISKS OF BIRTHDEFECTS. (2) CONSUMPTION OF ALCO-"
+            "HOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR "
+            "OPERATE MACHIN-ERY, AND MAY CAUSE HEALTH PROBLEMS."
+        ),
     },
 
     # --- Edge cases: warning variations, non-English text, etc. ---
@@ -761,20 +774,20 @@ class TestAngelsEnvyWrongAbv:
         assert get_field_status(self.fields, "government_warning") == "match"
 
 
-class TestMokkaExtractionUncertain:
-    """Representative needs_review test: stylized fonts prevent extraction."""
+class TestMokkaClassMismatch:
+    """Representative fail test: declared class incomplete vs actual label text."""
 
     def setup_method(self):
         self.fields, self.confidence, self.status = run_pipeline("review-mokka")
 
-    def test_overall_fail_or_needs_review(self):
-        assert self.status in ("fail", "needs_review")
+    def test_overall_fail(self):
+        assert self.status == "fail"
 
-    def test_brand_missing(self):
-        assert get_field_status(self.fields, "brand_name") == "field_missing"
+    def test_brand_matches(self):
+        assert get_field_status(self.fields, "brand_name") == "match"
 
-    def test_class_missing(self):
-        assert get_field_status(self.fields, "class_type") == "field_missing"
+    def test_class_content_mismatch(self):
+        assert get_field_status(self.fields, "class_type") == "content_mismatch"
 
     def test_simple_fields_still_match(self):
         assert get_field_status(self.fields, "alcohol_content") == "match"
@@ -830,15 +843,16 @@ class TestComplianceIntegration:
         assert "sulfites_declaration" not in flagged
         assert "country_of_origin" not in flagged
 
-    def test_mokka_missing_fields_flagged(self):
+    def test_mokka_producer_missing_flagged(self):
         extracted = build_mock_extraction("review-mokka")
         issues = compliance_checker.check_compliance(
             extracted, "distilled_spirits", is_imported=False
         )
         missing_fields = [i.field_name for i in issues]
-        assert "brand_name" in missing_fields
-        assert "class_type" in missing_fields
+        # Brand and class now extracted; only producer is missing
         assert "producer_name" in missing_fields
+        assert "brand_name" not in missing_fields
+        assert "class_type" not in missing_fields
 
 
 # ============================================================

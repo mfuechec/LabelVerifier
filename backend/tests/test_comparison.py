@@ -86,6 +86,32 @@ class TestExactMatch:
         assert status == "match"
         assert score == 100.0
 
+    def test_warning_with_ocr_mid_word_hyphens_only(self):
+        """OCR mid-word hyphens are normalized: ALCO-HOLIC → ALCOHOLIC."""
+        text = (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, "
+            "WOMEN SHOULD NOT DRINK ALCO-HOLIC BEVERAGES DURING PREGNANCY "
+            "BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF "
+            "ALCO-HOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR "
+            "OPERATE MACHIN-ERY, AND MAY CAUSE HEALTH PROBLEMS."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "match"
+        assert score == 100.0
+
+    def test_warning_with_ocr_hyphens_plus_other_artifacts(self):
+        """Hyphens are fixed but remaining artifacts (RISKS, BIRTHDEFECTS) still cause mismatch."""
+        text = (
+            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, "
+            "WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY "
+            "BECAUSE OF THE RISKS OF BIRTHDEFECTS. (2) CONSUMPTION OF ALCO-"
+            "HOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR "
+            "OPERATE MACHIN-ERY, AND MAY CAUSE HEALTH PROBLEMS."
+        )
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+        assert score > 95.0  # Very close but not exact
+
 
 class TestFuzzyMatch:
     def test_case_insensitive_match(self):
@@ -189,6 +215,25 @@ class TestNumericMatchNetContents:
         assert status == "field_missing"
 
 
+    def test_liter_spelled_out(self):
+        """'1 LITER' should match '1 L' (same volume)."""
+        status, score, _reason = numeric_match_net_contents("1 LITER", "1 L")
+        assert status == "match"
+        assert score == 100.0
+
+    def test_litre_spelled_out(self):
+        """'1 Litre' should match '1 L' (British spelling)."""
+        status, score, _reason = numeric_match_net_contents("1 Litre", "1 L")
+        assert status == "match"
+        assert score == 100.0
+
+    def test_liters_plural(self):
+        """'1.5 Liters' should match '1.5 L'."""
+        status, score, _reason = numeric_match_net_contents("1.5 Liters", "1.5 L")
+        assert status == "match"
+        assert score == 100.0
+
+
 class TestPresenceCheck:
     def test_present_and_required(self):
         status, score, _reason = presence_check("Contains Sulfites", True)
@@ -209,6 +254,49 @@ class TestPresenceCheck:
         status, score, _reason = presence_check("Contains Sulfites", False)
         assert status == "match"
         assert score == 100.0
+
+
+class TestCountryNameNormalization:
+    """Country of origin should match common native-language variants via ComparisonService."""
+
+    def _compare_country(self, extracted_country: str, declared_country: str):
+        """Helper: run comparison with only country_of_origin populated."""
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test", class_type="Wine",
+            alcohol_content="12%", net_contents="750 mL",
+            beverage_type="wine",
+            country_of_origin=declared_country,
+        )
+        extracted = {"country_of_origin": extracted_country}
+        service = ComparisonService()
+        results = service.compare_fields(extracted, app_data, "wine")
+        return next(r for r in results if r.field_name == "country_of_origin")
+
+    def test_italia_matches_italy(self):
+        r = self._compare_country("Italia", "Italy")
+        assert r.status == "match"
+        assert r.confidence >= 85.0
+
+    def test_deutschland_matches_germany(self):
+        r = self._compare_country("Deutschland", "Germany")
+        assert r.status == "match"
+        assert r.confidence >= 85.0
+
+    def test_espana_matches_spain(self):
+        r = self._compare_country("España", "Spain")
+        assert r.status == "match"
+        assert r.confidence >= 85.0
+
+    def test_france_matches_france(self):
+        """Same name in both languages -- should still match."""
+        r = self._compare_country("France", "France")
+        assert r.status == "match"
+
+    def test_mexique_matches_mexico(self):
+        r = self._compare_country("México", "Mexico")
+        assert r.status == "match"
+        assert r.confidence >= 85.0
 
 
 class TestFuzzyMatchTightening:

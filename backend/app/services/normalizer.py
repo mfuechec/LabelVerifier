@@ -12,6 +12,19 @@ def normalize_whitespace(text: str) -> str:
     return text.strip()
 
 
+def normalize_warning_text(text: str) -> str:
+    """Extra normalization for government warning: removes OCR hyphenation artifacts.
+
+    Handles mid-word hyphens without newlines (e.g., "ALCO-HOLIC" -> "ALCOHOLIC")
+    that OCR produces from line-wrapped label text.
+    """
+    text = normalize_whitespace(text)
+    # Remove hyphens between word characters (OCR line-break artifacts)
+    # e.g., "ALCO- HOLIC" -> "ALCOHOLIC", "MACHIN-ERY" -> "MACHINERY"
+    text = re.sub(r"(\w)-\s*(\w)", r"\1\2", text)
+    return text
+
+
 def extract_abv(text: str | None) -> float | None:
     """Extract ABV percentage from various formats."""
     if not text:
@@ -48,22 +61,72 @@ def normalize_net_contents(text: str | None) -> tuple[float | None, str | None]:
     if match:
         return (float(match.group(1)), "fl oz")
 
-    # Try liters (L)
-    match = re.search(r"(\d+\.?\d*)\s*L\b", text)
+    # Try milliliters (mL, ML, ml) -- before liters to avoid "ml" matching "l"
+    match = re.search(r"(\d+\.?\d*)\s*[Mm][Ll]\b", text)
     if match:
-        return (float(match.group(1)) * 1000.0, "mL")
+        return (float(match.group(1)), "mL")
 
     # Try centiliters (cL)
     match = re.search(r"(\d+\.?\d*)\s*cL", text, re.IGNORECASE)
     if match:
         return (float(match.group(1)) * 10.0, "mL")
 
-    # Try milliliters (mL, ML, ml)
-    match = re.search(r"(\d+\.?\d*)\s*[Mm][Ll]", text)
+    # Try liters: "L", "Liter", "Liters", "Litre", "Litres"
+    match = re.search(r"(\d+\.?\d*)\s*(?:Liters?|Litres?|L)\b", text, re.IGNORECASE)
     if match:
-        return (float(match.group(1)), "mL")
+        return (float(match.group(1)) * 1000.0, "mL")
 
     return (None, None)
+
+
+# Common native-language country names mapped to English equivalents
+COUNTRY_ALIASES: dict[str, str] = {
+    "italia": "italy",
+    "deutschland": "germany",
+    "españa": "spain",
+    "espana": "spain",
+    "france": "france",
+    "méxico": "mexico",
+    "mexique": "mexico",
+    "brasil": "brazil",
+    "россия": "russia",
+    "日本": "japan",
+    "中国": "china",
+    "écosse": "scotland",
+    "ecosse": "scotland",
+    "irlande": "ireland",
+    "pays-bas": "netherlands",
+    "angleterre": "england",
+    "royaume-uni": "united kingdom",
+    "états-unis": "united states",
+    "etats-unis": "united states",
+    "kanada": "canada",
+    "australie": "australia",
+    "nouvelle-zélande": "new zealand",
+    "argentine": "argentina",
+    "chili": "chile",
+    "afrique du sud": "south africa",
+    "suède": "sweden",
+    "norvège": "norway",
+    "danemark": "denmark",
+    "finlande": "finland",
+    "pologne": "poland",
+    "hongrie": "hungary",
+    "autriche": "austria",
+    "suisse": "switzerland",
+    "portugal": "portugal",
+    "grèce": "greece",
+    "grece": "greece",
+    "turquie": "turkey",
+}
+
+
+def normalize_country(text: str) -> str:
+    """Normalize country name to English equivalent if known."""
+    if not text:
+        return text
+    lowered = text.strip().lower()
+    return COUNTRY_ALIASES.get(lowered, text)
 
 
 def normalize_for_fuzzy(text: str) -> str:

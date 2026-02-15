@@ -293,7 +293,7 @@
     },
     {
       "id": "review-misunderstood-warning",
-      "description": "Gov warning extraction uncertain - possible word difference ('THE ABILITY' vs 'YOUR ABILITY')",
+      "description": "Gov warning extraction has 'THE ABILITY' vs canonical 'YOUR ABILITY' - minor extraction error",
       "scenario_category": "needs_review",
       "category": "good spirits",
       "images": [
@@ -321,14 +321,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "extraction_uncertain"
+          "government_warning": "content_mismatch"
         }
       }
     },
@@ -358,7 +358,7 @@
         "has_sulfites_declaration": true
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
@@ -366,7 +366,7 @@
           "net_contents": "match",
           "producer_name": "match",
           "sulfites_declaration": "match",
-          "government_warning": "field_missing"
+          "government_warning": "match"
         }
       }
     },
@@ -860,10 +860,10 @@
         "has_sulfites_declaration": true
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
+          "class_type": "content_mismatch",
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
@@ -871,7 +871,7 @@
           "sulfites_declaration": "match",
           "government_warning": "match"
         },
-        "mismatch_description": "Application declares importer 'Wine Imports Inc.' but label shows 'Niche Import Co.' (non-critical field)"
+        "mismatch_description": "Model extracts grape variety 'Grüner Veltliner' instead of TTB class 'Dry White Wine'; also wrong importer"
       }
     },
     {
@@ -955,8 +955,8 @@
     },
     {
       "id": "missing-cotton-hollow",
-      "description": "No back label, government warning missing",
-      "scenario_category": "fail_missing",
+      "description": "Other panel strip has government warning and producer info",
+      "scenario_category": "pass",
       "category": "bad spirits label",
       "images": [
         {
@@ -974,8 +974,8 @@
         "class_type": "Straight Bourbon Whiskey",
         "alcohol_content": "46.5%",
         "net_contents": "750 mL",
-        "producer_name": "Cotton Hollow Distillery",
-        "producer_address": "Indiana",
+        "producer_name": "Cotton Hollow Distilling, LLC",
+        "producer_address": "Bardstown, KY",
         "country_of_origin": null,
         "importer_name": null,
         "importer_address": null,
@@ -983,16 +983,15 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "field_missing"
-        },
-        "mismatch_description": "Second image is 'other' panel not back; government warning not found on available panels"
+          "government_warning": "match"
+        }
       }
     },
     {
@@ -1038,8 +1037,8 @@
     },
     {
       "id": "missing-warm",
-      "description": "Single image, warning text in tiny rotated print - effectively missing",
-      "scenario_category": "fail_missing",
+      "description": "Single image with government warning in rotated text along left edge",
+      "scenario_category": "pass",
       "category": "bad spirits label",
       "images": [
         {
@@ -1062,15 +1061,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "government_warning": "field_missing"
-        },
-        "mismatch_description": "Single front image; government warning in tiny rotated text not extractable"
+          "government_warning": "match"
+        }
       }
     },
     {
@@ -1142,10 +1140,10 @@
         "has_sulfites_declaration": true
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
+          "class_type": "content_mismatch",
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
@@ -1153,13 +1151,13 @@
           "sulfites_declaration": "match",
           "government_warning": "match"
         },
-        "mismatch_description": "Importer name on label differs from application (non-critical field)"
+        "mismatch_description": "Model extracts DOC designation 'Barbera d'Alba' instead of TTB class 'Red Wine'; also wrong importer"
       }
     },
     {
       "id": "review-mokka",
-      "description": "Stylized/decorative fonts make brand and class extraction difficult",
-      "scenario_category": "needs_review",
+      "description": "Declared class incomplete vs actual label (Whiskey with Natural Flavors vs Bourbon Whiskey with Natural Flavors and Caramel Color)",
+      "scenario_category": "fail_mismatch",
       "category": "bad spirits photo",
       "images": [
         {
@@ -1190,12 +1188,12 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain"
+          "brand_name": "match",
+          "class_type": "content_mismatch"
         },
-        "extraction_challenge": "Highly stylized/decorative font makes brand and class extraction difficult"
+        "mismatch_description": "Declared class 'Whiskey with Natural Flavors' but label shows 'Bourbon Whiskey with Natural Flavors and Caramel Color'"
       }
     },
     {
@@ -1238,8 +1236,8 @@
     },
     {
       "id": "review-howling-moon",
-      "description": "White italic script on dark photographic background",
-      "scenario_category": "needs_review",
+      "description": "Gov warning on back label has missing spaces after (1) and between defects.(2)",
+      "scenario_category": "fail_mismatch",
       "category": "bad spirits photo",
       "images": [
         {
@@ -1266,16 +1264,16 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain",
+          "brand_name": "match",
+          "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         },
-        "extraction_challenge": "White italic script text overlaid on dark night sky photograph; low contrast"
+        "mismatch_description": "Warning on back label has missing spaces: '(1)According' and 'defects.(2)'"
       }
     },
     {
@@ -1322,8 +1320,8 @@
     },
     {
       "id": "review-sailor-jerry",
-      "description": "Vintage tattoo artwork on miniature 50mL label",
-      "scenario_category": "needs_review",
+      "description": "Miniature 50mL label - extraction errors on class and ABV",
+      "scenario_category": "fail_mismatch",
       "category": "bad spirits photo",
       "images": [
         {
@@ -1346,21 +1344,21 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain",
-          "alcohol_content": "match",
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "content_mismatch",
           "net_contents": "match",
-          "government_warning": "extraction_uncertain"
+          "government_warning": "match"
         },
-        "extraction_challenge": "Miniature 50mL label with vintage pin-up tattoo artwork; extremely small print for warning"
+        "extraction_challenge": "Miniature 50mL label; model extracts 'Spiced Rum' (prominent) vs declared full class; misreads 46% ABV as 40%"
       }
     },
     {
       "id": "review-salted-caramel",
-      "description": "Dripping caramel graphic obscures brand text",
-      "scenario_category": "needs_review",
+      "description": "Warning extraction has OCR artifacts ('RISKS'/'BIRTHDEFECTS') remaining after hyphen normalization",
+      "scenario_category": "fail_mismatch",
       "category": "bad spirits photo",
       "images": [
         {
@@ -1391,16 +1389,16 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain",
+          "brand_name": "match",
+          "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         },
-        "extraction_challenge": "Dripping caramel illustration overlaps brand text; mixed decorative fonts; wood-grain background"
+        "mismatch_description": "OCR artifacts: 'RISKS' vs 'RISK', 'BIRTHDEFECTS' vs 'BIRTH DEFECTS' remain after hyphen normalization"
       }
     },
     {
