@@ -75,7 +75,10 @@ def create_tables(conn: sqlite3.Connection) -> None:
             status TEXT NOT NULL,
             confidence REAL,
             override_status TEXT,
-            override_note TEXT
+            override_note TEXT,
+            reviewed INTEGER DEFAULT 0,
+            extraction_confidence TEXT,
+            confidence_reason TEXT
         );
 
         CREATE TABLE IF NOT EXISTS agent_feedback (

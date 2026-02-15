@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import OverallStatus from '../components/results/OverallStatus';
+import ReviewBanner from '../components/results/ReviewBanner';
 import ComparisonTable from '../components/results/ComparisonTable';
+import ExtractedTextPanel from '../components/results/ExtractedTextPanel';
+import ViewModeToggle from '../components/results/ViewModeToggle';
+import type { ViewMode } from '../components/results/ViewModeToggle';
 import AnnotatedLabelViewer from '../components/results/AnnotatedLabelViewer';
 import AgentDecisionBar from '../components/results/AgentDecisionBar';
 import FeedbackWidget from '../components/results/FeedbackWidget';
@@ -15,6 +19,7 @@ import {
   useOverrideField,
   useSubmitDecision,
   useFeedback,
+  useReviewField,
 } from '../api/verifications';
 
 export default function ResultsPage() {
@@ -23,9 +28,33 @@ export default function ResultsPage() {
   const overrideMutation = useOverrideField();
   const decisionMutation = useSubmitDecision();
   const feedbackMutation = useFeedback();
+  const reviewMutation = useReviewField();
 
   const [highlightedField, setHighlightedField] = useState<string | null>(null);
   const [overrideField, setOverrideField] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('comparison');
+
+  const handleReviewNext = useCallback(() => {
+    if (!result?.review_summary) return;
+    const unreviewed = result.fields.find(
+      (f) => f.status === 'extraction_uncertain' && !f.reviewed
+    );
+    if (unreviewed) {
+      setHighlightedField(unreviewed.field_name);
+      // Scroll to the field (the highlight will make it visible)
+      const el = document.querySelector(`[data-field="${unreviewed.field_name}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [result]);
+
+  const handleConfirmReview = useCallback(
+    (fieldName: string) => {
+      if (sessionId) {
+        reviewMutation.mutate({ sessionId, fieldName });
+      }
+    },
+    [sessionId, reviewMutation]
+  );
 
   if (isLoading) return <LoadingSpinner message="Loading results..." />;
   if (error || !result) {
@@ -39,6 +68,8 @@ export default function ResultsPage() {
       </div>
     );
   }
+
+  const showReviewBanner = result.review_summary && result.review_summary.fields_needing_review > 0;
 
   return (
     <div className="animate-in">
@@ -55,13 +86,23 @@ export default function ResultsPage() {
           status={result.status}
           confidence={result.overall_confidence}
           beverageType={result.beverage_type}
+          fields={result.fields}
+          reviewSummary={result.review_summary}
         />
       </div>
+
+      {showReviewBanner && (
+        <ReviewBanner
+          reviewSummary={result.review_summary!}
+          onReviewNext={handleReviewNext}
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
         <div className="section-card">
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', marginBottom: '0.75rem' }}>Label Image</h3>
           <AnnotatedLabelViewer
+            annotatedImages={result.annotated_images}
             fields={result.fields}
             highlightedField={highlightedField}
             onFieldClick={(fn) => setHighlightedField(fn === highlightedField ? null : fn)}
@@ -69,13 +110,26 @@ export default function ResultsPage() {
         </div>
 
         <div className="section-card">
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', marginBottom: '0.75rem' }}>Field Comparison</h3>
-          <ComparisonTable
-            fields={result.fields}
-            highlightedField={highlightedField}
-            onFieldHover={setHighlightedField}
-            onOverride={setOverrideField}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', margin: 0 }}>Field Comparison</h3>
+            <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
+          </div>
+
+          {viewMode === 'comparison' ? (
+            <ComparisonTable
+              fields={result.fields}
+              highlightedField={highlightedField}
+              onFieldHover={setHighlightedField}
+              onOverride={setOverrideField}
+              onConfirmReview={handleConfirmReview}
+            />
+          ) : (
+            <ExtractedTextPanel
+              fields={result.fields}
+              highlightedField={highlightedField}
+              onFieldClick={(fn) => setHighlightedField(fn === highlightedField ? null : fn)}
+            />
+          )}
 
           <AgentDecisionBar
             isSubmitting={decisionMutation.isPending}

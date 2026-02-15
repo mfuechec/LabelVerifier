@@ -29,6 +29,16 @@ export interface FieldComparisonResult {
   confidence: number;
   match_strategy: string;
   bounding_box: BoundingBox | null;
+  extraction_confidence: 'high' | 'medium' | 'low' | null;
+  confidence_reason: string | null;
+  reviewed: boolean;
+}
+
+export interface ReviewSummary {
+  total_fields: number;
+  fields_needing_review: number;
+  fields_reviewed: number;
+  flagged_field_names: string[];
 }
 
 export interface VerificationResult {
@@ -39,6 +49,7 @@ export interface VerificationResult {
   fields: FieldComparisonResult[];
   annotated_images: Record<string, string>;
   created_at: string;
+  review_summary: ReviewSummary | null;
 }
 
 export interface HistoryItem {

@@ -103,6 +103,25 @@ export function useSubmitDecision() {
   });
 }
 
+export function useReviewField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      sessionId,
+      fieldName,
+    }: {
+      sessionId: string;
+      fieldName: string;
+    }) => {
+      await client.post(`/verify/${sessionId}/fields/${fieldName}/review`);
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['verification', vars.sessionId] });
+    },
+  });
+}
+
 export function useFeedback() {
   return useMutation({
     mutationFn: async ({

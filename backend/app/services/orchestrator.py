@@ -1,7 +1,9 @@
 import asyncio
 import json
+import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from app.config import settings
 from app.db.setup import get_db, create_tables
@@ -10,8 +12,11 @@ from app.models.schemas import (
     FieldComparisonResult,
     VerificationResult,
     BoundingBox,
+    ReviewSummary,
 )
-from app.services.extraction import ExtractionService, ExtractionResult
+from app.services.extraction import BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult
+
+IMAGES_BASE_DIR = "data/images"
 from app.services.comparison import ComparisonService, ConfidenceScorer
 from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
@@ -21,12 +26,24 @@ from app.services.annotation import AnnotationService
 class VerificationOrchestrator:
     def __init__(self, db_path: str = "data/labelverify.db"):
         self.db_path = db_path
-        self.extraction_service = ExtractionService(api_key=settings.groq_api_key, model=settings.llm_model)
+        self.extraction_service: BaseExtractor = self._create_extractor()
         self.comparison_service = ComparisonService()
         self.compliance_checker = ComplianceChecker()
         self.merger = ImageMerger()
         self.annotation_service = AnnotationService()
         self.scorer = ConfidenceScorer()
+
+    @staticmethod
+    def _create_extractor() -> BaseExtractor:
+        if settings.llm_provider == "anthropic":
+            return AnthropicExtractor(
+                api_key=settings.anthropic_api_key,
+                model=settings.llm_model,
+            )
+        return GroqExtractor(
+            api_key=settings.groq_api_key,
+            model=settings.llm_model,
+        )
 
     async def verify_single(
         self,
@@ -36,6 +53,15 @@ class VerificationOrchestrator:
     ) -> VerificationResult:
         session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
+
+        # 0. Save uploaded images to disk
+        annotated_images = {}
+        img_dir = Path(IMAGES_BASE_DIR) / session_id
+        img_dir.mkdir(parents=True, exist_ok=True)
+        for img_bytes, panel in zip(images, panels):
+            img_path = img_dir / f"{panel}.jpg"
+            img_path.write_bytes(img_bytes)
+            annotated_images[panel] = f"/api/v1/images/{session_id}/{panel}"
 
         # 1. Extract fields from each panel (parallel)
         extraction_tasks = [
@@ -133,6 +159,8 @@ class VerificationOrchestrator:
                     confidence=cr.confidence,
                     match_strategy=cr.match_strategy,
                     bounding_box=bbox,
+                    extraction_confidence=cr.extraction_confidence,
+                    confidence_reason=cr.confidence_reason,
                 )
             )
 
@@ -149,14 +177,24 @@ class VerificationOrchestrator:
             overall_confidence, status, now,
         )
 
+        # 8. Compute review summary
+        flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
+        review_summary = ReviewSummary(
+            total_fields=len(enriched_results),
+            fields_needing_review=len(flagged),
+            fields_reviewed=0,
+            flagged_field_names=[f.field_name for f in flagged],
+        )
+
         return VerificationResult(
             session_id=session_id,
             status=status,
             overall_confidence=overall_confidence,
             beverage_type=application_data.beverage_type,
             fields=enriched_results,
-            annotated_images={},
+            annotated_images=annotated_images,
             created_at=now,
+            review_summary=review_summary,
         )
 
     def _persist_session(
@@ -202,11 +240,13 @@ class VerificationOrchestrator:
                     conn.execute(
                         """INSERT INTO comparison_results
                            (id, session_id, field_name, declared_value,
-                            extracted_value, match_strategy, status, confidence)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                            extracted_value, match_strategy, status, confidence,
+                            extraction_confidence, confidence_reason)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (cr_id, session_id, field.field_name,
                          field.declared_value, field.extracted_value,
-                         field.match_strategy, field.status, field.confidence),
+                         field.match_strategy, field.status, field.confidence,
+                         field.extraction_confidence, field.confidence_reason),
                     )
         finally:
             conn.close()

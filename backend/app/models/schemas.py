@@ -33,6 +33,16 @@ class FieldComparisonResult(BaseModel):
     confidence: float
     match_strategy: str
     bounding_box: BoundingBox | None = None
+    extraction_confidence: Literal["high", "medium", "low"] | None = None
+    confidence_reason: str | None = None
+    reviewed: bool = False
+
+
+class ReviewSummary(BaseModel):
+    total_fields: int
+    fields_needing_review: int
+    fields_reviewed: int
+    flagged_field_names: list[str]
 
 
 class VerificationResult(BaseModel):
@@ -43,6 +53,7 @@ class VerificationResult(BaseModel):
     fields: list[FieldComparisonResult]
     annotated_images: dict[str, str]
     created_at: str
+    review_summary: ReviewSummary | None = None
 
 
 class OverrideRequest(BaseModel):

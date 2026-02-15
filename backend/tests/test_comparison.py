@@ -12,7 +12,7 @@ from app.services.comparison import (
 
 class TestExactMatch:
     def test_canonical_warning_matches(self):
-        status, score = exact_match(CANONICAL_WARNING, CANONICAL_WARNING)
+        status, score, _reason = exact_match(CANONICAL_WARNING, CANONICAL_WARNING)
         assert status == "match"
         assert score == 100.0
 
@@ -24,7 +24,7 @@ class TestExactMatch:
             "alcoholic beverages impairs your ability to drive a car or "
             "operate machinery, and may cause health problems."
         )
-        status, score = exact_match(text, CANONICAL_WARNING)
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
         assert status == "match"
         assert score == 100.0
 
@@ -36,7 +36,7 @@ class TestExactMatch:
             "alcoholic beverages impairs your ability to drive a car\n"
             "or operate machinery, and may cause health problems."
         )
-        status, score = exact_match(text, CANONICAL_WARNING)
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
         assert status == "match"
         assert score == 100.0
 
@@ -48,7 +48,7 @@ class TestExactMatch:
             "impairs your ability to drive a car or operate machinery, "
             "and may cause health problems."
         )
-        status, score = exact_match(text, CANONICAL_WARNING)
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
         assert status == "content_mismatch"
         assert score < 100.0
 
@@ -61,14 +61,14 @@ class TestExactMatch:
             "alcoholic beverages impairs your ability to drive a car or "
             "operate machinery, and may cause health problems."
         )
-        status, score = exact_match(text, CANONICAL_WARNING)
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
         assert status == "match"
         assert score == 100.0
 
     def test_warning_all_uppercase(self):
         """Labels often print the warning in ALL CAPS -- should still match."""
         text = CANONICAL_WARNING.upper()
-        status, score = exact_match(text, CANONICAL_WARNING)
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
         assert status == "match"
         assert score == 100.0
 
@@ -81,131 +81,131 @@ class TestExactMatch:
             "alcoholic beverages impairs your ability to drive a car or "
             "operate machinery, and may cause health problems."
         )
-        status, score = exact_match(text, CANONICAL_WARNING)
+        status, score, _reason = exact_match(text, CANONICAL_WARNING)
         assert status == "match"
         assert score == 100.0
 
 
 class TestFuzzyMatch:
     def test_case_insensitive_match(self):
-        status, score = fuzzy_match("STONE'S THROW", "Stone's Throw")
+        status, score, _reason = fuzzy_match("STONE'S THROW", "Stone's Throw")
         assert status == "match"
         assert score >= 85.0
 
     def test_obvious_mismatch(self):
-        status, score = fuzzy_match("STONE'S THROW", "ROCK'S THROW")
+        status, score, _reason = fuzzy_match("STONE'S THROW", "ROCK'S THROW")
         assert status == "content_mismatch"
 
     def test_company_name_with_abbreviations(self):
-        status, score = fuzzy_match(
+        status, score, _reason = fuzzy_match(
             "Old Tom Distillery, LLC", "OLD TOM DISTILLERY LLC"
         )
         assert status == "match"
 
     def test_address_abbreviation(self):
-        status, score = fuzzy_match("Louisville, KY", "Louisville, Kentucky")
+        status, score, _reason = fuzzy_match("Louisville, KY", "Louisville, Kentucky")
         assert status == "match"
 
     def test_none_extracted(self):
-        status, score = fuzzy_match(None, "Test Value")
+        status, score, _reason = fuzzy_match(None, "Test Value")
         assert status == "field_missing"
 
     def test_empty_extracted(self):
-        status, score = fuzzy_match("", "Test Value")
+        status, score, _reason = fuzzy_match("", "Test Value")
         assert status == "field_missing"
 
 
 class TestNumericMatchABV:
     def test_same_abv(self):
-        status, score, notes = numeric_match_abv("45%", "45%")
+        status, score, notes, _reason = numeric_match_abv("45%", "45%")
         assert status == "match"
         assert score == 100.0
 
     def test_abv_with_different_formats(self):
-        status, score, notes = numeric_match_abv("45% Alc./Vol.", "45%")
+        status, score, notes, _reason = numeric_match_abv("45% Alc./Vol.", "45%")
         assert status == "match"
 
     def test_abv_with_proof_cross_validation(self):
-        status, score, notes = numeric_match_abv(
+        status, score, notes, _reason = numeric_match_abv(
             "45% Alc./Vol. (90 Proof)", "45%"
         )
         assert status == "match"
         assert "proof" not in (notes or "").lower() or "valid" in (notes or "").lower()
 
     def test_abv_with_wrong_proof(self):
-        status, score, notes = numeric_match_abv(
+        status, score, notes, _reason = numeric_match_abv(
             "45% Alc./Vol. (80 Proof)", "45%"
         )
         assert status == "match"  # ABV matches, but proof mismatch flagged
         assert notes is not None and "proof" in notes.lower()
 
     def test_abv_mismatch(self):
-        status, score, notes = numeric_match_abv("14.5%", "14.0%")
+        status, score, notes, _reason = numeric_match_abv("14.5%", "14.0%")
         assert status == "content_mismatch"
 
     def test_none_extracted(self):
-        status, score, notes = numeric_match_abv(None, "45%")
+        status, score, notes, _reason = numeric_match_abv(None, "45%")
         assert status == "field_missing"
 
 
 class TestNumericMatchNetContents:
     def test_same_ml(self):
-        status, score = numeric_match_net_contents("750 mL", "750 mL")
+        status, score, _reason = numeric_match_net_contents("750 mL", "750 mL")
         assert status == "match"
         assert score == 100.0
 
     def test_ml_no_space_vs_space(self):
-        status, score = numeric_match_net_contents("750ML", "750 mL")
+        status, score, _reason = numeric_match_net_contents("750ML", "750 mL")
         assert status == "match"
 
     def test_cl_vs_ml(self):
-        status, score = numeric_match_net_contents("75cL", "750 mL")
+        status, score, _reason = numeric_match_net_contents("75cL", "750 mL")
         assert status == "match"
 
     def test_mismatch(self):
-        status, score = numeric_match_net_contents("375 mL", "750 mL")
+        status, score, _reason = numeric_match_net_contents("375 mL", "750 mL")
         assert status == "content_mismatch"
 
     def test_floz_vs_ml_match(self):
         """25.4 fl oz should match 750 mL (cross-unit conversion)."""
-        status, score = numeric_match_net_contents("25.4 fl oz", "750 mL")
+        status, score, _reason = numeric_match_net_contents("25.4 fl oz", "750 mL")
         assert status == "match"
         assert score == 100.0
 
     def test_ml_vs_floz_match(self):
         """750 mL should match 25.4 fl oz (reverse direction)."""
-        status, score = numeric_match_net_contents("750 mL", "25.4 fl oz")
+        status, score, _reason = numeric_match_net_contents("750 mL", "25.4 fl oz")
         assert status == "match"
         assert score == 100.0
 
     def test_floz_vs_ml_mismatch(self):
         """12 fl oz should NOT match 750 mL."""
-        status, score = numeric_match_net_contents("12 fl oz", "750 mL")
+        status, score, _reason = numeric_match_net_contents("12 fl oz", "750 mL")
         assert status == "content_mismatch"
 
     def test_none_extracted(self):
-        status, score = numeric_match_net_contents(None, "750 mL")
+        status, score, _reason = numeric_match_net_contents(None, "750 mL")
         assert status == "field_missing"
 
 
 class TestPresenceCheck:
     def test_present_and_required(self):
-        status, score = presence_check("Contains Sulfites", True)
+        status, score, _reason = presence_check("Contains Sulfites", True)
         assert status == "match"
         assert score == 100.0
 
     def test_not_present_and_required(self):
-        status, score = presence_check(None, True)
+        status, score, _reason = presence_check(None, True)
         assert status == "field_missing"
         assert score == 0.0
 
     def test_not_present_and_not_required(self):
-        status, score = presence_check(None, False)
+        status, score, _reason = presence_check(None, False)
         assert status == "match"
         assert score == 100.0
 
     def test_present_and_not_required(self):
-        status, score = presence_check("Contains Sulfites", False)
+        status, score, _reason = presence_check("Contains Sulfites", False)
         assert status == "match"
         assert score == 100.0
 
@@ -213,17 +213,17 @@ class TestPresenceCheck:
 class TestFuzzyMatchTightening:
     def test_short_token_set_not_inflated(self):
         """'Reserve Rum' vs 'Caribbean Rum' should NOT match -- shared 'Rum' inflates token_set_ratio."""
-        status, score = fuzzy_match("Reserve Rum", "Caribbean Rum")
+        status, score, _reason = fuzzy_match("Reserve Rum", "Caribbean Rum")
         assert status == "content_mismatch"
 
     def test_legitimate_fuzzy_still_passes(self):
         """Existing good fuzzy matches should still work."""
-        status, score = fuzzy_match("OLD TOM DISTILLERY LLC", "Old Tom Distillery, LLC")
+        status, score, _reason = fuzzy_match("OLD TOM DISTILLERY LLC", "Old Tom Distillery, LLC")
         assert status == "match"
 
     def test_reordered_words_still_match(self):
         """Token reordering should still match (e.g. address components)."""
-        status, score = fuzzy_match("Louisville KY 40202", "KY Louisville 40202")
+        status, score, _reason = fuzzy_match("Louisville KY 40202", "KY Louisville 40202")
         assert status == "match"
 
 
@@ -280,6 +280,133 @@ class TestComparisonServiceExtractionConfidence:
         )
         brand = next(r for r in results if r.field_name == "brand_name")
         assert brand.status == "match"
+
+
+class TestConfidenceReasons:
+    """Test that match functions populate confidence_reason strings."""
+
+    def test_exact_match_reason_on_match(self):
+        status, score, reason = exact_match(CANONICAL_WARNING, CANONICAL_WARNING)
+        assert status == "match"
+        assert reason == "Exact match"
+
+    def test_exact_match_reason_on_mismatch(self):
+        text = "GOVERNMENT WARNING: wrong text here"
+        status, score, reason = exact_match(text, CANONICAL_WARNING)
+        assert status == "content_mismatch"
+        assert "Word-level similarity" in reason
+
+    def test_fuzzy_match_reason_on_match(self):
+        status, score, reason = fuzzy_match("OLD TOM DISTILLERY LLC", "Old Tom Distillery, LLC")
+        assert status == "match"
+        assert "Fuzzy match" in reason
+        assert "threshold: 85%" in reason
+
+    def test_fuzzy_match_reason_on_mismatch(self):
+        status, score, reason = fuzzy_match("COMPLETELY DIFFERENT", "Old Tom Distillery")
+        assert status == "content_mismatch"
+        assert "below 85% threshold" in reason
+
+    def test_fuzzy_match_reason_field_missing(self):
+        status, score, reason = fuzzy_match(None, "Test Value")
+        assert status == "field_missing"
+        assert "not found" in reason.lower() or "missing" in reason.lower()
+
+    def test_numeric_abv_reason_on_match(self):
+        status, score, notes, reason = numeric_match_abv("45%", "45%")
+        assert status == "match"
+        assert "within 0.1% tolerance" in reason
+
+    def test_numeric_abv_reason_with_proof_note(self):
+        status, score, notes, reason = numeric_match_abv("45% Alc./Vol. (80 Proof)", "45%")
+        assert status == "match"
+        assert "proof" in notes.lower()
+
+    def test_numeric_abv_reason_on_mismatch(self):
+        status, score, notes, reason = numeric_match_abv("14.5%", "14.0%")
+        assert status == "content_mismatch"
+        assert "differ" in reason.lower() or "mismatch" in reason.lower()
+
+    def test_numeric_net_contents_reason_on_match(self):
+        status, score, reason = numeric_match_net_contents("750 mL", "750 mL")
+        assert status == "match"
+        assert "match" in reason.lower()
+
+    def test_numeric_net_contents_reason_on_mismatch(self):
+        status, score, reason = numeric_match_net_contents("375 mL", "750 mL")
+        assert status == "content_mismatch"
+        assert "differ" in reason.lower() or "375" in reason
+
+    def test_presence_check_reason_found(self):
+        status, score, reason = presence_check("Contains Sulfites", True)
+        assert status == "match"
+        assert "found" in reason.lower()
+
+    def test_presence_check_reason_missing(self):
+        status, score, reason = presence_check(None, True)
+        assert status == "field_missing"
+        assert "missing" in reason.lower()
+
+    def test_presence_check_reason_not_required(self):
+        status, score, reason = presence_check(None, False)
+        assert status == "match"
+        assert "not required" in reason.lower()
+
+
+class TestComparisonServiceConfidenceReasons:
+    """Test that ComparisonService.compare_fields populates new fields."""
+
+    def test_compare_fields_populates_confidence_reason(self):
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test Brand", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "TEST BRAND",
+            "class_type": "BOURBON",
+            "alcohol_content": "45% Alc./Vol.",
+            "net_contents": "750 mL",
+            "government_warning": CANONICAL_WARNING,
+        }
+        service = ComparisonService()
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        for r in results:
+            assert r.confidence_reason is not None, f"{r.field_name} missing confidence_reason"
+
+    def test_compare_fields_populates_extraction_confidence(self):
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test Brand", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {"brand_name": "TEST BRAND"}
+        service = ComparisonService()
+        results = service.compare_fields(
+            extracted, app_data, "distilled_spirits",
+            extraction_confidences={"brand_name": "low"},
+        )
+        brand = next(r for r in results if r.field_name == "brand_name")
+        assert brand.extraction_confidence == "low"
+        assert "Extraction quality: low" in brand.confidence_reason
+
+    def test_compare_fields_high_conf_extraction_confidence(self):
+        from app.models.schemas import ApplicationData
+        app_data = ApplicationData(
+            brand_name="Test Brand", class_type="Bourbon",
+            alcohol_content="45%", net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {"brand_name": "TEST BRAND"}
+        service = ComparisonService()
+        results = service.compare_fields(
+            extracted, app_data, "distilled_spirits",
+            extraction_confidences={"brand_name": "high"},
+        )
+        brand = next(r for r in results if r.field_name == "brand_name")
+        assert brand.extraction_confidence == "high"
 
 
 class TestComparisonService:
