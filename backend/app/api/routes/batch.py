@@ -18,15 +18,13 @@ router = APIRouter()
 
 
 def _assign_panels(count: int) -> list[str]:
-    """Assign panel names: front, back, then other_N for additional images."""
-    if count == 0:
-        return []
-    names = ["front"]
-    if count >= 2:
-        names.append("back")
-    for i in range(2, count):
-        names.append(f"other_{i - 1}")
-    return names
+    """Assign neutral panel names for batch uploads.
+
+    Batch uploads don't know which image is front vs back,
+    so we use neutral names and let the merger resolve conflicts
+    by extraction confidence rather than panel priority.
+    """
+    return [f"label_{i + 1}" for i in range(count)]
 
 _pdf_parser = PDFApplicationParser()
 

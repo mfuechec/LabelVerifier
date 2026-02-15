@@ -15,6 +15,8 @@ _pdf_parser = PDFApplicationParser()
 
 # Valid panel names (prevents path traversal in panel parameter)
 VALID_PANELS = {"front", "back", "other"}
+# Regex for batch upload panel names: label_1, label_2, etc.
+_LABEL_PANEL_RE = re.compile(r'^label_\d+$')
 
 
 def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
@@ -184,8 +186,8 @@ def serve_image(session_id: str, panel: str, request: Request):
     if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', session_id):
         raise HTTPException(status_code=400, detail="Invalid session ID format")
 
-    # Validate panel name
-    if panel not in VALID_PANELS:
+    # Validate panel name (front/back/other for single upload, label_N for batch)
+    if panel not in VALID_PANELS and not _LABEL_PANEL_RE.match(panel):
         raise HTTPException(status_code=400, detail=f"Invalid panel: {panel}")
 
     # Verify session exists in DB

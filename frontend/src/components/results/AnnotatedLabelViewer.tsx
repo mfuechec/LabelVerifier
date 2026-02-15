@@ -61,7 +61,7 @@ export default function AnnotatedLabelViewer({
                 color: activePanel === panel ? 'var(--white)' : 'var(--slate-600)',
               }}
             >
-              {panel.charAt(0).toUpperCase() + panel.slice(1)}
+              {panel.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
             </button>
           ))}
         </div>
