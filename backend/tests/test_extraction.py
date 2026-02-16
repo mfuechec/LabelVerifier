@@ -179,3 +179,46 @@ class TestExtractionErrorHandling:
             result = await extractor.extract_fields(b"fake_image", "front")
 
         assert result.error is not None
+
+
+class TestBrandReextraction:
+    @pytest.mark.asyncio
+    async def test_reextract_brand_returns_result(self):
+        """reextract_brand should return brand dict + stats on success."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        llm_response = json.dumps({
+            "brand_name": {"value": "BARENJAGER", "conf": "high"},
+            "location_description": "large text at top center",
+        })
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            return_value=_make_anthropic_mock(llm_response),
+        ):
+            result, stats = await extractor.reextract_brand(b"fake_image", "BARENJAGER")
+
+        assert result is not None
+        assert result["brand_name"] == "BARENJAGER"
+        assert result["conf"] == "high"
+        assert result["location_description"] == "large text at top center"
+        assert stats is not None
+        assert stats.call_type == "reextract_brand"
+
+    @pytest.mark.asyncio
+    async def test_reextract_brand_api_error(self):
+        """API exception should return (None, None)."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            side_effect=Exception("API unavailable"),
+        ):
+            result, stats = await extractor.reextract_brand(b"fake_image", "BARENJAGER")
+
+        assert result is None
+        assert stats is None

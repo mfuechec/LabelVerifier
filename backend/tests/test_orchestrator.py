@@ -441,3 +441,250 @@ class TestSpecialtyFromFanciful:
         # from main extraction should have been used as fallback
         # The test passes if no error and specialty re-extract was called at most once
         assert mock_spec.call_count <= 1
+
+
+class TestBrandConfirmation:
+    """Test mismatch-triggered brand confirmation re-extraction."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    def _make_barenjager_app_data(self):
+        return ApplicationData(
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="35",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+
+    def _make_confused_result(self):
+        """LLM put fanciful name into brand_name, fanciful_name is null."""
+        return ExtractionResult(
+            panel_type="front",
+            fields={
+                "brand_name": {"value": "HONEY & BOURBON", "extraction_confidence": "high"},
+                "fanciful_name": {"value": None, "extraction_confidence": "high"},
+                "class_type": {"value": "Liqueur", "extraction_confidence": "high"},
+                "alcohol_content": {"value": "35% ABV", "extraction_confidence": "high"},
+                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_brand_confirm_fixes_barenjager(self, orchestrator):
+        """When blind extraction returns fanciful as brand, re-extraction corrects it."""
+        app_data = self._make_barenjager_app_data()
+        confused_result = self._make_confused_result()
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=confused_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=(None, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+            return_value=(
+                {"brand_name": "BARENJAGER", "conf": "high", "location_description": "top center"},
+                LLMCallStats(100, 30, 200, "reextract_brand"),
+            ),
+        ) as mock_brand:
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        mock_brand.assert_called_once()
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        assert brand_field.extracted_value == "BARENJAGER"
+
+    @pytest.mark.asyncio
+    async def test_brand_confirm_not_triggered_when_match(self, orchestrator):
+        """When extracted brand already matches declared, no re-extraction."""
+        app_data = ApplicationData(
+            brand_name="CASCADE WINERY",
+            class_type="RED WINE",
+            alcohol_content="13",
+            net_contents="750 mL",
+            beverage_type="wine",
+        )
+
+        matching_result = ExtractionResult(
+            panel_type="front",
+            fields={
+                "brand_name": {"value": "CASCADE WINERY", "extraction_confidence": "high"},
+                "class_type": {"value": "Red Wine", "extraction_confidence": "high"},
+                "alcohol_content": {"value": "13% ABV", "extraction_confidence": "high"},
+                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "producer_name": {"value": "CASCADE WINERY", "extraction_confidence": "high"},
+            },
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=matching_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+        ) as mock_brand:
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        mock_brand.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_brand_confirm_low_conf_rejected(self, orchestrator):
+        """When re-extraction returns low confidence, keep original brand."""
+        app_data = self._make_barenjager_app_data()
+        confused_result = self._make_confused_result()
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=confused_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=(None, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+            return_value=(
+                {"brand_name": "BARENJAGER", "conf": "low", "location_description": "barely visible"},
+                LLMCallStats(100, 30, 200, "reextract_brand"),
+            ),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        # Original "HONEY & BOURBON" should be kept since low-conf was rejected
+        assert brand_field.extracted_value == "HONEY & BOURBON"
+
+    @pytest.mark.asyncio
+    async def test_brand_confirm_no_match_keeps_original(self, orchestrator):
+        """When re-extraction returns unrelated brand, keep original."""
+        app_data = self._make_barenjager_app_data()
+        confused_result = self._make_confused_result()
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=confused_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=(None, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+            return_value=(
+                {"brand_name": "TOTALLY DIFFERENT", "conf": "high", "location_description": "top"},
+                LLMCallStats(100, 30, 200, "reextract_brand"),
+            ),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        assert brand_field.extracted_value == "HONEY & BOURBON"
+
+    @pytest.mark.asyncio
+    async def test_brand_confirm_skipped_after_swap(self, orchestrator):
+        """When swap heuristic fires first, brand already matches, so re-extract not triggered."""
+        app_data = self._make_barenjager_app_data()
+
+        # LLM confused but BOTH fields populated (swap can fire)
+        swappable_result = ExtractionResult(
+            panel_type="front",
+            fields={
+                "brand_name": {"value": "HONEY & BOURBON", "extraction_confidence": "high"},
+                "fanciful_name": {"value": "BARENJAGER", "extraction_confidence": "high"},
+                "class_type": {"value": "Liqueur", "extraction_confidence": "high"},
+                "alcohol_content": {"value": "35% ABV", "extraction_confidence": "high"},
+                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
+            },
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=swappable_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=({"fanciful_name": "BARENJAGER", "composition_statement": "Liqueur"}, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+        ) as mock_brand:
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        # Swap should have fixed brand, so re-extract should NOT be called
+        mock_brand.assert_not_called()
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        assert brand_field.extracted_value == "BARENJAGER"

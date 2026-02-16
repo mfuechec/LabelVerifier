@@ -252,6 +252,29 @@ class VerificationOrchestrator:
                     merged_fields["brand_name"] = ext_fanciful
                     merged_fields["fanciful_name"] = ext_brand
 
+        # 3e. Brand confirmation re-extraction (mismatch-triggered)
+        if isinstance(self.extraction_service, AnthropicExtractor) and application_data.brand_name:
+            ext_brand = (merged_fields.get("brand_name") or "").strip().upper()
+            decl_brand = application_data.brand_name.strip().upper()
+            from rapidfuzz import fuzz as _fuzz
+            if _fuzz.ratio(ext_brand, decl_brand) < 85:
+                brand_idx = _pick_best_panel(extraction_results, "brand_name", panels)
+                brand_img = processed_images[brand_idx]
+                reextracted, brand_stats = await self.extraction_service.reextract_brand(
+                    brand_img, declared_brand=application_data.brand_name,
+                )
+                if brand_stats:
+                    all_llm_stats.append(brand_stats)
+                if reextracted and reextracted.get("conf") != "low":
+                    new_brand = reextracted.get("brand_name")
+                    if new_brand and _fuzz.ratio(new_brand.strip().upper(), decl_brand) >= 85:
+                        logger.info(
+                            "Brand confirmation: '%s' -> '%s' (location: %s)",
+                            merged_fields.get("brand_name"), new_brand,
+                            reextracted.get("location_description"),
+                        )
+                        merged_fields["brand_name"] = new_brand
+
         # 4. Compare against application data
         comparison_results = self.comparison_service.compare_fields(
             merged_fields, application_data, application_data.beverage_type,

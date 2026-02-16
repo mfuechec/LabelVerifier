@@ -109,6 +109,28 @@ Rules:
 - Extract EXACTLY as printed -- do NOT correct errors"""
 
 
+BRAND_CONFIRM_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to locate the BRAND NAME on this label.
+
+The application declares the brand name as: "{declared_brand}"
+
+Search the ENTIRE label image carefully for this brand name or any close variant. Brand names are typically the most prominent text, but may also appear in smaller regulatory text.
+
+IMPORTANT RULES:
+- If you find "{declared_brand}" or a close variant, extract it EXACTLY as printed on the label
+- If you cannot find it anywhere, extract whatever text you believe is the actual brand name
+- Do NOT just repeat back "{declared_brand}" -- you must find it visually on the label
+- Look at ALL text including decorative/stylized text and fine print
+
+Return ONLY a JSON object (no markdown, no extra text):
+{{"brand_name": {{"value": null, "conf": "high"}}, "location_description": null}}
+
+Rules:
+- brand_name.value: The brand name as printed on the label, or null if not visible
+- brand_name.conf: "high" = clearly readable, "medium" = stylized/decorative, "low" = barely legible
+- location_description: Where on the label you found it (e.g. "large text at top center")
+- Extract EXACTLY as printed -- do NOT correct spelling"""
+
+
 @dataclass
 class LLMCallStats:
     input_tokens: int
@@ -632,4 +654,82 @@ class AnthropicExtractor(BaseExtractor):
 
         except Exception as e:
             logger.exception("Specialty class re-extraction failed: %s", e)
+            return None, None
+
+    async def reextract_brand(
+        self,
+        image_bytes: bytes,
+        declared_brand: str,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[dict | None, LLMCallStats | None]:
+        """Re-extract brand name with a focused prompt using declared brand as hint.
+
+        Returns:
+            Tuple of (dict with brand_name/conf/location_description or None, LLMCallStats or None).
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            t0 = time.monotonic()
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=256,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": BRAND_CONFIRM_PROMPT.format(declared_brand=declared_brand),
+                            },
+                        ],
+                    }
+                ],
+            )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_brand",
+            )
+            logger.info(
+                "Brand re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
+            response_text = response.content[0].text
+            logger.info("Brand re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None, stats
+
+            # Extract brand_name value and conf
+            bn = parsed.get("brand_name")
+            if isinstance(bn, dict) and "value" in bn:
+                brand_value = bn["value"]
+                conf = bn.get("conf", "high")
+            elif isinstance(bn, str):
+                brand_value = bn
+                conf = "high"
+            else:
+                return None, stats
+
+            location = parsed.get("location_description")
+
+            return {"brand_name": brand_value, "conf": conf, "location_description": location}, stats
+
+        except Exception as e:
+            logger.exception("Brand re-extraction failed: %s", e)
             return None, None
