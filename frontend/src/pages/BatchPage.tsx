@@ -259,33 +259,55 @@ export default function BatchPage() {
                   <th>Type</th>
                   <th>Status</th>
                   <th>Confidence</th>
+                  <th>Time</th>
+                  <th>Tokens</th>
                   <th>Date</th>
                 </tr>
               </thead>
               <tbody>
-                {batchData.items.map((item) => (
-                  <tr
-                    key={item.session_id}
-                    onClick={() => navigate(`/verify/${item.session_id}`)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td>{item.brand_name || '-'}</td>
-                    <td>{item.beverage_type}</td>
-                    <td>
-                      <StatusBadge status={item.status} size="sm" />
-                    </td>
-                    <td>
-                      {item.overall_confidence != null ? (
-                        <ConfidenceBar value={item.overall_confidence} />
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                    <td style={{ fontSize: '0.8rem' }}>
-                      {new Date(item.created_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {batchData.items.map((item) => {
+                  const ps = item.processing_stats;
+                  const timeFmt = ps
+                    ? `${(ps.total_time_ms / 1000).toFixed(1)}s`
+                    : '-';
+                  const totalTokens = ps
+                    ? ps.total_input_tokens + ps.total_output_tokens
+                    : 0;
+                  const tokensFmt = ps
+                    ? totalTokens >= 1000
+                      ? `${(totalTokens / 1000).toFixed(1)}K`
+                      : `${totalTokens}`
+                    : '-';
+                  return (
+                    <tr
+                      key={item.session_id}
+                      onClick={() => navigate(`/verify/${item.session_id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>{item.brand_name || '-'}</td>
+                      <td>{item.beverage_type}</td>
+                      <td>
+                        <StatusBadge status={item.status} size="sm" />
+                      </td>
+                      <td>
+                        {item.overall_confidence != null ? (
+                          <ConfidenceBar value={item.overall_confidence} />
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        {timeFmt}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        {tokensFmt}
+                      </td>
+                      <td style={{ fontSize: '0.8rem' }}>
+                        {new Date(item.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

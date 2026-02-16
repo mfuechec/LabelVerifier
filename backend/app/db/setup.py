@@ -137,6 +137,17 @@ def _migrate(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_batch ON verification_sessions(batch_id)")
     conn.commit()
 
+    # Add processing stats columns to verification_sessions
+    for col_name, col_def in [
+        ("total_input_tokens", "INTEGER DEFAULT 0"),
+        ("total_output_tokens", "INTEGER DEFAULT 0"),
+        ("total_llm_calls", "INTEGER DEFAULT 0"),
+        ("processing_time_ms", "INTEGER DEFAULT 0"),
+    ]:
+        if col_name not in session_cols:
+            conn.execute(f"ALTER TABLE verification_sessions ADD COLUMN {col_name} {col_def}")
+            conn.commit()
+
     # Add new COLA fields to applications table
     app_cols = {
         row[1]

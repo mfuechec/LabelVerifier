@@ -30,19 +30,24 @@ VALID_LLM_RESPONSE = json.dumps({
 })
 
 
+def _make_anthropic_mock(text):
+    """Create a mock Anthropic response with usage."""
+    resp = MagicMock()
+    resp.content = [MagicMock(text=text)]
+    resp.usage = MagicMock(input_tokens=100, output_tokens=50)
+    return resp
+
+
 class TestAnthropicExtractor:
     @pytest.mark.asyncio
     async def test_extract_fields_returns_result(self):
         extractor = AnthropicExtractor(api_key="test-key", model="test-model")
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=VALID_LLM_RESPONSE)]
-
         with patch.object(
             extractor.client.messages,
             "create",
             new_callable=AsyncMock,
-            return_value=mock_response,
+            return_value=_make_anthropic_mock(VALID_LLM_RESPONSE),
         ):
             result = await extractor.extract_fields(b"fake_image", "front")
 
@@ -56,14 +61,12 @@ class TestAnthropicExtractor:
         extractor = AnthropicExtractor(api_key="test-key", model="test-model")
 
         markdown_response = f"```json\n{VALID_LLM_RESPONSE}\n```"
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=markdown_response)]
 
         with patch.object(
             extractor.client.messages,
             "create",
             new_callable=AsyncMock,
-            return_value=mock_response,
+            return_value=_make_anthropic_mock(markdown_response),
         ):
             result = await extractor.extract_fields(b"fake_image", "front")
 
@@ -74,14 +77,11 @@ class TestAnthropicExtractor:
         """'conf' field should be mapped to 'extraction_confidence'."""
         extractor = AnthropicExtractor(api_key="test-key", model="test-model")
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=VALID_LLM_RESPONSE)]
-
         with patch.object(
             extractor.client.messages,
             "create",
             new_callable=AsyncMock,
-            return_value=mock_response,
+            return_value=_make_anthropic_mock(VALID_LLM_RESPONSE),
         ):
             result = await extractor.extract_fields(b"fake_image", "front")
 
@@ -98,6 +98,7 @@ class TestGroqExtractor:
         mock_response.choices = [
             MagicMock(message=MagicMock(content=VALID_LLM_RESPONSE))
         ]
+        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
 
         with patch.object(
             extractor.client.chat.completions,
@@ -116,14 +117,11 @@ class TestExtractionErrorHandling:
     async def test_invalid_json_returns_error(self):
         extractor = AnthropicExtractor(api_key="test-key", model="test-model")
 
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="not valid json at all")]
-
         with patch.object(
             extractor.client.messages,
             "create",
             new_callable=AsyncMock,
-            return_value=mock_response,
+            return_value=_make_anthropic_mock("not valid json at all"),
         ):
             result = await extractor.extract_fields(b"fake_image", "front")
 

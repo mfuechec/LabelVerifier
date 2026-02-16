@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 
 from anthropic import AsyncAnthropic
@@ -108,11 +109,20 @@ Rules:
 
 
 @dataclass
+class LLMCallStats:
+    input_tokens: int
+    output_tokens: int
+    elapsed_ms: int
+    call_type: str
+
+
+@dataclass
 class ExtractionResult:
     fields: dict = field(default_factory=dict)
     panel_type: str = ""
     extraction_notes: str = ""
     error: str | None = None
+    llm_stats: list[LLMCallStats] = field(default_factory=list)
 
 
 def _repair_json(text: str) -> dict | None:
@@ -189,9 +199,13 @@ class GroqExtractor(BaseExtractor):
         """Extract all fields from a label image using a single LLM call."""
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
         image_url = f"data:{mime_type};base64,{base64_image}"
+        llm_stats: list[LLMCallStats] = []
 
         try:
-            parsed = await self._call_llm_with_retry(image_url, EXTRACTION_PROMPT, panel_type)
+            parsed, stats = await self._call_llm_with_retry(image_url, EXTRACTION_PROMPT, panel_type)
+            if stats:
+                stats.call_type = "extract_fields"
+                llm_stats.append(stats)
         except Exception as e:
             return ExtractionResult(
                 panel_type=panel_type,
@@ -221,11 +235,12 @@ class GroqExtractor(BaseExtractor):
         return ExtractionResult(
             fields=fields,
             panel_type=panel_type,
+            llm_stats=llm_stats,
         )
 
     async def _call_llm_with_retry(
         self, image_url: str, prompt: str, panel_type: str
-    ) -> dict:
+    ) -> tuple[dict, LLMCallStats | None]:
         """Call LLM with exponential backoff retry on rate limit errors."""
         last_error = None
         for attempt in range(MAX_RETRIES + 1):
@@ -249,9 +264,10 @@ class GroqExtractor(BaseExtractor):
 
         raise last_error
 
-    async def _call_llm(self, image_url: str, prompt: str, panel_type: str) -> dict:
-        """Make a single LLM call and return parsed JSON dict."""
+    async def _call_llm(self, image_url: str, prompt: str, panel_type: str) -> tuple[dict, LLMCallStats | None]:
+        """Make a single LLM call and return parsed JSON dict + stats."""
         try:
+            t0 = time.monotonic()
             response = await self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=2048,
@@ -271,16 +287,29 @@ class GroqExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
 
             response_text = response.choices[0].message.content
             logger.info("Groq response (%s): %s", panel_type, response_text[:200])
 
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "prompt_tokens", 0),
+                output_tokens=getattr(usage, "completion_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="",
+            )
+            logger.info(
+                "Groq LLM stats (%s): %d in / %d out tokens, %dms",
+                panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
             parsed = _repair_json(response_text)
             if parsed is None:
                 logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
-                return {}
+                return {}, stats
 
-            return parsed
+            return parsed, stats
 
         except RateLimitError:
             raise
@@ -323,8 +352,10 @@ class AnthropicExtractor(BaseExtractor):
     ) -> ExtractionResult:
         """Extract all fields from a label image using Anthropic's vision API."""
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        llm_stats: list[LLMCallStats] = []
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
@@ -348,6 +379,20 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            main_stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="extract_fields",
+            )
+            llm_stats.append(main_stats)
+            logger.info(
+                "Anthropic LLM stats (%s): %d in / %d out tokens, %dms",
+                panel_type, main_stats.input_tokens, main_stats.output_tokens, main_stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Anthropic response (%s): %s", panel_type, response_text[:200])
@@ -355,15 +400,15 @@ class AnthropicExtractor(BaseExtractor):
             parsed = _repair_json(response_text)
             if parsed is None:
                 logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
-                return ExtractionResult(fields={}, panel_type=panel_type)
+                return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=llm_stats)
 
             fields = _convert_parsed_to_fields(parsed)
 
             # Second pass: re-extract government warning with focused prompt.
-            # Always attempt re-extraction — the focused prompt is more accurate
-            # for reading warnings that are rotated, small, or partially obscured.
             gw_field = fields.get("government_warning", {})
-            reextracted = await self.reextract_warning(image_bytes, mime_type)
+            reextracted, warn_stats = await self.reextract_warning(image_bytes, mime_type)
+            if warn_stats:
+                llm_stats.append(warn_stats)
             if reextracted:
                 old_val = gw_field.get("value") if isinstance(gw_field, dict) else gw_field
                 if old_val != reextracted:
@@ -375,11 +420,12 @@ class AnthropicExtractor(BaseExtractor):
                 }
 
             # Third pass: re-extract importer info if missing.
-            # Small importer text is often missed on the first pass.
             imp_field = fields.get("importer_name", {})
             imp_val = imp_field.get("value") if isinstance(imp_field, dict) else imp_field
             if not imp_val:
-                reextracted_imp = await self.reextract_importer(image_bytes, mime_type)
+                reextracted_imp, imp_stats = await self.reextract_importer(image_bytes, mime_type)
+                if imp_stats:
+                    llm_stats.append(imp_stats)
                 if reextracted_imp:
                     for key in ("importer_name", "importer_address"):
                         val = reextracted_imp.get(key)
@@ -391,13 +437,14 @@ class AnthropicExtractor(BaseExtractor):
                             }
                             logger.info("Importer re-extraction found %s for %s", key, panel_type)
 
-            return ExtractionResult(fields=fields, panel_type=panel_type)
+            return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=llm_stats)
 
         except Exception as e:
             logger.exception("Anthropic extraction failed (%s): %s", panel_type, e)
             return ExtractionResult(
                 panel_type=panel_type,
                 error=f"Extraction failed: {e}",
+                llm_stats=llm_stats,
             )
 
     async def reextract_warning(
@@ -405,7 +452,7 @@ class AnthropicExtractor(BaseExtractor):
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
         model_override: str | None = None,
-    ) -> str | None:
+    ) -> tuple[str | None, LLMCallStats | None]:
         """Re-extract just the government warning with a focused prompt.
 
         Args:
@@ -414,12 +461,13 @@ class AnthropicExtractor(BaseExtractor):
             model_override: Use a different model (e.g. Sonnet) for this call.
 
         Returns:
-            The extracted warning text, or None on failure.
+            Tuple of (extracted warning text or None, LLMCallStats or None).
         """
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
         model = model_override or self.model
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=model,
                 max_tokens=1024,
@@ -443,37 +491,51 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_warning",
+            )
+            logger.info(
+                "Warning re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Warning re-extraction (%s): %s", model, response_text[:200])
 
             parsed = _repair_json(response_text)
             if parsed is None:
-                return None
+                return None, stats
 
             gw = parsed.get("government_warning")
             if isinstance(gw, dict) and "value" in gw:
-                return gw["value"]
-            return gw
+                return gw["value"], stats
+            return gw, stats
 
         except Exception as e:
             logger.exception("Warning re-extraction failed: %s", e)
-            return None
+            return None, None
 
 
     async def reextract_importer(
         self,
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
-    ) -> dict | None:
+    ) -> tuple[dict | None, LLMCallStats | None]:
         """Re-extract importer name and address with a focused prompt.
 
         Returns:
-            Dict with importer_name and importer_address values, or None on failure.
+            Tuple of (dict with importer values or None, LLMCallStats or None).
         """
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
@@ -497,41 +559,55 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_importer",
+            )
+            logger.info(
+                "Importer re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Importer re-extraction: %s", response_text[:200])
 
             parsed = _repair_json(response_text)
             if parsed is None:
-                return None
+                return None, stats
 
             result = {}
             for key in ("importer_name", "importer_address"):
-                field = parsed.get(key)
-                if isinstance(field, dict) and "value" in field:
-                    result[key] = field["value"]
-                elif isinstance(field, str):
-                    result[key] = field
+                fld = parsed.get(key)
+                if isinstance(fld, dict) and "value" in fld:
+                    result[key] = fld["value"]
+                elif isinstance(fld, str):
+                    result[key] = fld
 
-            return result if any(result.values()) else None
+            return (result if any(result.values()) else None), stats
 
         except Exception as e:
             logger.exception("Importer re-extraction failed: %s", e)
-            return None
+            return None, None
 
     async def reextract_specialty_class(
         self,
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
-    ) -> dict | None:
+    ) -> tuple[dict | None, LLMCallStats | None]:
         """Re-extract fanciful name and composition statement for specialty products.
 
         Returns:
-            Dict with fanciful_name and composition_statement values, or None on failure.
+            Tuple of (dict with fanciful_name/composition_statement or None, LLMCallStats or None).
         """
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
@@ -555,24 +631,37 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_specialty_class",
+            )
+            logger.info(
+                "Specialty class re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Specialty class re-extraction: %s", response_text[:200])
 
             parsed = _repair_json(response_text)
             if parsed is None:
-                return None
+                return None, stats
 
             result = {}
             for key in ("fanciful_name", "composition_statement"):
-                field = parsed.get(key)
-                if isinstance(field, dict) and "value" in field:
-                    result[key] = field["value"]
-                elif isinstance(field, str):
-                    result[key] = field
+                fld = parsed.get(key)
+                if isinstance(fld, dict) and "value" in fld:
+                    result[key] = fld["value"]
+                elif isinstance(fld, str):
+                    result[key] = fld
 
-            return result if any(result.values()) else None
+            return (result if any(result.values()) else None), stats
 
         except Exception as e:
             logger.exception("Specialty class re-extraction failed: %s", e)
-            return None
+            return None, None

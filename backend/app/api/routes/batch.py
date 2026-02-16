@@ -8,7 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, Up
 logger = logging.getLogger(__name__)
 
 from app.api.dependencies import get_db, get_db_path
-from app.models.schemas import BatchResponse, BatchSessionItem, BatchSkippedItem, BatchStatus
+from app.models.schemas import BatchResponse, BatchSessionItem, BatchSkippedItem, BatchStatus, ProcessingStats
 from app.services.orchestrator import VerificationOrchestrator
 from app.services.pdf_parser import COLAPDFParser, COLAParseResult
 
@@ -124,6 +124,8 @@ def get_batch(batch_id: str, request: Request):
 
         sessions = conn.execute(
             """SELECT vs.id, vs.beverage_type, vs.status, vs.overall_confidence, vs.created_at,
+                      vs.total_input_tokens, vs.total_output_tokens,
+                      vs.total_llm_calls, vs.processing_time_ms,
                       a.brand_name
                FROM verification_sessions vs
                LEFT JOIN applications a ON a.session_id = vs.id
@@ -132,17 +134,30 @@ def get_batch(batch_id: str, request: Request):
             (batch_id,),
         ).fetchall()
 
-        items = [
-            BatchSessionItem(
-                session_id=s["id"],
-                brand_name=s["brand_name"],
-                beverage_type=s["beverage_type"],
-                status=s["status"],
-                overall_confidence=s["overall_confidence"],
-                created_at=s["created_at"],
+        items = []
+        for s in sessions:
+            ps = None
+            try:
+                if s["total_llm_calls"]:
+                    ps = ProcessingStats(
+                        total_llm_calls=s["total_llm_calls"],
+                        total_input_tokens=s["total_input_tokens"],
+                        total_output_tokens=s["total_output_tokens"],
+                        total_time_ms=s["processing_time_ms"],
+                    )
+            except (IndexError, KeyError):
+                pass
+            items.append(
+                BatchSessionItem(
+                    session_id=s["id"],
+                    brand_name=s["brand_name"],
+                    beverage_type=s["beverage_type"],
+                    status=s["status"],
+                    overall_confidence=s["overall_confidence"],
+                    created_at=s["created_at"],
+                    processing_stats=ps,
+                )
             )
-            for s in sessions
-        ]
 
         skipped_rows = conn.execute(
             "SELECT filename, reason FROM batch_skipped_items WHERE batch_id = ?",

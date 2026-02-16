@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,11 +12,12 @@ from app.models.schemas import (
     ApplicationData,
     ComplianceIssueResponse,
     FieldComparisonResult,
+    ProcessingStats,
     VerificationResult,
     BoundingBox,
     ReviewSummary,
 )
-from app.services.extraction import BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult
+from app.services.extraction import BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult, LLMCallStats
 from app.services.ttb_classes import is_administrative_class_type
 from app.services.pdf_parser import COLAParseResult
 
@@ -66,8 +68,10 @@ class VerificationOrchestrator:
         application_data: ApplicationData,
         batch_id: str | None = None,
     ) -> VerificationResult:
+        t_start = time.monotonic()
         session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
+        all_llm_stats: list[LLMCallStats] = []
 
         # 0. Save uploaded images to disk
         annotated_images = {}
@@ -90,13 +94,14 @@ class VerificationOrchestrator:
             *extraction_tasks, return_exceptions=True
         )
 
-        # Handle any extraction errors
+        # Handle any extraction errors and collect LLM stats
         valid_results: list[ExtractionResult] = []
         for r in extraction_results:
             if isinstance(r, Exception):
                 valid_results.append(ExtractionResult(panel_type="unknown", error=str(r)))
             else:
                 valid_results.append(r)
+                all_llm_stats.extend(r.llm_stats)
         extraction_results = valid_results
 
         # 2. Check for extraction errors
@@ -155,7 +160,9 @@ class VerificationOrchestrator:
         if is_admin and isinstance(self.extraction_service, AnthropicExtractor):
             # Try each panel -- composition statement may be on back label
             for img in processed_images:
-                specialty_data = await self.extraction_service.reextract_specialty_class(img)
+                specialty_data, spec_stats = await self.extraction_service.reextract_specialty_class(img)
+                if spec_stats:
+                    all_llm_stats.append(spec_stats)
                 if specialty_data:
                     merged_fields["_specialty_class_data"] = specialty_data
                     break
@@ -244,13 +251,24 @@ class VerificationOrchestrator:
             status = "needs_review"
             overall_confidence = 0.0
 
-        # 8. Persist to DB
+        # 8. Aggregate processing stats
+        total_time_ms = int((time.monotonic() - t_start) * 1000)
+        processing_stats = ProcessingStats(
+            total_llm_calls=len(all_llm_stats),
+            total_input_tokens=sum(s.input_tokens for s in all_llm_stats),
+            total_output_tokens=sum(s.output_tokens for s in all_llm_stats),
+            extraction_time_ms=sum(s.elapsed_ms for s in all_llm_stats),
+            total_time_ms=total_time_ms,
+        )
+
+        # 9. Persist to DB
         self._persist_session(
             session_id, application_data, enriched_results,
             overall_confidence, status, now, batch_id=batch_id,
+            processing_stats=processing_stats,
         )
 
-        # 9. Compute review summary
+        # 10. Compute review summary
         flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
         review_summary = ReviewSummary(
             total_fields=len(enriched_results),
@@ -269,6 +287,7 @@ class VerificationOrchestrator:
             created_at=now,
             review_summary=review_summary,
             compliance_issues=compliance_responses,
+            processing_stats=processing_stats,
         )
 
     def _persist_session(
@@ -280,17 +299,25 @@ class VerificationOrchestrator:
         status: str,
         now: str,
         batch_id: str | None = None,
+        processing_stats: ProcessingStats | None = None,
     ):
         conn = get_db(self.db_path)
         try:
             with conn:
+                ps = processing_stats or ProcessingStats()
                 conn.execute(
                     """INSERT INTO verification_sessions
                        (id, application_id, beverage_type, status,
-                        overall_confidence, batch_id, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        overall_confidence, batch_id,
+                        total_input_tokens, total_output_tokens,
+                        total_llm_calls, processing_time_ms,
+                        created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (session_id, app_data.application_id,
-                     app_data.beverage_type, status, confidence, batch_id, now, now),
+                     app_data.beverage_type, status, confidence, batch_id,
+                     ps.total_input_tokens, ps.total_output_tokens,
+                     ps.total_llm_calls, ps.total_time_ms,
+                     now, now),
                 )
 
                 app_id = str(uuid.uuid4())

@@ -54,6 +54,14 @@ class ComplianceIssueResponse(BaseModel):
     message: str
 
 
+class ProcessingStats(BaseModel):
+    total_llm_calls: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    extraction_time_ms: int = 0
+    total_time_ms: int = 0
+
+
 class VerificationResult(BaseModel):
     session_id: str
     status: Literal["pending", "pass", "needs_review", "fail"]
@@ -64,6 +72,7 @@ class VerificationResult(BaseModel):
     created_at: str
     review_summary: ReviewSummary | None = None
     compliance_issues: list[ComplianceIssueResponse] = []
+    processing_stats: ProcessingStats | None = None
 
 
 class OverrideRequest(BaseModel):
@@ -98,6 +107,7 @@ class BatchSessionItem(BaseModel):
     status: str
     overall_confidence: float | None = None
     created_at: str
+    processing_stats: ProcessingStats | None = None
 
 
 class BatchSkippedItem(BaseModel):

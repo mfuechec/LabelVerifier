@@ -109,6 +109,20 @@ def get_verification(session_id: str, request: Request):
                 panel_name = os.path.splitext(fname)[0]
                 annotated_images[panel_name] = f"/api/v1/images/{session_id}/{panel_name}"
 
+        # Build processing stats if available
+        processing_stats = None
+        try:
+            if row["total_llm_calls"]:
+                processing_stats = {
+                    "total_llm_calls": row["total_llm_calls"],
+                    "total_input_tokens": row["total_input_tokens"],
+                    "total_output_tokens": row["total_output_tokens"],
+                    "extraction_time_ms": 0,
+                    "total_time_ms": row["processing_time_ms"],
+                }
+        except (IndexError, KeyError):
+            pass
+
         return {
             "data": {
                 "session_id": row["id"],
@@ -119,6 +133,7 @@ def get_verification(session_id: str, request: Request):
                 "annotated_images": annotated_images,
                 "created_at": row["created_at"],
                 "review_summary": review_summary,
+                "processing_stats": processing_stats,
             }
         }
     finally:

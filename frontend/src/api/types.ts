@@ -71,6 +71,14 @@ export interface BatchStatus {
   created_at: string;
 }
 
+export interface ProcessingStats {
+  total_llm_calls: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  extraction_time_ms: number;
+  total_time_ms: number;
+}
+
 export interface BatchSessionItem {
   session_id: string;
   brand_name: string | null;
@@ -78,6 +86,7 @@ export interface BatchSessionItem {
   status: string;
   overall_confidence: number | null;
   created_at: string;
+  processing_stats: ProcessingStats | null;
 }
 
 export interface BatchSkippedItem {
