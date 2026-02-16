@@ -38,11 +38,12 @@ from datetime import datetime, timezone
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.config import Settings
-from app.models.schemas import ApplicationData
+from app.models.schemas import ApplicationData, FieldComparisonResult
 from app.services.extraction import (
     BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult, EXTRACTION_PROMPT, _repair_json,
 )
 from app.services.comparison import ComparisonService, ConfidenceScorer
+from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -296,7 +297,7 @@ async def run_single_fixture(
             print(f"  Extraction error on {panel}: {e}")
             extraction_results.append(ExtractionResult(panel_type=panel, error=str(e)))
 
-    return score_fixture(fixture, extraction_results, comparison_service, merger, scorer)
+    return score_fixture(fixture, extraction_results, comparison_service, merger, scorer, ComplianceChecker())
 
 
 def score_fixture(
@@ -305,6 +306,7 @@ def score_fixture(
     comparison_service: ComparisonService,
     merger: ImageMerger,
     scorer: ConfidenceScorer,
+    compliance_checker: ComplianceChecker | None = None,
 ) -> dict:
     """Score extraction results against fixture expectations. Shared by sync and batch modes."""
     fixture_id = fixture["id"]
@@ -346,6 +348,38 @@ def score_fixture(
         merged_fields, app_data, app_data.beverage_type,
         extraction_confidences=extraction_confidences,
     )
+
+    # Compliance checks (independent of application data)
+    if compliance_checker is not None:
+        is_imported = bool(app_data.country_of_origin or app_data.importer_name)
+        compliance_issues = compliance_checker.check_compliance(
+            merged_fields, app_data.beverage_type,
+            is_imported=is_imported,
+            requires_sulfites=app_data.has_sulfites_declaration,
+        )
+        existing_field_names = {r.field_name for r in comparison_results}
+        for issue in compliance_issues:
+            existing = next(
+                (r for r in comparison_results if r.field_name == issue.field_name),
+                None,
+            )
+            if existing and existing.status == "field_missing":
+                existing.confidence_reason = issue.message
+            elif issue.field_name not in existing_field_names:
+                status_val = (
+                    "extraction_uncertain" if issue.severity == "needs_review"
+                    else "field_missing"
+                )
+                comparison_results.append(FieldComparisonResult(
+                    field_name=issue.field_name,
+                    declared_value=None,
+                    extracted_value=None,
+                    status=status_val,
+                    confidence=0.0,
+                    match_strategy="compliance",
+                    confidence_reason=issue.message,
+                ))
+                existing_field_names.add(issue.field_name)
 
     # Score
     overall_confidence, actual_status = scorer.calculate(comparison_results)
@@ -689,7 +723,7 @@ def run_batch_scoring(
             })
             continue
 
-        result = score_fixture(fixture, extraction_results, comparison_service, merger, scorer)
+        result = score_fixture(fixture, extraction_results, comparison_service, merger, scorer, ComplianceChecker())
         results.append(result)
 
     return results
@@ -782,17 +816,24 @@ def _regenerate_custom_id_map(fixtures: list[dict]) -> tuple[None, dict]:
     return None, custom_id_map
 
 
-def _extract_golden_fields(extraction_results: list[ExtractionResult], merger: ImageMerger) -> dict:
-    """Extract merged field values from ExtractionResults for golden dataset."""
+def _extract_golden_fields(extraction_results: list[ExtractionResult], merger: ImageMerger) -> tuple[dict, dict]:
+    """Extract merged field values and confidences from ExtractionResults for golden dataset.
+
+    Returns (fields_dict, confidences_dict).
+    """
     if len(extraction_results) == 1:
         result = extraction_results[0]
         fields = {}
+        confidences = {}
         for field_name, field_data in result.fields.items():
             if isinstance(field_data, dict):
                 fields[field_name] = field_data.get("value")
+                conf = field_data.get("extraction_confidence", "high")
+                if conf != "high":
+                    confidences[field_name] = conf
             else:
                 fields[field_name] = field_data
-        return fields
+        return fields, confidences
     elif len(extraction_results) > 1:
         panel_data = {}
         for result in extraction_results:
@@ -807,8 +848,14 @@ def _extract_golden_fields(extraction_results: list[ExtractionResult], merger: I
                     }
             panel_data[result.panel_type] = panel_fields
         merged = merger.merge_panels(panel_data)
-        return {fn: fv.value for fn, fv in merged.fields.items()}
-    return {}
+        fields = {fn: fv.value for fn, fv in merged.fields.items()}
+        confidences = {
+            fn: fv.extraction_confidence
+            for fn, fv in merged.fields.items()
+            if fv.extraction_confidence != "high"
+        }
+        return fields, confidences
+    return {}, {}
 
 
 def _save_golden(fixtures: list[dict], fixture_extractions: dict[str, list[ExtractionResult]], merger: ImageMerger):
@@ -831,9 +878,11 @@ def _save_golden(fixtures: list[dict], fixture_extractions: dict[str, list[Extra
 
     updated = 0
     for fixture_id, extraction_results in fixture_extractions.items():
-        fields = _extract_golden_fields(extraction_results, merger)
+        fields, confidences = _extract_golden_fields(extraction_results, merger)
         if fields:
             golden["extractions"][fixture_id] = fields
+            if confidences:
+                golden["extraction_confidences"][fixture_id] = confidences
             updated += 1
 
     with open(GOLDEN_PATH, "w") as f:
@@ -857,7 +906,7 @@ def _diff_golden(fixtures: list[dict], fixture_extractions: dict[str, list[Extra
     fixtures_compared = 0
 
     for fixture_id, extraction_results in fixture_extractions.items():
-        current_fields = _extract_golden_fields(extraction_results, merger)
+        current_fields, _ = _extract_golden_fields(extraction_results, merger)
         golden_fields = golden_data.get(fixture_id, {})
 
         if not golden_fields:
@@ -967,6 +1016,7 @@ async def main():
     comparison_service = ComparisonService()
     merger = ImageMerger()
     scorer = ConfidenceScorer()
+    compliance = ComplianceChecker()
     throttle = RateThrottle()
 
     results = []
@@ -1002,7 +1052,7 @@ async def main():
             fixture_extractions[fid] = extraction_results
 
             # Score
-            result = score_fixture(fixture, extraction_results, comparison_service, merger, scorer)
+            result = score_fixture(fixture, extraction_results, comparison_service, merger, scorer, compliance)
             status_mark = "OK" if result["correct"] else "MISMATCH"
             print(f"{status_mark} (expected={result['expected_status']}, got={result['actual_status']})")
             results.append(result)

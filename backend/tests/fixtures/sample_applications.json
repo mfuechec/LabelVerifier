@@ -998,7 +998,7 @@
     {
       "id": "missing-resilient",
       "description": "Gov warning on rotated 'other' panel, partially extracted (truncated); Whisky spelling",
-      "scenario_category": "pass",
+      "scenario_category": "needs_review",
       "category": "bad spirits label",
       "images": [
         {
@@ -1025,13 +1025,13 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "government_warning": "match"
+          "government_warning": "extraction_uncertain"
         },
         "mismatch_description": "Gov warning visible but rotated/truncated extraction; Whisky/Whiskey spelling handled by fuzzy match"
       }
