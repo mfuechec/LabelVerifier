@@ -27,6 +27,36 @@ from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
 from app.services.image_preprocessor import preprocess_image
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _pick_best_panel(results: list[ExtractionResult], field_name: str, panels: list[str]) -> int:
+    """Return index of the panel with best extraction for a field.
+
+    Prefers non-null + high confidence + front panel priority.
+    """
+    best_idx = 0
+    best_score = -1
+    for i, result in enumerate(results):
+        fd = result.fields.get(field_name)
+        if not isinstance(fd, dict):
+            continue
+        val = fd.get("value")
+        if val is None:
+            continue
+        conf = fd.get("extraction_confidence", "high")
+        score = {"high": 3, "medium": 2, "low": 1}.get(conf, 0)
+        # Prefer front panel on ties
+        panel = panels[i] if i < len(panels) else ""
+        if panel == "front":
+            score += 0.5
+        if score > best_score:
+            best_score = score
+            best_idx = i
+    return best_idx
+
 
 class VerificationOrchestrator:
     def __init__(self, db_path: str = "data/labelverify.db"):
@@ -153,19 +183,74 @@ class VerificationOrchestrator:
                 fn: fv.extraction_confidence for fn, fv in merged.fields.items()
             }
 
-        # 3b. Specialty class re-extraction for administrative COLA codes
-        # Always re-extract for admin codes -- the LLM often returns something
-        # for class_type (e.g. "Liqueur") that won't match the COLA code verbatim.
+        # 3b. Post-merge targeted re-extractions (Anthropic only)
         is_admin, _ = is_administrative_class_type(application_data.class_type)
-        if is_admin and isinstance(self.extraction_service, AnthropicExtractor):
-            # Try each panel -- composition statement may be on back label
-            for img in processed_images:
-                specialty_data, spec_stats = await self.extraction_service.reextract_specialty_class(img)
+        if isinstance(self.extraction_service, AnthropicExtractor):
+            # Warning re-extract (always, once): pick best panel
+            warn_idx = _pick_best_panel(extraction_results, "government_warning", panels)
+            warn_img = processed_images[warn_idx] if warn_idx < len(processed_images) else processed_images[0]
+            reextracted_warn, warn_stats = await self.extraction_service.reextract_warning(warn_img)
+            if warn_stats:
+                all_llm_stats.append(warn_stats)
+            if reextracted_warn:
+                merged_fields["government_warning"] = reextracted_warn
+
+            # Importer re-extract (only if merged importer is null)
+            imp_val = merged_fields.get("importer_name")
+            if not imp_val:
+                imp_idx = _pick_best_panel(extraction_results, "importer_name", panels)
+                imp_img = processed_images[imp_idx] if imp_idx < len(processed_images) else processed_images[0]
+                reextracted_imp, imp_stats = await self.extraction_service.reextract_importer(imp_img)
+                if imp_stats:
+                    all_llm_stats.append(imp_stats)
+                if reextracted_imp:
+                    for key in ("importer_name", "importer_address"):
+                        val = reextracted_imp.get(key)
+                        if val:
+                            merged_fields[key] = val
+                            logger.info("Importer re-extraction found %s", key)
+
+            # Specialty re-extract (only for admin codes, once)
+            if is_admin:
+                spec_idx = _pick_best_panel(extraction_results, "brand_name", panels)
+                spec_img = processed_images[spec_idx] if spec_idx < len(processed_images) else processed_images[0]
+                specialty_data, spec_stats = await self.extraction_service.reextract_specialty_class(spec_img)
                 if spec_stats:
                     all_llm_stats.append(spec_stats)
                 if specialty_data:
                     merged_fields["_specialty_class_data"] = specialty_data
-                    break
+
+        # 3c. Fanciful-to-specialty enrichment fallback for admin codes
+        if is_admin and "_specialty_class_data" not in merged_fields:
+            extracted_fanciful = merged_fields.get("fanciful_name")
+            extracted_class = merged_fields.get("class_type")
+            if extracted_fanciful:
+                merged_fields["_specialty_class_data"] = {
+                    "fanciful_name": extracted_fanciful,
+                    "composition_statement": extracted_class,
+                }
+                logger.info("Populated _specialty_class_data from main extraction fanciful_name")
+
+        # 3d. Brand/fanciful swap heuristic
+        if application_data.fanciful_name and application_data.brand_name:
+            ext_brand = merged_fields.get("brand_name") or ""
+            ext_fanciful = merged_fields.get("fanciful_name") or ""
+            decl_brand = application_data.brand_name
+            decl_fanciful = application_data.fanciful_name
+
+            if ext_brand and ext_fanciful:
+                from rapidfuzz import fuzz
+                # Check if they're swapped: extracted brand matches declared fanciful
+                # AND extracted fanciful matches declared brand
+                brand_matches_fanciful = fuzz.ratio(ext_brand.upper(), decl_fanciful.upper()) > 85
+                fanciful_matches_brand = fuzz.ratio(ext_fanciful.upper(), decl_brand.upper()) > 85
+                if brand_matches_fanciful and fanciful_matches_brand:
+                    logger.info(
+                        "Swapping brand/fanciful: brand '%s' <-> fanciful '%s'",
+                        ext_brand, ext_fanciful,
+                    )
+                    merged_fields["brand_name"] = ext_fanciful
+                    merged_fields["fanciful_name"] = ext_brand
 
         # 4. Compare against application data
         comparison_results = self.comparison_service.compare_fields(

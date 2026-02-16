@@ -19,7 +19,7 @@ INITIAL_BACKOFF_SECONDS = 2
 EXTRACTION_PROMPT = """You are an alcohol beverage label analysis system for the US TTB. Extract ALL compliance-relevant fields from this label image.
 
 Return ONLY a JSON object exactly like this (no markdown, no extra text):
-{"brand_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
+{"brand_name":{"value":null,"conf":"high"},"fanciful_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
 
 Rules:
 - Replace null with the extracted string value, or keep null if not found on the label
@@ -28,7 +28,8 @@ Rules:
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
 
 Field-specific guidance:
-- brand_name: The product brand name, usually the most prominent text on the label. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
+- brand_name: The product brand name, usually the most prominent text on the label. Do NOT extract the fanciful/secondary name as the brand. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
+- fanciful_name: A secondary or creative product name, often below or near the brand name in smaller text. NOT the brand name itself. Examples: "HONEY & BOURBON" on a Barenjager label, "MIDNIGHT MOONSHINE" on a Howling Moon label. If no secondary name, set to null
 - class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation
 - alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
 - alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
@@ -403,39 +404,6 @@ class AnthropicExtractor(BaseExtractor):
                 return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=llm_stats)
 
             fields = _convert_parsed_to_fields(parsed)
-
-            # Second pass: re-extract government warning with focused prompt.
-            gw_field = fields.get("government_warning", {})
-            reextracted, warn_stats = await self.reextract_warning(image_bytes, mime_type)
-            if warn_stats:
-                llm_stats.append(warn_stats)
-            if reextracted:
-                old_val = gw_field.get("value") if isinstance(gw_field, dict) else gw_field
-                if old_val != reextracted:
-                    logger.info("Warning re-extraction updated value for %s", panel_type)
-                fields["government_warning"] = {
-                    "value": reextracted,
-                    "bounding_box": None,
-                    "extraction_confidence": gw_field.get("extraction_confidence", "high") if isinstance(gw_field, dict) else "high",
-                }
-
-            # Third pass: re-extract importer info if missing.
-            imp_field = fields.get("importer_name", {})
-            imp_val = imp_field.get("value") if isinstance(imp_field, dict) else imp_field
-            if not imp_val:
-                reextracted_imp, imp_stats = await self.reextract_importer(image_bytes, mime_type)
-                if imp_stats:
-                    llm_stats.append(imp_stats)
-                if reextracted_imp:
-                    for key in ("importer_name", "importer_address"):
-                        val = reextracted_imp.get(key)
-                        if val:
-                            fields[key] = {
-                                "value": val,
-                                "bounding_box": None,
-                                "extraction_confidence": "medium",
-                            }
-                            logger.info("Importer re-extraction found %s for %s", key, panel_type)
 
             return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=llm_stats)
 

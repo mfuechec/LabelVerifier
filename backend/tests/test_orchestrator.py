@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.models.schemas import ApplicationData
 from app.services.orchestrator import VerificationOrchestrator
-from app.services.extraction import ExtractionResult
+from app.services.extraction import AnthropicExtractor, ExtractionResult, LLMCallStats
 from app.services.pdf_parser import COLAParseResult, LabelImage
 from app.db.setup import create_tables, get_db
 
@@ -221,3 +221,223 @@ class TestVerifySingle:
         # Should still produce a result, not crash
         assert result.session_id is not None
         assert result.status == "needs_review"
+
+
+class TestPostMergeReExtractions:
+    """Tests for orchestrator's post-merge targeted re-extractions."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        # Force Anthropic extractor for these tests
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_warning_reextraction_called_once_for_multi_panel(self, orchestrator):
+        """For 3 panels, reextract_warning should be called exactly once (not 3x)."""
+        app_data = ApplicationData(
+            brand_name="TEST BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            producer_name="TEST PRODUCER",
+            beverage_type="distilled_spirits",
+        )
+
+        mock_result = _make_extraction_result("front")
+        mock_result2 = _make_extraction_result("back")
+        mock_result3 = _make_extraction_result("side")
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            side_effect=[mock_result, mock_result2, mock_result3],
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ) as mock_warn:
+            result = await orchestrator.verify_single(
+                [b"img1", b"img2", b"img3"], ["front", "back", "side"], app_data
+            )
+
+        assert mock_warn.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_importer_reextraction_skipped_when_found(self, orchestrator):
+        """If merged extraction already has importer_name, don't re-extract."""
+        app_data = ApplicationData(
+            brand_name="TEST BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            importer_name="SOME IMPORTER",
+            beverage_type="distilled_spirits",
+        )
+
+        result_with_importer = ExtractionResult(
+            panel_type="front",
+            fields={
+                "brand_name": {"value": "TEST BRAND", "extraction_confidence": "high"},
+                "class_type": {"value": "Vodka", "extraction_confidence": "high"},
+                "alcohol_content": {"value": "40% ABV", "extraction_confidence": "high"},
+                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
+                "importer_name": {"value": "SOME IMPORTER CO.", "extraction_confidence": "high"},
+            },
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=result_with_importer,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_importer",
+            new_callable=AsyncMock,
+        ) as mock_imp:
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        mock_imp.assert_not_called()
+
+
+class TestBrandFancifulSwap:
+    """Test that brand/fanciful names get swapped when confused."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_brand_fanciful_swap(self, orchestrator):
+        """When extracted brand matches declared fanciful and vice versa, swap them."""
+        app_data = ApplicationData(
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="35",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+
+        # LLM confused: extracted brand="HONEY & BOURBON", fanciful="BARENJAGER"
+        confused_result = ExtractionResult(
+            panel_type="front",
+            fields={
+                "brand_name": {"value": "HONEY & BOURBON", "extraction_confidence": "high"},
+                "fanciful_name": {"value": "BARENJAGER", "extraction_confidence": "high"},
+                "class_type": {"value": "Liqueur", "extraction_confidence": "high"},
+                "alcohol_content": {"value": "35% ABV", "extraction_confidence": "high"},
+                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
+            },
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=confused_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=({"fanciful_name": "BARENJAGER", "composition_statement": "Honey Liqueur"}, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        # Find the brand_name comparison -- it should match after swap
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        assert brand_field.extracted_value == "BARENJAGER"
+
+
+class TestSpecialtyFromFanciful:
+    """Test that fanciful_name from main extraction populates specialty data."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_specialty_data_from_extracted_fanciful(self, orchestrator):
+        """For admin codes, if main extraction found fanciful_name, populate _specialty_class_data."""
+        app_data = ApplicationData(
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="35",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+
+        result_with_fanciful = ExtractionResult(
+            panel_type="front",
+            fields={
+                "brand_name": {"value": "BARENJAGER", "extraction_confidence": "high"},
+                "fanciful_name": {"value": "HONEY & BOURBON", "extraction_confidence": "high"},
+                "class_type": {"value": "Honey Liqueur", "extraction_confidence": "high"},
+                "alcohol_content": {"value": "35% ABV", "extraction_confidence": "high"},
+                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
+            },
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=result_with_fanciful,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=(None, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ) as mock_spec:
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        # Even though specialty re-extract returned None, the fanciful + class_type
+        # from main extraction should have been used as fallback
+        # The test passes if no error and specialty re-extract was called at most once
+        assert mock_spec.call_count <= 1

@@ -112,6 +112,44 @@ class TestGroqExtractor:
         assert result.fields["brand_name"]["value"] == "HOWLING MOON"
 
 
+class TestExtractionPrompt:
+    def test_fanciful_name_in_prompt(self):
+        """EXTRACTION_PROMPT must include fanciful_name as an extractable field."""
+        from app.services.extraction import EXTRACTION_PROMPT
+        assert "fanciful_name" in EXTRACTION_PROMPT
+
+    def test_brand_name_guidance_warns_about_fanciful(self):
+        """brand_name guidance should warn against confusing with fanciful name."""
+        from app.services.extraction import EXTRACTION_PROMPT
+        assert "fanciful" in EXTRACTION_PROMPT.lower()
+
+
+class TestAnthropicExtractorSingleCall:
+    @pytest.mark.asyncio
+    async def test_extract_fields_makes_one_llm_call(self):
+        """extract_fields() should make exactly 1 LLM call (no re-extractions)."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        call_count = 0
+        original_response = _make_anthropic_mock(VALID_LLM_RESPONSE)
+
+        async def counting_create(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return original_response
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new=counting_create,
+        ):
+            result = await extractor.extract_fields(b"fake_image", "front")
+
+        assert call_count == 1, f"Expected 1 LLM call, got {call_count}"
+        assert len(result.llm_stats) == 1
+        assert result.llm_stats[0].call_type == "extract_fields"
+
+
 class TestExtractionErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_json_returns_error(self):

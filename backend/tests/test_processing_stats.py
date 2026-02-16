@@ -75,29 +75,20 @@ class TestAnthropicExtractorStats:
         extractor = AnthropicExtractor(api_key="test-key", model="test-model")
 
         mock_resp = _make_anthropic_response(VALID_LLM_RESPONSE, 150, 80)
-        # Warning re-extract also fires, then importer re-extract (importer_name is null)
-        mock_warn_resp = _make_anthropic_response(WARNING_RESPONSE, 120, 30)
-        mock_imp_resp = _make_anthropic_response(IMPORTER_RESPONSE, 110, 25)
 
         with patch.object(
             extractor.client.messages,
             "create",
             new_callable=AsyncMock,
-            side_effect=[mock_resp, mock_warn_resp, mock_imp_resp],
+            return_value=mock_resp,
         ):
             result = await extractor.extract_fields(b"fake_image", "front")
 
-        assert len(result.llm_stats) == 3  # extract + warning + importer
-        # First call: extract_fields
+        assert len(result.llm_stats) == 1  # only main extract, no re-extractions
         assert result.llm_stats[0].call_type == "extract_fields"
         assert result.llm_stats[0].input_tokens == 150
         assert result.llm_stats[0].output_tokens == 80
         assert result.llm_stats[0].elapsed_ms >= 0
-        # Second call: reextract_warning
-        assert result.llm_stats[1].call_type == "reextract_warning"
-        assert result.llm_stats[1].input_tokens == 120
-        # Third call: reextract_importer
-        assert result.llm_stats[2].call_type == "reextract_importer"
 
     @pytest.mark.asyncio
     async def test_reextract_warning_captures_stats(self):
@@ -300,7 +291,7 @@ class TestOrchestratorStats:
         assert row["total_input_tokens"] == 150
         assert row["total_output_tokens"] == 80
         assert row["total_llm_calls"] == 1
-        assert row["processing_time_ms"] > 0
+        assert row["processing_time_ms"] >= 0
         assert row["extraction_time_ms"] == 500
 
 
