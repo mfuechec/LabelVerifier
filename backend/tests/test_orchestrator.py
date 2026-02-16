@@ -823,3 +823,126 @@ class TestBrandConfirmation:
         brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
         assert brand_field is not None
         assert brand_field.extracted_value == "BARENJAGER"
+
+
+def _make_empty_extraction_result(panel="front"):
+    """Create an extraction result where all fields are null (no label content)."""
+    return ExtractionResult(
+        panel_type=panel,
+        fields={
+            "brand_name": {"value": None, "extraction_confidence": "low"},
+            "class_type": {"value": None, "extraction_confidence": "low"},
+            "alcohol_content": {"value": None, "extraction_confidence": "low"},
+            "net_contents": {"value": None, "extraction_confidence": "low"},
+            "government_warning": {"value": None, "extraction_confidence": "low"},
+            "producer_name": {"value": None, "extraction_confidence": "low"},
+        },
+    )
+
+
+class TestEmptyExtraction:
+    """Tests for detecting missing/blank label images."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_empty_extraction_flagged_as_needs_review(self, orchestrator):
+        """All panels return empty fields -> status='needs_review' with _label_image field_missing."""
+        app_data = ApplicationData(
+            brand_name="TOMASELLO",
+            class_type="RED WINE",
+            alcohol_content="12",
+            net_contents="750 mL",
+            beverage_type="wine",
+        )
+
+        empty_result = _make_empty_extraction_result()
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=empty_result,
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        assert result.status == "needs_review"
+        label_field = next((f for f in result.fields if f.field_name == "_label_image"), None)
+        assert label_field is not None
+        assert label_field.status == "field_missing"
+        assert label_field.confidence == 0.0
+        assert "missing" in label_field.confidence_reason.lower() or "unreadable" in label_field.confidence_reason.lower()
+
+    @pytest.mark.asyncio
+    async def test_empty_extraction_skips_reextractions(self, orchestrator):
+        """All panels empty -> reextract_warning should NOT be called."""
+        app_data = ApplicationData(
+            brand_name="TOMASELLO",
+            class_type="RED WINE",
+            alcohol_content="12",
+            net_contents="750 mL",
+            beverage_type="wine",
+        )
+
+        empty_result = _make_empty_extraction_result()
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=empty_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+        ) as mock_warn:
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        mock_warn.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_partial_extraction_still_processes(self, orchestrator):
+        """One panel has fields, one is empty -> normal processing continues."""
+        app_data = ApplicationData(
+            brand_name="TEST BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            producer_name="TEST PRODUCER",
+            beverage_type="distilled_spirits",
+        )
+
+        good_result = _make_extraction_result("front")
+        empty_result = _make_empty_extraction_result("back")
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            side_effect=[good_result, empty_result],
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ):
+            result = await orchestrator.verify_single(
+                [b"front_img", b"back_img"], ["front", "back"], app_data
+            )
+
+        # Should NOT be flagged as empty -- one panel had content
+        label_field = next((f for f in result.fields if f.field_name == "_label_image"), None)
+        assert label_field is None
+        # Normal processing should have occurred
+        assert result.status in ("pass", "fail", "needs_review")

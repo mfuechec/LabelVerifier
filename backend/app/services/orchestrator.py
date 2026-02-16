@@ -137,6 +137,25 @@ class VerificationOrchestrator:
         # 2. Check for extraction errors
         has_error = any(r.error for r in extraction_results)
 
+        # 2b. Detect empty extraction (no label content found)
+        all_fields_empty = True
+        for r in extraction_results:
+            if r.error:
+                continue
+            for field_data in r.fields.values():
+                if isinstance(field_data, dict) and field_data.get("value") is not None:
+                    all_fields_empty = False
+                    break
+            if not all_fields_empty:
+                break
+        has_empty_extraction = all_fields_empty and not has_error
+
+        if has_empty_extraction:
+            logger.warning(
+                "No label content detected across %d panel(s) — possible missing label image",
+                len(extraction_results),
+            )
+
         # 3. Merge panels
         extraction_confidences = {}
         if len(extraction_results) == 1:
@@ -183,9 +202,9 @@ class VerificationOrchestrator:
                 fn: fv.extraction_confidence for fn, fv in merged.fields.items()
             }
 
-        # 3b. Post-merge targeted re-extractions (Anthropic only)
+        # 3b. Post-merge targeted re-extractions (Anthropic only, skip if empty)
         is_admin, _ = is_administrative_class_type(application_data.class_type)
-        if isinstance(self.extraction_service, AnthropicExtractor):
+        if isinstance(self.extraction_service, AnthropicExtractor) and not has_empty_extraction:
             # Warning re-extract (always, once): pick best panel
             warn_idx = _pick_best_panel(extraction_results, "government_warning", panels)
             warn_img = processed_images[warn_idx] if warn_idx < len(processed_images) else processed_images[0]
@@ -254,7 +273,7 @@ class VerificationOrchestrator:
 
         # 3e. Brand confirmation re-extraction (mismatch-triggered)
         # Try each panel (best first, then others) until we find a match
-        if isinstance(self.extraction_service, AnthropicExtractor) and application_data.brand_name:
+        if isinstance(self.extraction_service, AnthropicExtractor) and application_data.brand_name and not has_empty_extraction:
             import unicodedata
             from rapidfuzz import fuzz as _fuzz
 
@@ -394,6 +413,18 @@ class VerificationOrchestrator:
         if has_error and not merged_fields:
             status = "needs_review"
             overall_confidence = 0.0
+
+        if has_empty_extraction:
+            status = "needs_review"
+            enriched_results.append(FieldComparisonResult(
+                field_name="_label_image",
+                declared_value=None,
+                extracted_value=None,
+                status="field_missing",
+                confidence=0.0,
+                match_strategy="compliance",
+                confidence_reason="No label content could be extracted. The label image may be missing, blank, or unreadable.",
+            ))
 
         # 8. Aggregate processing stats
         total_time_ms = int((time.monotonic() - t_start) * 1000)
