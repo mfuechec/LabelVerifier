@@ -9,6 +9,7 @@ from app.config import settings
 from app.db.setup import get_db, create_tables
 from app.models.schemas import (
     ApplicationData,
+    ComplianceIssueResponse,
     FieldComparisonResult,
     VerificationResult,
     BoundingBox,
@@ -169,20 +170,63 @@ class VerificationOrchestrator:
                 )
             )
 
-        # 6. Calculate overall score
+        # 6. Run compliance checks (independent of application data)
+        is_imported = bool(application_data.country_of_origin or application_data.importer_name)
+        compliance_issues = self.compliance_checker.check_compliance(
+            merged_fields,
+            application_data.beverage_type,
+            is_imported=is_imported,
+            requires_sulfites=application_data.has_sulfites_declaration,
+        )
+
+        # Merge compliance issues into comparison results
+        compliance_responses = []
+        existing_field_names = {r.field_name for r in enriched_results}
+        for issue in compliance_issues:
+            compliance_responses.append(ComplianceIssueResponse(
+                field_name=issue.field_name,
+                severity=issue.severity,
+                message=issue.message,
+            ))
+            # Check if there's already a result for this field
+            existing = next(
+                (r for r in enriched_results if r.field_name == issue.field_name),
+                None,
+            )
+            if existing and existing.status == "field_missing":
+                # Enrich existing field_missing result with compliance message
+                existing.confidence_reason = issue.message
+            elif issue.field_name not in existing_field_names:
+                # Add new result for fields not in comparison (skipped by app data)
+                status_val = (
+                    "extraction_uncertain" if issue.severity == "needs_review"
+                    else "field_missing"
+                )
+                enriched_results.append(FieldComparisonResult(
+                    field_name=issue.field_name,
+                    declared_value=None,
+                    extracted_value=None,
+                    status=status_val,
+                    confidence=0.0,
+                    match_strategy="compliance",
+                    confidence_reason=issue.message,
+                ))
+                existing_field_names.add(issue.field_name)
+
+        # 7. Calculate overall score
         overall_confidence, status = self.scorer.calculate(enriched_results)
 
         if has_error and not merged_fields:
             status = "needs_review"
             overall_confidence = 0.0
 
-        # 7. Persist to DB
+        # 8. Persist to DB
         self._persist_session(
             session_id, application_data, enriched_results,
             overall_confidence, status, now, batch_id=batch_id,
         )
 
-        # 8. Compute review summary
+        # 9. Compute review summary
         flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
         review_summary = ReviewSummary(
             total_fields=len(enriched_results),
@@ -200,6 +244,7 @@ class VerificationOrchestrator:
             annotated_images=annotated_images,
             created_at=now,
             review_summary=review_summary,
+            compliance_issues=compliance_responses,
         )
 
     def _persist_session(

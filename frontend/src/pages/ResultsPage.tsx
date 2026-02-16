@@ -87,6 +87,7 @@ export default function ResultsPage() {
           beverageType={result.beverage_type}
           fields={result.fields}
           reviewSummary={result.review_summary}
+          complianceIssues={result.compliance_issues}
         />
       </div>
 

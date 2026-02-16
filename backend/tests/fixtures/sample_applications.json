@@ -3,7 +3,7 @@
     {
       "id": "pass-angels-envy",
       "description": "Good spirits - domestic bourbon, all fields match",
-      "scenario_category": "pass",
+      "scenario_category": "edge_cases",
       "category": "good spirits",
       "images": [
         {
@@ -30,14 +30,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         }
       }
     },
@@ -128,7 +128,7 @@
     {
       "id": "review-rosso-veneto-brand-confusion",
       "description": "LLM extracts brand as 'DUO' (sub-brand) instead of 'Rosso Veneto', class/country in Italian",
-      "scenario_category": "needs_review",
+      "scenario_category": "fail_mismatch",
       "category": "good wine+beer",
       "images": [
         {
@@ -157,11 +157,11 @@
       "expected_outcome": {
         "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain",
-          "alcohol_content": "match",
+          "brand_name": "content_mismatch",
+          "class_type": "content_mismatch",
+          "alcohol_content": "content_mismatch",
           "net_contents": "match",
-          "country_of_origin": "extraction_uncertain",
+          "country_of_origin": "match",
           "importer_name": "match",
           "sulfites_declaration": "match",
           "government_warning": "content_mismatch"
@@ -216,7 +216,7 @@
     {
       "id": "pass-fuel-moonshine",
       "description": "Good spirits - domestic grain spirits",
-      "scenario_category": "pass",
+      "scenario_category": "edge_cases",
       "category": "good spirits",
       "images": [
         {
@@ -239,9 +239,9 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
+          "brand_name": "content_mismatch",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
@@ -373,7 +373,7 @@
     {
       "id": "review-lenz-moser-class-extraction",
       "description": "Label shows grape variety 'Gr\u00fcner Veltliner' instead of TTB class 'Dry White Wine', importer name hard to read",
-      "scenario_category": "needs_review",
+      "scenario_category": "fail_mismatch",
       "category": "good wine+beer",
       "images": [
         {
@@ -407,7 +407,7 @@
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
-          "importer_name": "extraction_uncertain",
+          "importer_name": "content_mismatch",
           "sulfites_declaration": "match",
           "government_warning": "match"
         }
@@ -450,7 +450,7 @@
           "alcohol_content": "content_mismatch",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         },
         "mismatch_description": "Application declares 40% ABV but label clearly shows 43.3% Alc./Vol."
       }
@@ -535,7 +535,7 @@
           "net_contents": "match",
           "producer_name": "match",
           "country_of_origin": "match",
-          "importer_name": "match",
+          "importer_name": "field_missing",
           "government_warning": "match"
         },
         "mismatch_description": "Application declares 'London Dry Gin' but label shows 'Dry Gin'"
@@ -613,9 +613,9 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
+          "brand_name": "content_mismatch",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
@@ -662,7 +662,7 @@
           "alcohol_content": "content_mismatch",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         },
         "mismatch_description": "Application declares 50% ABV but label shows 45% Alc./Vol."
       }
@@ -779,14 +779,14 @@
       "expected_outcome": {
         "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
-          "class_type": "match",
+          "brand_name": "content_mismatch",
+          "class_type": "content_mismatch",
           "alcohol_content": "content_mismatch",
           "net_contents": "match",
           "country_of_origin": "match",
           "importer_name": "match",
           "sulfites_declaration": "match",
-          "government_warning": "match"
+          "government_warning": "content_mismatch"
         },
         "mismatch_description": "Application declares 12.5% ABV but label shows 14.5%"
       }
@@ -948,9 +948,10 @@
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "government_warning": "field_missing"
+          "producer_name": "field_missing",
+          "government_warning": "content_mismatch"
         },
-        "mismatch_description": "No back label available; government warning not found"
+        "mismatch_description": "No back label available; government warning not found; producer name missing from label"
       }
     },
     {
@@ -997,7 +998,7 @@
     {
       "id": "missing-resilient",
       "description": "Gov warning on rotated 'other' panel, partially extracted (truncated); Whisky spelling",
-      "scenario_category": "needs_review",
+      "scenario_category": "pass",
       "category": "bad spirits label",
       "images": [
         {
@@ -1024,13 +1025,13 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "government_warning": "extraction_uncertain"
+          "government_warning": "match"
         },
         "mismatch_description": "Gov warning visible but rotated/truncated extraction; Whisky/Whiskey spelling handled by fuzzy match"
       }
@@ -1038,7 +1039,7 @@
     {
       "id": "missing-warm",
       "description": "Single image with government warning in rotated text along left edge",
-      "scenario_category": "pass",
+      "scenario_category": "needs_review",
       "category": "bad spirits label",
       "images": [
         {
@@ -1061,7 +1062,7 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
@@ -1100,12 +1101,12 @@
         "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "content_mismatch",
+          "class_type": "field_missing",
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
-          "importer_name": "match",
-          "government_warning": "match"
+          "importer_name": "content_mismatch",
+          "government_warning": "content_mismatch"
         },
         "mismatch_description": "Label says 'Cerveza' (Spanish) instead of English 'Beer'"
       }
@@ -1222,14 +1223,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain",
+          "brand_name": "match",
+          "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "match"
+          "government_warning": "field_missing"
         },
         "extraction_challenge": "Ornate damask background pattern competes with text; government warning rotated 90 degrees in very small print"
       }
@@ -1267,7 +1268,7 @@
         "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
+          "class_type": "content_mismatch",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
@@ -1279,7 +1280,7 @@
     {
       "id": "review-rocky-mount",
       "description": "Italic cursive script throughout with decorative layout",
-      "scenario_category": "needs_review",
+      "scenario_category": "pass",
       "category": "bad spirits photo",
       "images": [
         {
@@ -1306,13 +1307,13 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "pass",
         "expected_field_results": {
-          "brand_name": "extraction_uncertain",
-          "class_type": "extraction_uncertain",
+          "brand_name": "match",
+          "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "producer_name": "extraction_uncertain",
+          "producer_name": "match",
           "government_warning": "match"
         },
         "extraction_challenge": "Pervasive italic cursive font; decorative tildes; tall narrow label with small text"
@@ -1350,9 +1351,10 @@
           "class_type": "content_mismatch",
           "alcohol_content": "content_mismatch",
           "net_contents": "match",
+          "producer_name": "field_missing",
           "government_warning": "match"
         },
-        "extraction_challenge": "Miniature 50mL label; model extracts 'Spiced Rum' (prominent) vs declared full class; misreads 46% ABV as 40%"
+        "extraction_challenge": "Miniature 50mL label; model extracts 'Spiced Rum' (prominent) vs declared full class; misreads 46% ABV as 40%; producer name missing from label"
       }
     },
     {
@@ -1437,12 +1439,12 @@
       "expected_outcome": {
         "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
+          "brand_name": "field_missing",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         },
         "mismatch_description": "Warning omits 'during pregnancy' from Surgeon General statement"
       }
@@ -1479,8 +1481,8 @@
       "expected_outcome": {
         "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
-          "government_warning": "content_mismatch"
+          "brand_name": "content_mismatch",
+          "government_warning": "match"
         },
         "mismatch_description": "Warning has hyphenation and subtle rewording that prevents exact match"
       }
@@ -1515,15 +1517,15 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
-          "importer_name": "match",
-          "government_warning": "content_mismatch"
+          "importer_name": "field_missing",
+          "government_warning": "match"
         },
         "mismatch_description": "Warning text has COMSUMPTION typo (missing N in CONSUMPTION)"
       }
@@ -1561,7 +1563,7 @@
         "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
+          "class_type": "content_mismatch",
           "alcohol_content": "match",
           "net_contents": "match",
           "country_of_origin": "match",
@@ -1684,7 +1686,7 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "pass",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
@@ -1730,7 +1732,7 @@
         "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
+          "class_type": "content_mismatch",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
@@ -1769,7 +1771,7 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
@@ -1777,7 +1779,7 @@
           "net_contents": "match",
           "country_of_origin": "match",
           "importer_name": "match",
-          "government_warning": "extraction_uncertain"
+          "government_warning": "match"
         },
         "mismatch_description": "Warning text truncated by LLM due to tiny font near barcode"
       }
@@ -1850,13 +1852,13 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "needs_review",
+        "overall_status": "fail",
         "expected_field_results": {
           "brand_name": "match",
-          "class_type": "match",
-          "alcohol_content": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "content_mismatch",
           "net_contents": "match",
-          "government_warning": "extraction_uncertain"
+          "government_warning": "match"
         },
         "mismatch_description": "Warning text on miniature label too small for reliable extraction"
       }
@@ -1897,8 +1899,8 @@
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
-          "producer_name": "match",
-          "government_warning": "extraction_uncertain"
+          "producer_name": "content_mismatch",
+          "government_warning": "match"
         },
         "mismatch_description": "Decorative font causes medium-confidence extraction with OCR artifacts"
       }
@@ -1935,14 +1937,95 @@
       "expected_outcome": {
         "overall_status": "fail",
         "expected_field_results": {
-          "brand_name": "match",
+          "brand_name": "content_mismatch",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         },
         "mismatch_description": "Warning text has COMSUMPTION typo (missing N in CONSUMPTION)"
+      }
+    },
+    {
+      "id": "compliance-missing-producer-on-label",
+      "description": "Application omits producer_name, label also lacks it - compliance catches the missing required field",
+      "scenario_category": "compliance",
+      "category": "bad spirits label",
+      "images": [
+        {
+          "filename": "Collabor&tion whiskey.jpg",
+          "panel": "front"
+        }
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00501",
+        "brand_name": "Collabor&tion",
+        "class_type": "Straight Bourbon Whiskey Finished in Brandy Barrels",
+        "alcohol_content": "60%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "expected_field_results": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "field_missing",
+          "government_warning": "content_mismatch"
+        },
+        "mismatch_description": "Compliance catches producer_name missing from label even though application omits it; warning has minor comma difference"
+      }
+    },
+    {
+      "id": "compliance-imported-missing-origin",
+      "description": "Imported product - compliance verifies country_of_origin and producer_name are checked",
+      "scenario_category": "compliance",
+      "category": "bad spirits label",
+      "images": [
+        {
+          "filename": "Casamigos tequila front.jpg",
+          "panel": "front"
+        },
+        {
+          "filename": "Casamigos tequila back.jpg",
+          "panel": "back"
+        }
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00502",
+        "brand_name": "Casamigos",
+        "class_type": "Blanco Tequila",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": "Jalisco, Mexico",
+        "country_of_origin": "Mexico",
+        "importer_name": "Casamigos Spirits Company",
+        "importer_address": "New York, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "expected_field_results": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "field_missing",
+          "country_of_origin": "match",
+          "government_warning": "match"
+        },
+        "mismatch_description": "Imported product; producer_name null in app and extraction, compliance injects field_missing"
       }
     }
   ]

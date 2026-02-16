@@ -45,6 +45,12 @@ class ReviewSummary(BaseModel):
     flagged_field_names: list[str]
 
 
+class ComplianceIssueResponse(BaseModel):
+    field_name: str
+    severity: str  # "fail" or "needs_review"
+    message: str
+
+
 class VerificationResult(BaseModel):
     session_id: str
     status: Literal["pending", "pass", "needs_review", "fail"]
@@ -54,6 +60,7 @@ class VerificationResult(BaseModel):
     annotated_images: dict[str, str]
     created_at: str
     review_summary: ReviewSummary | None = None
+    compliance_issues: list[ComplianceIssueResponse] = []
 
 
 class OverrideRequest(BaseModel):

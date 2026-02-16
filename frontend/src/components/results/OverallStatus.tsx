@@ -1,5 +1,5 @@
 import StatusBadge from '../shared/StatusBadge';
-import type { FieldComparisonResult, ReviewSummary } from '../../api/types';
+import type { ComplianceIssueResponse, FieldComparisonResult, ReviewSummary } from '../../api/types';
 
 interface OverallStatusProps {
   status: string;
@@ -7,9 +7,10 @@ interface OverallStatusProps {
   beverageType: string;
   fields?: FieldComparisonResult[];
   reviewSummary?: ReviewSummary | null;
+  complianceIssues?: ComplianceIssueResponse[];
 }
 
-export default function OverallStatus({ status, confidence, beverageType, fields, reviewSummary }: OverallStatusProps) {
+export default function OverallStatus({ status, confidence, beverageType, fields, reviewSummary, complianceIssues }: OverallStatusProps) {
   const typeLabels: Record<string, string> = {
     distilled_spirits: 'Distilled Spirits',
     wine: 'Wine',
@@ -52,6 +53,23 @@ export default function OverallStatus({ status, confidence, beverageType, fields
         {status === 'needs_review' && reviewSummary && reviewSummary.fields_needing_review > 0 && (
           <div style={{ fontSize: '0.8rem', color: 'var(--yellow-700)', marginTop: '0.3rem' }}>
             {reviewSummary.fields_needing_review} field{reviewSummary.fields_needing_review > 1 ? 's have' : ' has'} uncertain extraction
+          </div>
+        )}
+
+        {complianceIssues && complianceIssues.length > 0 && (
+          <div style={{
+            fontSize: '0.8rem',
+            color: 'var(--red-700)',
+            backgroundColor: 'var(--red-50, #fef2f2)',
+            border: '1px solid var(--red-200, #fecaca)',
+            borderRadius: '6px',
+            padding: '0.4rem 0.6rem',
+            marginTop: '0.4rem',
+          }}>
+            {complianceIssues.length} compliance issue{complianceIssues.length !== 1 ? 's' : ''}:
+            {complianceIssues.map((issue, i) => (
+              <span key={issue.field_name}>{i > 0 ? ' ' : ' '}{issue.message}{i < complianceIssues.length - 1 ? '.' : '.'}</span>
+            ))}
           </div>
         )}
       </div>
