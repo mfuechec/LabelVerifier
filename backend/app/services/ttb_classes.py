@@ -169,6 +169,9 @@ _ADMIN_PATTERNS: list[re.Pattern] = [
     re.compile(r"^(\w+)\s+proprietary$", re.IGNORECASE),
     # "OTHER ... SPECIALTIES & PROPRIETARIES" variants
     re.compile(r"^other\s+.*specialt?ies\b", re.IGNORECASE),
+    # "OTHER <category>" administrative codes (e.g. "OTHER HERB & SEED CORDIALS/LIQUEURS",
+    # "OTHER GRAPE BRANDY (PISCO, GRAPPA) FB") -- TTB umbrella categories not on labels
+    re.compile(r"^other\s+\w+.*(?:cordials|liqueurs|brandy|whisky|whiskey|gin|rum|vodka|tequila)\b", re.IGNORECASE),
     # "MALT BEVERAGES SPECIALITIES" variants
     re.compile(r"^malt\s+beverages?\s+specialt?ies\b", re.IGNORECASE),
 ]

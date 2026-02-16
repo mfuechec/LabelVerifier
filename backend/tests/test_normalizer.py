@@ -36,6 +36,18 @@ class TestNormalizeWarningText:
     def test_removes_hyphen_with_space(self):
         assert normalize_warning_text("MACHIN- ERY") == "MACHINERY"
 
+    def test_normalizes_space_after_numbered_marker(self):
+        """'(1)According' should become '(1) According'."""
+        assert normalize_warning_text("(1)According") == "(1) According"
+
+    def test_normalizes_space_after_marker_2(self):
+        """'(2)Consumption' should become '(2) Consumption'."""
+        assert normalize_warning_text("(2)Consumption") == "(2) Consumption"
+
+    def test_preserves_existing_space_after_marker(self):
+        """Already correct '(1) According' should stay the same."""
+        assert normalize_warning_text("(1) According") == "(1) According"
+
 
 class TestExtractAbv:
     def test_percent_sign(self):

@@ -3,6 +3,7 @@ from app.services.normalizer import (
     normalize_whitespace,
     normalize_warning_text,
     normalize_for_fuzzy,
+    normalize_company_name,
     normalize_country,
     extract_abv,
     extract_proof,
@@ -41,6 +42,80 @@ def exact_match(extracted: str, canonical: str) -> tuple[str, float, str]:
     # Calculate similarity for partial credit
     ratio = fuzz.ratio(clean_ext, clean_can)
     return ("content_mismatch", ratio, f"Word-level similarity: {ratio:.0f}%")
+
+
+_US_STATE_ABBREVS: dict[str, str] = {
+    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar",
+    "california": "ca", "colorado": "co", "connecticut": "ct", "delaware": "de",
+    "florida": "fl", "georgia": "ga", "hawaii": "hi", "idaho": "id",
+    "illinois": "il", "indiana": "in", "iowa": "ia", "kansas": "ks",
+    "kentucky": "ky", "louisiana": "la", "maine": "me", "maryland": "md",
+    "massachusetts": "ma", "michigan": "mi", "minnesota": "mn", "mississippi": "ms",
+    "missouri": "mo", "montana": "mt", "nebraska": "ne", "nevada": "nv",
+    "new hampshire": "nh", "new jersey": "nj", "new mexico": "nm", "new york": "ny",
+    "north carolina": "nc", "north dakota": "nd", "ohio": "oh", "oklahoma": "ok",
+    "oregon": "or", "pennsylvania": "pa", "rhode island": "ri", "south carolina": "sc",
+    "south dakota": "sd", "tennessee": "tn", "texas": "tx", "utah": "ut",
+    "vermont": "vt", "virginia": "va", "washington": "wa", "west virginia": "wv",
+    "wisconsin": "wi", "wyoming": "wy",
+}
+_STATE_FULL_TO_ABBREV = {**_US_STATE_ABBREVS}
+_STATE_ABBREV_TO_FULL = {v: k for k, v in _US_STATE_ABBREVS.items()}
+
+
+def _normalize_address_tokens(text: str) -> set[str]:
+    """Normalize an address string into a set of comparable tokens.
+
+    Expands/collapses state names so 'North Carolina' and 'NC' both yield {'nc'}.
+    Strips punctuation, zips, and common noise words.
+    """
+    import re as _re
+    # Collapse dotted abbreviations before fuzzy normalization: "N.Y." -> "NY"
+    text = _re.sub(r"\b([A-Za-z])\.([A-Za-z])\.", r"\1\2", text)
+    t = normalize_for_fuzzy(text)
+    # Remove zip codes
+    t = _re.sub(r"\b\d{5}(?:-\d{4})?\b", "", t)
+    # Remove street numbers at start (e.g. "42 old elk mountain rd")
+    t = _re.sub(r"^\d+\s+", "", t)
+
+    tokens = set(t.split())
+    # Remove noise words
+    tokens -= {"st", "rd", "ave", "blvd", "dr", "ln", "ct", "ste", "suite", "apt"}
+
+    # Expand full state names to abbreviations for normalization
+    for full_name, abbrev in _STATE_FULL_TO_ABBREV.items():
+        full_words = set(full_name.split())
+        if full_words.issubset(tokens):
+            tokens -= full_words
+            tokens.add(abbrev)
+
+    return tokens
+
+
+def address_match(
+    extracted: str | None, declared: str
+) -> tuple[str, float, str]:
+    """Address match: accepts city/state partial matches.
+
+    Labels often print only city/state while applications have full street addresses.
+    If all extracted address tokens appear in the declared address, it's a match.
+    Falls back to standard fuzzy match otherwise.
+    """
+    if not extracted:
+        return ("field_missing", 0.0, "Field not found on label")
+
+    ext_tokens = _normalize_address_tokens(extracted)
+    dec_tokens = _normalize_address_tokens(declared)
+
+    if not ext_tokens:
+        return ("field_missing", 0.0, "Field not found on label")
+
+    # If all extracted tokens are found in declared, treat as match
+    if ext_tokens.issubset(dec_tokens) and len(ext_tokens) >= 1:
+        return ("match", 100.0, f"Address match: extracted location found in declared address")
+
+    # Fall back to standard fuzzy
+    return fuzzy_match(extracted, declared)
 
 
 def fuzzy_match(
@@ -300,11 +375,11 @@ class ComparisonService:
         "class_type": "class_type",
         "alcohol_content": "numeric_abv",
         "net_contents": "numeric_net",
-        "producer_name": "fuzzy",
-        "producer_address": "fuzzy",
+        "producer_name": "company_name",
+        "producer_address": "address",
         "country_of_origin": "fuzzy",
-        "importer_name": "fuzzy",
-        "importer_address": "fuzzy",
+        "importer_name": "company_name",
+        "importer_address": "address",
         "government_warning": "exact",
         "sulfites_declaration": "presence",
     }
@@ -441,6 +516,40 @@ class ComparisonService:
                                 confidence_reason=reason,
                             )
                         )
+
+            elif strategy == "company_name":
+                dec_value = declared_map.get(field_name)
+                if dec_value:
+                    norm_ext = normalize_company_name(ext_value) if ext_value else None
+                    norm_dec = normalize_company_name(dec_value)
+                    status, score, reason = fuzzy_match(norm_ext, norm_dec)
+                    results.append(
+                        FieldComparisonResult(
+                            field_name=field_name,
+                            declared_value=dec_value,
+                            extracted_value=ext_value,
+                            status=status,
+                            confidence=score,
+                            match_strategy="fuzzy",
+                            confidence_reason=reason,
+                        )
+                    )
+
+            elif strategy == "address":
+                dec_value = declared_map.get(field_name)
+                if dec_value:
+                    status, score, reason = address_match(ext_value, dec_value)
+                    results.append(
+                        FieldComparisonResult(
+                            field_name=field_name,
+                            declared_value=dec_value,
+                            extracted_value=ext_value,
+                            status=status,
+                            confidence=score,
+                            match_strategy="fuzzy",
+                            confidence_reason=reason,
+                        )
+                    )
 
             elif strategy == "fuzzy":
                 dec_value = declared_map.get(field_name)

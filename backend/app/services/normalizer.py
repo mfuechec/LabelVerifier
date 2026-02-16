@@ -23,6 +23,8 @@ def normalize_warning_text(text: str) -> str:
     # Remove hyphens between word characters (OCR line-break artifacts)
     # e.g., "ALCO- HOLIC" -> "ALCOHOLIC", "MACHIN-ERY" -> "MACHINERY"
     text = re.sub(r"(\w)-\s*(\w)", r"\1\2", text)
+    # Ensure space after parenthesized numbers: "(1)According" -> "(1) According"
+    text = re.sub(r"\((\d+)\)(\w)", r"(\1) \2", text)
     return text
 
 
@@ -143,6 +145,23 @@ def normalize_country(text: str) -> str:
         return text
     lowered = text.strip().lower()
     return COUNTRY_ALIASES.get(lowered, text)
+
+
+def normalize_company_name(text: str) -> str:
+    """Normalize company name for comparison: expand &, strip legal suffixes."""
+    if not text:
+        return ""
+    # Replace & with 'and' before general normalization
+    text = text.replace("&", " and ")
+    text = normalize_for_fuzzy(text)
+    # Strip common legal suffixes
+    text = re.sub(
+        r"\b(inc|llc|ltd|co|corp|company|corporation|incorporated|importing)\b",
+        "",
+        text,
+    )
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 
 def normalize_for_fuzzy(text: str) -> str:

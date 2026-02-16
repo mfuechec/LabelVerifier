@@ -170,3 +170,18 @@ class TestIsAdministrativeClassType:
     def test_pattern_does_not_match_arbitrary_text(self):
         is_admin, _ = is_administrative_class_type("RANDOM SPECIALTIES WORD")
         assert is_admin is False
+
+    def test_other_cordials_liqueurs_is_admin(self):
+        """'OTHER HERB & SEED CORDIALS/LIQUEURS' is an admin category code."""
+        is_admin, base = is_administrative_class_type("OTHER HERB & SEED CORDIALS/LIQUEURS")
+        assert is_admin is True
+
+    def test_other_grape_brandy_is_admin(self):
+        """'OTHER GRAPE BRANDY (PISCO, GRAPPA) FB' is an admin category code."""
+        is_admin, base = is_administrative_class_type("OTHER GRAPE BRANDY (PISCO, GRAPPA) FB")
+        assert is_admin is True
+
+    def test_table_wine_is_not_admin(self):
+        """'TABLE RED WINE' is a real class, not admin."""
+        is_admin, _ = is_administrative_class_type("TABLE RED WINE")
+        assert is_admin is False
