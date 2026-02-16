@@ -295,6 +295,7 @@ class GroqExtractor(BaseExtractor):
             response = await self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=2048,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -383,6 +384,7 @@ class AnthropicExtractor(BaseExtractor):
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -462,6 +464,7 @@ class AnthropicExtractor(BaseExtractor):
             response = await self.client.messages.create(
                 model=model,
                 max_tokens=1024,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -530,6 +533,7 @@ class AnthropicExtractor(BaseExtractor):
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -602,6 +606,7 @@ class AnthropicExtractor(BaseExtractor):
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -675,6 +680,7 @@ class AnthropicExtractor(BaseExtractor):
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=256,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
