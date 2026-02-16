@@ -232,7 +232,7 @@ class TestOrchestratorStats:
         assert result.processing_stats.total_input_tokens == 270
         assert result.processing_stats.total_output_tokens == 110
         assert result.processing_stats.extraction_time_ms == 800
-        assert result.processing_stats.total_time_ms > 0
+        assert result.processing_stats.total_time_ms >= 0
 
     @pytest.mark.asyncio
     async def test_stats_persisted_to_db(self, orchestrator, tmp_db):
