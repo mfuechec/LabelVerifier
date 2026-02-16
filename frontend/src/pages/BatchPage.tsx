@@ -7,93 +7,36 @@ import ConfidenceBar from '../components/shared/ConfidenceBar';
 import { useBatchUpload, useBatchStatus } from '../api/verifications';
 import { getErrorMessage } from '../api/errors';
 
-interface PdfEntry {
-  file: File;
-  assignedImageIndices: number[];
-}
-
 export default function BatchPage() {
   const navigate = useNavigate();
   const batchMutation = useBatchUpload();
 
-  const [pdfs, setPdfs] = useState<PdfEntry[]>([]);
-  const [images, setImages] = useState<File[]>([]);
+  const [colaPdfs, setColaPdfs] = useState<File[]>([]);
   const [batchId, setBatchId] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const { data: batchData } = useBatchStatus(batchId);
 
   const handlePdfFiles = useCallback((files: FileList | null) => {
     if (!files) return;
-    const newPdfs: PdfEntry[] = Array.from(files).map((f) => ({
-      file: f,
-      assignedImageIndices: [],
-    }));
-    setPdfs((prev) => [...prev, ...newPdfs]);
+    setColaPdfs((prev) => [...prev, ...Array.from(files)]);
   }, []);
-
-  const handleImageFiles = useCallback((files: FileList | null) => {
-    if (!files) return;
-    setImages((prev) => [...prev, ...Array.from(files)]);
-  }, []);
-
-  const toggleImageAssignment = useCallback(
-    (pdfIndex: number, imageIndex: number) => {
-      setPdfs((prev) =>
-        prev.map((entry, i) => {
-          if (i !== pdfIndex) return entry;
-          const indices = entry.assignedImageIndices.includes(imageIndex)
-            ? entry.assignedImageIndices.filter((idx) => idx !== imageIndex)
-            : [...entry.assignedImageIndices, imageIndex];
-          return { ...entry, assignedImageIndices: indices };
-        })
-      );
-    },
-    []
-  );
 
   const removePdf = useCallback((index: number) => {
-    setPdfs((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const removeImage = useCallback((index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setPdfs((prev) =>
-      prev.map((entry) => ({
-        ...entry,
-        assignedImageIndices: entry.assignedImageIndices
-          .filter((idx) => idx !== index)
-          .map((idx) => (idx > index ? idx - 1 : idx)),
-      }))
-    );
+    setColaPdfs((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleSubmit = async () => {
-    if (pdfs.length === 0) {
-      setSubmitError('Please upload at least one application PDF.');
-      return;
-    }
-    if (images.length === 0) {
-      setSubmitError('Please upload at least one label image.');
-      return;
-    }
-
-    const unassigned = pdfs.some((p) => p.assignedImageIndices.length === 0);
-    if (unassigned) {
-      setSubmitError('Each PDF must have at least one image assigned.');
+    if (colaPdfs.length === 0) {
+      setSubmitError('Please upload at least one COLA PDF.');
       return;
     }
 
     try {
       setSubmitError(null);
-      const result = await batchMutation.mutateAsync({
-        pdfs: pdfs.map((p) => p.file),
-        images,
-        imageAssignments: pdfs.map((p) => p.assignedImageIndices),
-      });
+      const result = await batchMutation.mutateAsync({ colaPdfs });
       setBatchId(result.batch_id);
     } catch (err) {
       setSubmitError(getErrorMessage(err));
@@ -118,15 +61,14 @@ export default function BatchPage() {
           <div className="section-header">
             <h2>Batch Verification</h2>
             <p>
-              Upload multiple application PDFs and label images, then assign
-              which images belong to each application.
+              Upload multiple COLA application PDFs for batch TTB compliance verification.
             </p>
           </div>
 
-          {/* PDF upload */}
+          {/* COLA PDF upload */}
           <div style={{ marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>
-              Application PDFs
+              COLA PDFs
             </h3>
             <div
               className="upload-zone pdf-zone"
@@ -160,11 +102,11 @@ export default function BatchPage() {
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
               </svg>
-              <span className="zone-label">Drop PDFs here or click to browse</span>
+              <span className="zone-label">Drop COLA PDFs here or click to browse</span>
             </div>
-            {pdfs.length > 0 && (
+            {colaPdfs.length > 0 && (
               <ul style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem' }}>
-                {pdfs.map((entry, i) => (
+                {colaPdfs.map((file, i) => (
                   <li
                     key={i}
                     style={{
@@ -175,7 +117,7 @@ export default function BatchPage() {
                       fontSize: '0.875rem',
                     }}
                   >
-                    <span style={{ fontWeight: 500 }}>{entry.file.name}</span>
+                    <span style={{ fontWeight: 500 }}>{file.name}</span>
                     <button
                       onClick={() => removePdf(i)}
                       style={{
@@ -193,159 +135,6 @@ export default function BatchPage() {
               </ul>
             )}
           </div>
-
-          {/* Image upload */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>
-              Label Images
-            </h3>
-            <div
-              className="upload-zone"
-              onClick={() => imageInputRef.current?.click()}
-              onDrop={(e) => {
-                e.preventDefault();
-                handleImageFiles(e.dataTransfer.files);
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              style={{ cursor: 'pointer' }}
-            >
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/tiff"
-                multiple
-                onChange={(e) => handleImageFiles(e.target.files)}
-                style={{ display: 'none' }}
-              />
-              <svg
-                className="zone-svg-icon"
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              <span className="zone-label">Drop images here or click to browse</span>
-            </div>
-            {images.length > 0 && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '0.75rem',
-                  marginTop: '0.75rem',
-                }}
-              >
-                {images.map((img, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: 'relative',
-                      width: 80,
-                      textAlign: 'center',
-                    }}
-                  >
-                    <img
-                      src={URL.createObjectURL(img)}
-                      alt={img.name}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        objectFit: 'cover',
-                        borderRadius: 6,
-                        border: '1px solid var(--slate-200)',
-                      }}
-                    />
-                    <div
-                      style={{
-                        fontSize: '0.7rem',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {img.name}
-                    </div>
-                    <button
-                      onClick={() => removeImage(i)}
-                      style={{
-                        position: 'absolute',
-                        top: -6,
-                        right: -6,
-                        background: 'var(--red-600)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: 18,
-                        height: 18,
-                        fontSize: '0.65rem',
-                        cursor: 'pointer',
-                        lineHeight: '18px',
-                      }}
-                    >
-                      X
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Assignment UI */}
-          {pdfs.length > 0 && images.length > 0 && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>
-                Assign Images to PDFs
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.75rem' }}>
-                For each PDF, check which label images belong to it.
-              </p>
-              <table className="history-table" style={{ fontSize: '0.85rem' }}>
-                <thead>
-                  <tr>
-                    <th>Application PDF</th>
-                    {images.map((img, i) => (
-                      <th key={i} style={{ textAlign: 'center', maxWidth: 90 }}>
-                        <div
-                          style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {img.name}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pdfs.map((entry, pdfIdx) => (
-                    <tr key={pdfIdx}>
-                      <td style={{ fontWeight: 500 }}>{entry.file.name}</td>
-                      {images.map((_, imgIdx) => (
-                        <td key={imgIdx} style={{ textAlign: 'center' }}>
-                          <input
-                            type="checkbox"
-                            checked={entry.assignedImageIndices.includes(imgIdx)}
-                            onChange={() => toggleImageAssignment(pdfIdx, imgIdx)}
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
           <div
             style={{
@@ -367,7 +156,7 @@ export default function BatchPage() {
                     Starting Batch...
                   </>
                 ) : (
-                  `Start Batch (${pdfs.length} application${pdfs.length !== 1 ? 's' : ''})`
+                  `Start Batch (${colaPdfs.length} PDF${colaPdfs.length !== 1 ? 's' : ''})`
                 )}
               </button>
             </div>
@@ -477,8 +266,7 @@ export default function BatchPage() {
                 className="btn-verify"
                 onClick={() => {
                   setBatchId(undefined);
-                  setPdfs([]);
-                  setImages([]);
+                  setColaPdfs([]);
                 }}
               >
                 New Batch

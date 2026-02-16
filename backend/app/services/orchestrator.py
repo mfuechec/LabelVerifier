@@ -22,7 +22,6 @@ IMAGES_BASE_DIR = "data/images"
 from app.services.comparison import ComparisonService, ConfidenceScorer
 from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
-from app.services.annotation import AnnotationService
 from app.services.image_preprocessor import preprocess_image
 
 
@@ -33,7 +32,6 @@ class VerificationOrchestrator:
         self.comparison_service = ComparisonService()
         self.compliance_checker = ComplianceChecker()
         self.merger = ImageMerger()
-        self.annotation_service = AnnotationService()
         self.scorer = ConfidenceScorer()
 
     @staticmethod

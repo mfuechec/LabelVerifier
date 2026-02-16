@@ -1,18 +1,3 @@
-export interface ApplicationData {
-  application_id?: string;
-  brand_name: string;
-  class_type: string;
-  alcohol_content: string;
-  net_contents: string;
-  producer_name?: string;
-  producer_address?: string;
-  country_of_origin?: string;
-  importer_name?: string;
-  importer_address?: string;
-  beverage_type: 'beer' | 'wine' | 'distilled_spirits';
-  has_sulfites_declaration?: boolean;
-}
-
 export interface BoundingBox {
   panel: string;
   x: number;
