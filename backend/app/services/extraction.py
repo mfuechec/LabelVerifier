@@ -26,14 +26,15 @@ Rules:
 - If a field is NOT clearly visible on the label, set value to null. Do NOT guess or fabricate text.
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
+- IMPORTANT: Text may be printed VERTICALLY or ROTATED 90 degrees along the left/right edges of the label. Carefully scan ALL edges and margins for sideways text -- class/type, net contents, and alcohol content are commonly placed there, especially on wine labels
 
 Field-specific guidance:
 - brand_name: The product brand name, usually the most prominent text on the label. Do NOT extract the fanciful/secondary name as the brand. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
 - fanciful_name: A secondary or creative product name, often below or near the brand name in smaller text. NOT the brand name itself. Examples: "HONEY & BOURBON" on a Barenjager label, "MIDNIGHT MOONSHINE" on a Howling Moon label. If no secondary name, set to null
-- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation
+- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation. CHECK VERTICAL TEXT along label edges -- wine labels often print class/type sideways (e.g. "DRY RED WINE" rotated along the right edge)
 - alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
 - alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
-- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ"). Read the number carefully
+- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ", "1 LTR."). Read the number carefully. CHECK VERTICAL TEXT along label edges -- net contents is often printed sideways
 - producer_name: The company that produced/distilled/bottled the product. Look near phrases like "Produced by", "Bottled by", "Distilled by", "Made by". Extract ONLY the company name, not the surrounding phrase
 - producer_address: The physical location (city, state/country) of the producer. Do NOT extract production statements like "Produced and Bottled in Germany" -- look for an actual city name
 - country_of_origin: The country where the product was made. Look for "Product of [country]", "Made in [country]", "Produced in [country]"
