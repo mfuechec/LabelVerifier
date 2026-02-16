@@ -571,6 +571,44 @@ class TestBrandConfirmation:
         assert brand_field.extracted_value == "BARENJAGER"
 
     @pytest.mark.asyncio
+    async def test_brand_confirm_handles_diacritics(self, orchestrator):
+        """Re-extracted 'Bärenjäger' should match declared 'BARENJAGER' after accent stripping."""
+        app_data = self._make_barenjager_app_data()
+        confused_result = self._make_confused_result()
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=confused_result,
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=(None, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+            return_value=(
+                {"brand_name": "Bärenjäger", "conf": "high", "location_description": "decorative text"},
+                LLMCallStats(100, 30, 200, "reextract_brand"),
+            ),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        assert brand_field.extracted_value == "Bärenjäger"
+
+    @pytest.mark.asyncio
     async def test_brand_confirm_not_triggered_when_match(self, orchestrator):
         """When extracted brand already matches declared, no re-extraction."""
         app_data = ApplicationData(

@@ -255,9 +255,17 @@ class VerificationOrchestrator:
         # 3e. Brand confirmation re-extraction (mismatch-triggered)
         # Try each panel (best first, then others) until we find a match
         if isinstance(self.extraction_service, AnthropicExtractor) and application_data.brand_name:
-            ext_brand = (merged_fields.get("brand_name") or "").strip().upper()
-            decl_brand = application_data.brand_name.strip().upper()
+            import unicodedata
             from rapidfuzz import fuzz as _fuzz
+
+            def _strip_accents(s: str) -> str:
+                return "".join(
+                    c for c in unicodedata.normalize("NFD", s)
+                    if unicodedata.category(c) != "Mn"
+                )
+
+            ext_brand = _strip_accents((merged_fields.get("brand_name") or "").strip().upper())
+            decl_brand = _strip_accents(application_data.brand_name.strip().upper())
             if _fuzz.ratio(ext_brand, decl_brand) < 85:
                 best_idx = _pick_best_panel(extraction_results, "brand_name", panels)
                 # Try best panel first, then remaining panels
@@ -274,7 +282,7 @@ class VerificationOrchestrator:
                         all_llm_stats.append(brand_stats)
                     if reextracted and reextracted.get("conf") != "low":
                         new_brand = reextracted.get("brand_name")
-                        if new_brand and _fuzz.ratio(new_brand.strip().upper(), decl_brand) >= 85:
+                        if new_brand and _fuzz.ratio(_strip_accents(new_brand.strip().upper()), decl_brand) >= 85:
                             logger.info(
                                 "Brand confirmation: '%s' -> '%s' (panel=%s, location: %s)",
                                 merged_fields.get("brand_name"), new_brand,
