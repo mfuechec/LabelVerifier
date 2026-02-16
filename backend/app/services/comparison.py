@@ -117,6 +117,13 @@ def class_type_match(
         from app.services.ttb_classes import _strip_qualifiers
         dec_base, _ = _strip_qualifiers(declared.strip())
 
+    # Subset word match: if all declared words appear in extracted text, treat as match.
+    # Handles cases like declared "Blanco Tequila" vs extracted "Tequila 100% Agave Azul Blanco".
+    ext_words = set(normalize_for_fuzzy(ext_base).split())
+    dec_words = set(normalize_for_fuzzy(dec_base).split())
+    if dec_words and dec_words.issubset(ext_words):
+        return ("match", 95.0, f"Subset match: all declared words found in extracted text")
+
     status, score, fuzzy_reason = fuzzy_match(ext_base, dec_base)
 
     # Add context about TTB lookup

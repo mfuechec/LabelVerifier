@@ -27,7 +27,7 @@ Rules:
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
 
 Field-specific guidance:
-- brand_name: The product brand name, usually the most prominent text on the label
+- brand_name: The product brand name, usually the most prominent text on the label. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
 - class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation
 - alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
 - alcohol_proof: Extract only if separately stated (e.g. "90 Proof")

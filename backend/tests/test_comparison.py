@@ -617,6 +617,25 @@ class TestClassTypeMatch:
         assert status == "match"
         assert "normaliz" in reason.lower() or "canonical" in reason.lower() or "class" in reason.lower()
 
+    def test_declared_words_subset_of_extracted(self):
+        """Declared words all present in extracted text -- should match.
+
+        Example: declared 'Blanco Tequila' vs extracted 'Tequila 100% Agave Azul Blanco'.
+        All declared words (blanco, tequila) appear in extracted, so it's a match.
+        """
+        status, score, reason = class_type_match(
+            "Tequila 100% Agave Azul Blanco", "Blanco Tequila", "distilled_spirits"
+        )
+        assert status == "match"
+        assert score >= 90.0
+
+    def test_subset_match_not_triggered_for_unrelated(self):
+        """Subset logic should NOT match when words don't overlap."""
+        status, score, reason = class_type_match(
+            "Tequila 100% Agave Azul Blanco", "Vodka", "distilled_spirits"
+        )
+        assert status == "content_mismatch"
+
 
 class TestComparisonService:
     def test_compare_all_fields_spirits(self):
