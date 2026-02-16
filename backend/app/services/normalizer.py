@@ -25,6 +25,8 @@ def normalize_warning_text(text: str) -> str:
     text = re.sub(r"(\w)-\s*(\w)", r"\1\2", text)
     # Ensure space after parenthesized numbers: "(1)According" -> "(1) According"
     text = re.sub(r"\((\d+)\)(\w)", r"(\1) \2", text)
+    # Ensure space before parenthesized numbers: "defects.(2)" -> "defects. (2)"
+    text = re.sub(r"(\S)(\(\d+\))", r"\1 \2", text)
     return text
 
 

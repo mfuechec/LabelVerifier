@@ -48,6 +48,10 @@ class TestNormalizeWarningText:
         """Already correct '(1) According' should stay the same."""
         assert normalize_warning_text("(1) According") == "(1) According"
 
+    def test_normalizes_space_before_marker(self):
+        """'defects.(2)' should become 'defects. (2)'."""
+        assert normalize_warning_text("defects.(2) Consumption") == "defects. (2) Consumption"
+
 
 class TestExtractAbv:
     def test_percent_sign(self):
