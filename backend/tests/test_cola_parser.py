@@ -1,5 +1,6 @@
 """Tests for COLA PDF parser (TTB F 5100.31)."""
 
+import fitz  # PyMuPDF
 import pytest
 from app.services.pdf_parser import (
     COLAPDFParser,
@@ -207,3 +208,85 @@ class TestCOLAPDFParserEdgeCases:
             with open(stub_path, "rb") as f:
                 result = parser.parse(f.read())
             assert len(result.label_images) == 0
+
+
+def _make_pdf_no_xobject_images(num_pages: int = 2) -> bytes:
+    """Create a PDF with text-only pages (no XObject images).
+
+    Page 1 = form text, pages 2+ = text only (no embedded images).
+    """
+    doc = fitz.open()
+    for i in range(num_pages):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 100), f"Page {i + 1} - text content only")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+def _make_pdf_with_image_on_page(page_with_image: int, total_pages: int = 3) -> bytes:
+    """Create a PDF where one page has an embedded XObject image and others don't.
+
+    page_with_image is 0-indexed.
+    """
+    doc = fitz.open()
+    for i in range(total_pages):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 100), f"Page {i + 1}")
+        if i == page_with_image:
+            # Insert a large enough image (solid color 200x200 PNG)
+            import struct
+            import zlib
+
+            width, height = 200, 200
+            raw_data = b""
+            for _ in range(height):
+                raw_data += b"\x00" + b"\xff\x00\x00" * width  # red pixels
+            compressed = zlib.compress(raw_data)
+
+            # Minimal PNG
+            def _chunk(ctype, data):
+                c = ctype + data
+                return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+            png = b"\x89PNG\r\n\x1a\n"
+            png += _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            png += _chunk(b"IDAT", compressed)
+            png += _chunk(b"IEND", b"")
+
+            rect = fitz.Rect(72, 150, 400, 500)
+            page.insert_image(rect, stream=png)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+class TestPixmapFallback:
+    """Tests for pixmap fallback when get_images() finds no XObject images."""
+
+    def test_fallback_produces_image_when_get_images_empty(self):
+        """Pages with no XObject images should produce a pixmap fallback PNG."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_no_xobject_images(num_pages=2)
+        images = parser._extract_label_images(pdf_bytes)
+        assert len(images) == 1
+        # Should be valid PNG (starts with PNG signature)
+        assert images[0].image_bytes[:4] == b"\x89PNG"
+
+    def test_xobject_path_still_used_when_images_present(self):
+        """Barenjager PDF has XObject images -- should still extract >= 3."""
+        parser = COLAPDFParser()
+        pdf_bytes = load_cola_pdf("barenjager_imported.pdf")
+        images = parser._extract_label_images(pdf_bytes)
+        assert len(images) >= 3
+
+    def test_mixed_pages_xobject_and_fallback(self):
+        """PDF with XObject image on page 2 and text-only page 3.
+
+        Should produce 2 images: one from XObject extraction, one from pixmap.
+        """
+        parser = COLAPDFParser()
+        # page 0 = form (skipped), page 1 = has image, page 2 = text only
+        pdf_bytes = _make_pdf_with_image_on_page(page_with_image=1, total_pages=3)
+        images = parser._extract_label_images(pdf_bytes)
+        assert len(images) == 2

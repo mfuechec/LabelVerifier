@@ -439,6 +439,8 @@ class COLAPDFParser:
             page = doc[page_num]
             images = page.get_images(full=True)
 
+            # Collect qualifying XObject images for this page
+            page_images: list[bytes] = []
             for img_info in images:
                 xref = img_info[0]
                 try:
@@ -458,6 +460,14 @@ class COLAPDFParser:
                 ):
                     continue
 
+                page_images.append(img_bytes)
+
+            # Pixmap fallback: render full page as PNG when no XObject images
+            if not page_images:
+                pixmap = page.get_pixmap(dpi=150)
+                page_images = [pixmap.tobytes("png")]
+
+            for img_bytes in page_images:
                 if img_index < len(image_types):
                     raw_type = image_types[img_index]
                     panel_type = _classify_panel(raw_type)
