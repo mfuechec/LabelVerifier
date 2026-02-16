@@ -248,11 +248,23 @@ def specialty_class_match(
     if declared_fanciful_name and has_fanciful:
         fn_status, fn_score, _ = fuzzy_match(fanciful_name, declared_fanciful_name)
         if fn_status == "content_mismatch":
-            return (
-                "content_mismatch",
-                fn_score,
-                f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
-            )
+            # Fallback: LLM may put the fanciful name into the composition field instead
+            if has_composition:
+                cs_status, _, _ = fuzzy_match(composition_statement, declared_fanciful_name)
+                if cs_status == "match":
+                    pass  # Fanciful name found in composition — continue to success path
+                else:
+                    return (
+                        "content_mismatch",
+                        fn_score,
+                        f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
+                    )
+            else:
+                return (
+                    "content_mismatch",
+                    fn_score,
+                    f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
+                )
 
     if has_fanciful and has_composition:
         # Check base spirit if expected

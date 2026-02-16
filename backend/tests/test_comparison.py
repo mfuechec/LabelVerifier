@@ -451,7 +451,7 @@ class TestAddressPartialMatch:
         assert addr.status == "content_mismatch"
 
 
-class TestCompareFieldsSpecialtyClass:
+class TestSpecialtyClassAdminCodes:
     """Administrative COLA codes should use specialty class matching."""
 
     def test_other_cordials_uses_specialty_matching(self, service):
@@ -555,3 +555,33 @@ class TestCompareFieldsSpecialtyClass:
         results = service.compare_fields(extracted, app_data, "distilled_spirits")
         ct = next(r for r in results if r.field_name == "class_type")
         assert ct.status == "content_mismatch"
+
+    def test_specialty_fanciful_in_composition_matches(self, service):
+        """When LLM puts the fanciful name into composition_statement, still match.
+
+        Real case: Howling Moon-1 — COLA declares fanciful 'RAYMOND FAIRCHILDS MOUNTAIN',
+        LLM extracts fanciful='Howling Moon' (the brand) and
+        composition="Raymond Fairchild's Mountain Moonshine" (contains the fanciful).
+        """
+        app_data = ApplicationData(
+            brand_name="HOWLING MOON",
+            fanciful_name="RAYMOND FAIRCHILDS MOUNTAIN",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="50",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "Howling Moon",
+            "class_type": None,
+            "alcohol_content": "50%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Howling Moon",
+                "composition_statement": "Raymond Fairchild's Mountain Moonshine",
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "match"
