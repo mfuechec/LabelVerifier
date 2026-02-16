@@ -341,6 +341,23 @@ class TestFuzzyMatchTightening:
         assert status == "match"
 
 
+class TestFuzzyMatchContainmentGuard:
+    def test_short_declared_in_long_extracted_not_match(self):
+        """'Fete' contained in 'Lenz Moser Fête Rosé' should NOT match -- declared is too short."""
+        status, score, _reason = fuzzy_match("Lenz Moser Fête Rosé", "Fete")
+        assert status == "content_mismatch"
+
+    def test_legitimate_containment_still_matches(self):
+        """'Cascade' in 'Cascade Winery' should still match -- declared is substantial portion."""
+        status, score, _reason = fuzzy_match("Cascade Winery", "Cascade")
+        assert status == "match"
+
+    def test_similar_length_containment_matches(self):
+        """'Barenjager' in 'Bärenjäger' should match -- nearly same length."""
+        status, score, _reason = fuzzy_match("Bärenjäger", "Barenjager")
+        assert status == "match"
+
+
 class TestComparisonServiceExtractionConfidence:
     def test_low_conf_converts_match_to_extraction_uncertain(self):
         """Low extraction confidence should convert any result to extraction_uncertain."""
