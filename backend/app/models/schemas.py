@@ -4,7 +4,9 @@ from pydantic import BaseModel
 
 class ApplicationData(BaseModel):
     application_id: str | None = None
+    ttb_id: str | None = None
     brand_name: str
+    fanciful_name: str | None = None
     class_type: str
     alcohol_content: str
     net_contents: str
@@ -15,6 +17,7 @@ class ApplicationData(BaseModel):
     importer_address: str | None = None
     beverage_type: Literal["beer", "wine", "distilled_spirits"]
     has_sulfites_declaration: bool = False
+    source_of_product: Literal["domestic", "imported"] | None = None
 
 
 class BoundingBox(BaseModel):

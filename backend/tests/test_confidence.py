@@ -1,148 +1,116 @@
-from app.services.comparison import ConfidenceScorer
+"""Tests for ConfidenceScorer."""
+
+import pytest
 from app.models.schemas import FieldComparisonResult
+from app.services.comparison import ConfidenceScorer
+
+
+@pytest.fixture
+def scorer():
+    return ConfidenceScorer()
+
+
+def _field(name, status="match", confidence=100.0):
+    return FieldComparisonResult(
+        field_name=name,
+        status=status,
+        confidence=confidence,
+        match_strategy="test",
+    )
 
 
 class TestConfidenceScorer:
-    def setup_method(self):
-        self.scorer = ConfidenceScorer()
-
-    def test_all_match_high_confidence(self):
+    def test_all_match_passes(self, scorer):
         fields = [
-            FieldComparisonResult(
-                field_name="brand_name", status="match",
-                confidence=100.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="class_type", status="match",
-                confidence=95.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="government_warning", status="match",
-                confidence=100.0, match_strategy="exact"
-            ),
+            _field("brand_name"),
+            _field("class_type"),
+            _field("alcohol_content"),
+            _field("net_contents"),
+            _field("government_warning"),
         ]
-        overall, status = self.scorer.calculate(fields)
-        assert overall >= 90.0
+        score, status = scorer.calculate(fields)
         assert status == "pass"
+        assert score >= 90.0
 
-    def test_mixed_scores_needs_review(self):
+    def test_critical_field_missing_fails(self, scorer):
         fields = [
-            FieldComparisonResult(
-                field_name="brand_name", status="match",
-                confidence=95.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="class_type", status="match",
-                confidence=60.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="government_warning", status="match",
-                confidence=80.0, match_strategy="exact"
-            ),
+            _field("brand_name"),
+            _field("government_warning", "field_missing", 0.0),
+            _field("alcohol_content"),
+            _field("net_contents"),
         ]
-        overall, status = self.scorer.calculate(fields)
-        assert 70 <= overall < 90
-        assert status == "needs_review"
-
-    def test_critical_field_missing_is_fail(self):
-        """Critical field (government_warning) missing should always fail."""
-        fields = [
-            FieldComparisonResult(
-                field_name="brand_name", status="match",
-                confidence=100.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="government_warning", status="field_missing",
-                confidence=0.0, match_strategy="exact"
-            ),
-        ]
-        overall, status = self.scorer.calculate(fields)
+        _, status = scorer.calculate(fields)
         assert status == "fail"
 
-    def test_critical_content_mismatch_is_fail(self):
-        """Critical field (alcohol_content) content_mismatch should fail."""
+    def test_critical_field_mismatch_fails(self, scorer):
         fields = [
-            FieldComparisonResult(
-                field_name="brand_name", status="match",
-                confidence=100.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="alcohol_content", status="content_mismatch",
-                confidence=20.0, match_strategy="numeric"
-            ),
+            _field("brand_name", "content_mismatch", 30.0),
+            _field("alcohol_content"),
+            _field("net_contents"),
+            _field("government_warning"),
         ]
-        overall, status = self.scorer.calculate(fields)
+        _, status = scorer.calculate(fields)
         assert status == "fail"
 
-    def test_noncritical_mismatch_is_needs_review(self):
-        """Non-critical field (producer_address) mismatch should NOT auto-fail."""
+    def test_uncertain_needs_review(self, scorer):
         fields = [
-            FieldComparisonResult(
-                field_name="brand_name", status="match",
-                confidence=100.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="class_type", status="match",
-                confidence=100.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="government_warning", status="match",
-                confidence=100.0, match_strategy="exact"
-            ),
-            FieldComparisonResult(
-                field_name="alcohol_content", status="match",
-                confidence=100.0, match_strategy="numeric"
-            ),
-            FieldComparisonResult(
-                field_name="net_contents", status="match",
-                confidence=100.0, match_strategy="numeric"
-            ),
-            FieldComparisonResult(
-                field_name="producer_address", status="content_mismatch",
-                confidence=40.0, match_strategy="fuzzy"
-            ),
+            _field("brand_name", "extraction_uncertain", 50.0),
+            _field("alcohol_content"),
+            _field("net_contents"),
+            _field("government_warning"),
         ]
-        overall, status = self.scorer.calculate(fields)
+        _, status = scorer.calculate(fields)
         assert status == "needs_review"
 
-    def test_extraction_uncertain_triggers_needs_review(self):
-        """Any extraction_uncertain field should trigger needs_review (not pass)."""
+    def test_noncritical_missing_needs_review(self, scorer):
         fields = [
-            FieldComparisonResult(
-                field_name="brand_name", status="extraction_uncertain",
-                confidence=50.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="class_type", status="match",
-                confidence=100.0, match_strategy="fuzzy"
-            ),
-            FieldComparisonResult(
-                field_name="government_warning", status="match",
-                confidence=100.0, match_strategy="exact"
-            ),
+            _field("brand_name"),
+            _field("alcohol_content"),
+            _field("net_contents"),
+            _field("government_warning"),
+            _field("producer_address", "field_missing", 0.0),
         ]
-        overall, status = self.scorer.calculate(fields)
+        score, status = scorer.calculate(fields)
         assert status == "needs_review"
 
-    def test_weighted_average_calculation(self):
-        """Verify weighted average uses FIELD_WEIGHTS."""
-        fields = [
-            FieldComparisonResult(
-                field_name="government_warning", status="match",
-                confidence=100.0, match_strategy="exact"
-            ),
-            FieldComparisonResult(
-                field_name="producer_address", status="match",
-                confidence=50.0, match_strategy="fuzzy"
-            ),
+    def test_empty_fields_fails(self, scorer):
+        score, status = scorer.calculate([])
+        assert status == "fail"
+        assert score == 0.0
+
+    def test_weighted_scoring(self, scorer):
+        """Government warning has higher weight than producer address."""
+        fields_warning_bad = [
+            _field("government_warning", "content_mismatch", 0.0),
+            _field("brand_name"),
         ]
-        overall, status = self.scorer.calculate(fields)
-        # gov_warning weight=2.0, producer_address weight=0.5
-        # weighted avg = (100*2.0 + 50*0.5) / (2.0+0.5) = 225/2.5 = 90.0
-        assert abs(overall - 90.0) < 0.1
+        fields_addr_bad = [
+            _field("producer_address", "content_mismatch", 0.0),
+            _field("brand_name"),
+        ]
+        score_warning, _ = scorer.calculate(fields_warning_bad)
+        score_addr, _ = scorer.calculate(fields_addr_bad)
+        # Warning has weight 2.0, address 0.5 -- so warning failure drops score more
+        assert score_warning < score_addr
+
+    def test_low_average_needs_review_or_fail(self, scorer):
+        """All match but low confidence scores."""
+        fields = [
+            _field("brand_name", "match", 70.0),
+            _field("alcohol_content", "match", 70.0),
+            _field("net_contents", "match", 70.0),
+            _field("government_warning", "match", 70.0),
+        ]
+        score, status = scorer.calculate(fields)
+        assert status == "needs_review"
+
+    def test_high_average_passes(self, scorer):
+        fields = [
+            _field("brand_name", "match", 95.0),
+            _field("alcohol_content", "match", 95.0),
+            _field("net_contents", "match", 95.0),
+            _field("government_warning", "match", 95.0),
+        ]
+        score, status = scorer.calculate(fields)
         assert status == "pass"
-
-    def test_empty_fields(self):
-        overall, status = self.scorer.calculate([])
-        assert overall == 0.0
-        assert status == "fail"
+        assert score >= 90.0

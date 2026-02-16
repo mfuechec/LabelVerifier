@@ -178,37 +178,55 @@ def numeric_match_abv(
 def numeric_match_net_contents(
     extracted: str | None, declared: str
 ) -> tuple[str, float, str]:
-    """Numeric match for net contents with unit normalization."""
+    """Numeric match for net contents with unit normalization.
+
+    Declared may contain multiple values (newline-separated from COLA forms).
+    Matches extracted against ANY declared size -- best match wins.
+    """
     if not extracted:
         return ("field_missing", 0.0, "Net contents not found on label")
 
     ext_val, ext_unit = normalize_net_contents(extracted)
-    dec_val, dec_unit = normalize_net_contents(declared)
 
     if ext_val is None:
         return ("field_missing", 0.0, "Could not parse extracted net contents")
-    if dec_val is None:
-        return ("content_mismatch", 0.0, "Could not parse declared net contents")
 
-    # Normalize both to mL for comparison
     def to_ml(val: float, unit: str | None) -> float:
         if unit == "fl oz":
             return val * 29.5735
         return val  # already mL
 
     ext_ml = to_ml(ext_val, ext_unit)
-    dec_ml = to_ml(dec_val, dec_unit)
-
-    # Use tighter tolerance for same-unit, wider for cross-unit conversions
-    cross_unit = ext_unit != dec_unit
-    tolerance = 5.0 if cross_unit else 0.5
-
     ext_label = f"{ext_val}{ext_unit or 'mL'}"
-    dec_label = f"{dec_val}{dec_unit or 'mL'}"
 
-    if abs(ext_ml - dec_ml) < tolerance:
-        return ("match", 100.0, f"Net contents match within tolerance ({ext_label} vs {dec_label})")
-    return ("content_mismatch", 0.0, f"Net contents differ: {ext_label} vs {dec_label}")
+    # Split declared on newlines and try each
+    declared_options = [d.strip() for d in declared.split("\n") if d.strip()]
+    if not declared_options:
+        declared_options = [declared]
+
+    best_match = None
+    for dec_str in declared_options:
+        dec_val, dec_unit = normalize_net_contents(dec_str)
+        if dec_val is None:
+            continue
+
+        dec_ml = to_ml(dec_val, dec_unit)
+        cross_unit = ext_unit != dec_unit
+        tolerance = 5.0 if cross_unit else 0.5
+        dec_label = f"{dec_val}{dec_unit or 'mL'}"
+
+        if abs(ext_ml - dec_ml) < tolerance:
+            return ("match", 100.0, f"Net contents match within tolerance ({ext_label} vs {dec_label})")
+
+        # Track closest mismatch for reporting
+        diff = abs(ext_ml - dec_ml)
+        if best_match is None or diff < best_match[0]:
+            best_match = (diff, dec_label)
+
+    if best_match is None:
+        return ("content_mismatch", 0.0, "Could not parse declared net contents")
+
+    return ("content_mismatch", 0.0, f"Net contents differ: {ext_label} vs {best_match[1]}")
 
 
 def presence_check(extracted: str | None, required: bool) -> tuple[str, float, str]:

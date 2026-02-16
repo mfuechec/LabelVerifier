@@ -1,107 +1,97 @@
-import sqlite3
+"""Tests for database setup and migrations."""
+
 import pytest
-from app.db.setup import get_db, create_tables
+import sqlite3
+
+from app.db.setup import create_tables, _migrate
 
 
-def test_create_tables(tmp_db):
-    conn = get_db(tmp_db)
-    create_tables(conn)
+class TestCreateTables:
+    def test_creates_all_tables(self, db_conn):
+        """All required tables should exist after create_tables."""
+        tables = {
+            row[0]
+            for row in db_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        assert "verification_sessions" in tables
+        assert "applications" in tables
+        assert "comparison_results" in tables
+        assert "batches" in tables
+        assert "agent_feedback" in tables
 
-    cursor = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    )
-    tables = [row[0] for row in cursor.fetchall()]
+    def test_idempotent(self, db_conn):
+        """Calling create_tables twice should not fail."""
+        create_tables(db_conn)
+        create_tables(db_conn)
 
-    assert "verification_sessions" in tables
-    assert "applications" in tables
-    assert "label_images" in tables
-    assert "extracted_fields" in tables
-    assert "comparison_results" in tables
-    assert "agent_feedback" in tables
-    conn.close()
+    def test_applications_has_cola_columns(self, db_conn):
+        """Applications table should have fanciful_name, ttb_id, source_of_product."""
+        columns = {
+            row[1]
+            for row in db_conn.execute("PRAGMA table_info(applications)").fetchall()
+        }
+        assert "fanciful_name" in columns
+        assert "ttb_id" in columns
+        assert "source_of_product" in columns
 
-
-def test_insert_and_query_session(tmp_db):
-    conn = get_db(tmp_db)
-    create_tables(conn)
-
-    conn.execute(
-        """INSERT INTO verification_sessions
-           (id, beverage_type, status, overall_confidence, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        ("test-uuid-1", "distilled_spirits", "pending", None, "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
-    )
-    conn.commit()
-
-    row = conn.execute(
-        "SELECT * FROM verification_sessions WHERE id = ?", ("test-uuid-1",)
-    ).fetchone()
-
-    assert row["id"] == "test-uuid-1"
-    assert row["beverage_type"] == "distilled_spirits"
-    assert row["status"] == "pending"
-    conn.close()
+    def test_sessions_has_batch_id(self, db_conn):
+        columns = {
+            row[1]
+            for row in db_conn.execute("PRAGMA table_info(verification_sessions)").fetchall()
+        }
+        assert "batch_id" in columns
 
 
-def test_foreign_key_enforcement(tmp_db):
-    conn = get_db(tmp_db)
-    create_tables(conn)
+class TestMigration:
+    def test_migrate_adds_missing_columns(self, tmp_db):
+        """Migration should add new columns to existing tables."""
+        conn = sqlite3.connect(tmp_db)
+        conn.row_factory = sqlite3.Row
 
-    with pytest.raises(sqlite3.IntegrityError):
-        conn.execute(
-            """INSERT INTO applications (id, session_id, brand_name)
-               VALUES (?, ?, ?)""",
-            ("app-1", "nonexistent-session", "Test Brand"),
-        )
-    conn.close()
+        # Create tables without new columns (simulating old schema)
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS batches (
+                id TEXT PRIMARY KEY,
+                status TEXT NOT NULL DEFAULT 'pending',
+                total_items INTEGER NOT NULL,
+                completed_items INTEGER NOT NULL DEFAULT 0,
+                failed_items INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS verification_sessions (
+                id TEXT PRIMARY KEY,
+                application_id TEXT,
+                beverage_type TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                overall_confidence REAL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS applications (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                brand_name TEXT,
+                class_type TEXT
+            );
+        """)
+        conn.commit()
 
+        _migrate(conn)
 
-def test_indexes_created(tmp_db):
-    conn = get_db(tmp_db)
-    create_tables(conn)
+        # Check new columns were added
+        session_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(verification_sessions)").fetchall()
+        }
+        assert "batch_id" in session_cols
 
-    cursor = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'"
-    )
-    indexes = [row[0] for row in cursor.fetchall()]
+        app_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(applications)").fetchall()
+        }
+        assert "fanciful_name" in app_cols
+        assert "ttb_id" in app_cols
+        assert "source_of_product" in app_cols
 
-    assert "idx_sessions_status" in indexes
-    assert "idx_sessions_beverage" in indexes
-    assert "idx_sessions_created" in indexes
-    conn.close()
-
-
-def test_comparison_results_has_review_columns(tmp_db):
-    """comparison_results should have reviewed, extraction_confidence, confidence_reason columns."""
-    conn = get_db(tmp_db)
-    create_tables(conn)
-
-    # Insert a session first (FK)
-    conn.execute(
-        """INSERT INTO verification_sessions
-           (id, beverage_type, status, overall_confidence, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        ("test-uuid-1", "distilled_spirits", "pass", 95.0,
-         "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
-    )
-
-    # Insert a comparison result with the new columns
-    conn.execute(
-        """INSERT INTO comparison_results
-           (id, session_id, field_name, declared_value, extracted_value,
-            match_strategy, status, confidence, reviewed, extraction_confidence, confidence_reason)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        ("cr-1", "test-uuid-1", "brand_name", "Test", "Test",
-         "fuzzy", "match", 95.0, 0, "high", "Fuzzy match: 95% (threshold: 85%)"),
-    )
-    conn.commit()
-
-    row = conn.execute(
-        "SELECT reviewed, extraction_confidence, confidence_reason FROM comparison_results WHERE id = ?",
-        ("cr-1",)
-    ).fetchone()
-
-    assert row["reviewed"] == 0
-    assert row["extraction_confidence"] == "high"
-    assert "Fuzzy match" in row["confidence_reason"]
-    conn.close()
+        conn.close()

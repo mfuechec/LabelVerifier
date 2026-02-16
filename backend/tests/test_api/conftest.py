@@ -1,9 +1,38 @@
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+import os
+os.environ["TESTING"] = "1"
+
+import tempfile
+import pytest
+from fastapi.testclient import TestClient
+from app.main import create_app
+from app.db.setup import create_tables, get_db
 
 
-@pytest_asyncio.fixture
-async def client(app):
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+@pytest.fixture
+def app_with_db():
+    """Create a test app with a temporary database."""
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+
+    app = create_app()
+    app.state.db_path = db_path
+
+    conn = get_db(db_path)
+    create_tables(conn)
+    conn.close()
+
+    yield app, db_path
+
+    os.unlink(db_path)
+
+
+@pytest.fixture
+def client(app_with_db):
+    app, _ = app_with_db
+    return TestClient(app)
+
+
+@pytest.fixture
+def db_path(app_with_db):
+    _, path = app_with_db
+    return path

@@ -1,17 +1,16 @@
 import os
 import re
 
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Request
+from fastapi import APIRouter, File, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse
 from app.models.schemas import VerificationResult
 from app.services.orchestrator import IMAGES_BASE_DIR
-from app.services.pdf_parser import PDFApplicationParser
-from app.config import settings
+from app.services.pdf_parser import COLAPDFParser
 from app.api.dependencies import get_db, get_db_path, get_orchestrator
 
 router = APIRouter()
 
-_pdf_parser = PDFApplicationParser()
+_pdf_parser = COLAPDFParser()
 
 # Valid panel names (prevents path traversal in panel parameter)
 VALID_PANELS = {"front", "back", "other"}
@@ -22,51 +21,35 @@ _LABEL_PANEL_RE = re.compile(r'^label_\d+$')
 @router.post("/verify")
 async def verify_label(
     request: Request,
-    application_pdf: UploadFile = File(..., alias="application_pdf"),
-    images: list[UploadFile] = File(..., alias="images[]"),
-    panels: list[str] = Form(None, alias="panels[]"),
+    cola_pdf: UploadFile = File(...),
 ):
-    # Parse application data from PDF
-    pdf_bytes = await application_pdf.read()
-    if not pdf_bytes:
-        raise HTTPException(status_code=422, detail="Application PDF is empty")
+    """Verify a label from a COLA PDF (TTB F 5100.31).
 
-    if application_pdf.content_type and application_pdf.content_type != "application/pdf":
+    The PDF contains both the application form (page 1) and label images (pages 2+).
+    """
+    pdf_bytes = await cola_pdf.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=422, detail="COLA PDF is empty")
+
+    if cola_pdf.content_type and cola_pdf.content_type != "application/pdf":
         raise HTTPException(
             status_code=422,
-            detail=f"Application file must be a PDF, got: {application_pdf.content_type}",
+            detail=f"File must be a PDF, got: {cola_pdf.content_type}",
         )
 
     try:
-        app_data = _pdf_parser.parse_application_pdf(pdf_bytes)
+        parse_result = _pdf_parser.parse(pdf_bytes)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    if not images:
-        raise HTTPException(status_code=422, detail="At least one image is required")
-
-    # Default panels if not provided
-    if not panels:
-        panels = ["front"] + ["other"] * (len(images) - 1)
-
-    # Read image bytes
-    image_bytes = []
-    for img in images:
-        content = await img.read()
-        if img.content_type not in settings.allowed_mime_types:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Unsupported file type: {img.content_type}. Allowed: {', '.join(settings.allowed_mime_types)}",
-            )
-        if len(content) > settings.max_image_size:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Image too large: {len(content)} bytes. Maximum: {settings.max_image_size} bytes",
-            )
-        image_bytes.append(content)
+    if not parse_result.label_images:
+        raise HTTPException(
+            status_code=422,
+            detail="No label images found in PDF. The PDF may be incomplete.",
+        )
 
     orchestrator = get_orchestrator(request)
-    result = await orchestrator.verify_single(image_bytes, panels, app_data)
+    result = await orchestrator.verify_from_cola(parse_result)
 
     return {"data": result.model_dump()}
 

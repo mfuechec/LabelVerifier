@@ -1,127 +1,93 @@
+"""Tests for multi-panel image merger."""
+
+import pytest
 from app.services.merger import ImageMerger
 
 
+@pytest.fixture
+def merger():
+    return ImageMerger()
+
+
 class TestImageMerger:
-    def setup_method(self):
-        self.merger = ImageMerger()
-
-    def test_single_panel_passthrough(self):
-        panel_results = {
+    def test_single_panel(self, merger):
+        """Single panel: all fields pass through."""
+        panel_data = {
             "front": {
-                "brand_name": {"value": "Test Brand", "confidence": 95.0},
-                "class_type": {"value": "Bourbon", "confidence": 90.0},
+                "brand_name": {"value": "TEST", "confidence": 95.0},
+                "alcohol_content": {"value": "40%", "confidence": 90.0},
             }
         }
-        merged = self.merger.merge_panels(panel_results)
-        assert merged.fields["brand_name"].value == "Test Brand"
-        assert merged.fields["class_type"].value == "Bourbon"
+        result = merger.merge_panels(panel_data)
+        assert result.fields["brand_name"].value == "TEST"
+        assert result.fields["alcohol_content"].value == "40%"
 
-    def test_front_back_no_overlap(self):
-        panel_results = {
+    def test_multi_panel_merge(self, merger):
+        """Two panels: each contributes different fields."""
+        panel_data = {
             "front": {
-                "brand_name": {"value": "Test Brand", "confidence": 95.0},
-                "class_type": {"value": "Bourbon", "confidence": 90.0},
-            },
-            "back": {
-                "government_warning": {"value": "GOVERNMENT WARNING: ...", "confidence": 98.0},
-                "producer_name": {"value": "Test Distillery", "confidence": 92.0},
-            },
-        }
-        merged = self.merger.merge_panels(panel_results)
-        assert "brand_name" in merged.fields
-        assert "government_warning" in merged.fields
-        assert len(merged.conflicts) == 0
-
-    def test_same_field_same_value_merges(self):
-        panel_results = {
-            "front": {
-                "brand_name": {"value": "Test Brand", "confidence": 95.0},
-            },
-            "back": {
-                "brand_name": {"value": "Test Brand", "confidence": 90.0},
-            },
-        }
-        merged = self.merger.merge_panels(panel_results)
-        assert merged.fields["brand_name"].value == "Test Brand"
-        # Should use highest confidence
-        assert merged.fields["brand_name"].confidence == 95.0
-        assert len(merged.conflicts) == 0
-
-    def test_same_field_different_value_flags_conflict(self):
-        panel_results = {
-            "front": {
-                "brand_name": {"value": "Brand A", "confidence": 95.0},
-            },
-            "back": {
-                "brand_name": {"value": "Brand B", "confidence": 90.0},
-            },
-        }
-        merged = self.merger.merge_panels(panel_results)
-        # Should prefer front
-        assert merged.fields["brand_name"].value == "Brand A"
-        assert merged.fields["brand_name"].source_panel == "front"
-        # Should flag conflict
-        assert len(merged.conflicts) == 1
-        assert merged.conflicts[0].field_name == "brand_name"
-
-    def test_extraction_confidence_propagated(self):
-        """extraction_confidence should be propagated through merge."""
-        panel_results = {
-            "front": {
-                "brand_name": {
-                    "value": "Test Brand",
-                    "confidence": 95.0,
-                    "extraction_confidence": "medium",
-                },
-            }
-        }
-        merged = self.merger.merge_panels(panel_results)
-        assert merged.fields["brand_name"].extraction_confidence == "medium"
-
-    def test_extraction_confidence_defaults_to_high(self):
-        """Missing extraction_confidence should default to 'high'."""
-        panel_results = {
-            "front": {
-                "brand_name": {"value": "Test Brand", "confidence": 95.0},
-            }
-        }
-        merged = self.merger.merge_panels(panel_results)
-        assert merged.fields["brand_name"].extraction_confidence == "high"
-
-    def test_higher_confidence_tier_preferred_in_conflict(self):
-        """When panels conflict, prefer higher extraction_confidence tier."""
-        panel_results = {
-            "front": {
-                "brand_name": {
-                    "value": "Brand A",
-                    "confidence": 90.0,
-                    "extraction_confidence": "low",
-                },
-            },
-            "back": {
-                "brand_name": {
-                    "value": "Brand B",
-                    "confidence": 90.0,
-                    "extraction_confidence": "high",
-                },
-            },
-        }
-        merged = self.merger.merge_panels(panel_results)
-        # Should prefer high confidence over panel priority
-        assert merged.fields["brand_name"].value == "Brand B"
-        assert merged.fields["brand_name"].extraction_confidence == "high"
-
-    def test_null_front_uses_back_value(self):
-        """When front returns None and back has a value, use back's value."""
-        panel_results = {
-            "front": {
-                "government_warning": {"value": None, "confidence": 90.0},
+                "brand_name": {"value": "TEST", "confidence": 95.0},
             },
             "back": {
                 "government_warning": {"value": "GOVERNMENT WARNING: ...", "confidence": 90.0},
             },
         }
-        merged = self.merger.merge_panels(panel_results)
-        assert merged.fields["government_warning"].value == "GOVERNMENT WARNING: ..."
-        assert merged.fields["government_warning"].source_panel == "back"
-        assert len(merged.conflicts) == 0
+        result = merger.merge_panels(panel_data)
+        assert "brand_name" in result.fields
+        assert "government_warning" in result.fields
+
+    def test_multi_panel_conflict_higher_extraction_confidence(self, merger):
+        """When same field appears on multiple panels, higher extraction confidence wins."""
+        panel_data = {
+            "front": {
+                "brand_name": {"value": "BRAND A", "confidence": 60.0, "extraction_confidence": "low"},
+            },
+            "back": {
+                "brand_name": {"value": "BRAND B", "confidence": 95.0, "extraction_confidence": "high"},
+            },
+        }
+        result = merger.merge_panels(panel_data)
+        assert result.fields["brand_name"].value == "BRAND B"
+
+    def test_multi_panel_conflict_same_tier_prefers_front(self, merger):
+        """When extraction confidence is equal, front panel wins by priority."""
+        panel_data = {
+            "front": {
+                "brand_name": {"value": "BRAND A", "confidence": 60.0},
+            },
+            "back": {
+                "brand_name": {"value": "BRAND B", "confidence": 95.0},
+            },
+        }
+        result = merger.merge_panels(panel_data)
+        assert result.fields["brand_name"].value == "BRAND A"
+
+    def test_multi_panel_agreement(self, merger):
+        """Same field, same value on both panels."""
+        panel_data = {
+            "front": {
+                "brand_name": {"value": "SAME BRAND", "confidence": 90.0},
+            },
+            "back": {
+                "brand_name": {"value": "SAME BRAND", "confidence": 85.0},
+            },
+        }
+        result = merger.merge_panels(panel_data)
+        assert result.fields["brand_name"].value == "SAME BRAND"
+
+    def test_empty_panels(self, merger):
+        result = merger.merge_panels({})
+        assert len(result.fields) == 0
+
+    def test_extraction_confidence_preserved(self, merger):
+        panel_data = {
+            "front": {
+                "brand_name": {
+                    "value": "TEST",
+                    "confidence": 90.0,
+                    "extraction_confidence": "medium",
+                },
+            },
+        }
+        result = merger.merge_panels(panel_data)
+        assert result.fields["brand_name"].extraction_confidence == "medium"

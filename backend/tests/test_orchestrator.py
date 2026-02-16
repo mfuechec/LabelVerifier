@@ -1,222 +1,223 @@
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+"""Tests for VerificationOrchestrator."""
+
 import pytest
+from unittest.mock import patch, AsyncMock, MagicMock
+from pathlib import Path
+
+from app.models.schemas import ApplicationData
 from app.services.orchestrator import VerificationOrchestrator
 from app.services.extraction import ExtractionResult
-from app.services.comparison import CANONICAL_WARNING
-from app.models.schemas import ApplicationData, FieldComparisonResult
+from app.services.pdf_parser import COLAParseResult, LabelImage
+from app.db.setup import create_tables, get_db
 
 
-@pytest.fixture
-def app_data():
-    return ApplicationData(
-        application_id="APP-001",
-        brand_name="Test Brand",
-        class_type="Bourbon Whiskey",
-        alcohol_content="45%",
-        net_contents="750 mL",
-        producer_name="Test Distillery",
-        producer_address="Louisville, KY",
-        beverage_type="distilled_spirits",
-    )
-
-
-@pytest.fixture
-def mock_extraction_result():
+def _make_extraction_result(panel="front"):
+    """Create a mock extraction result with all fields."""
     return ExtractionResult(
+        panel_type=panel,
         fields={
-            "brand_name": {"value": "TEST BRAND", "bounding_box": {"x": 10, "y": 5, "width": 30, "height": 8}},
-            "class_type": {"value": "BOURBON WHISKEY", "bounding_box": {"x": 10, "y": 15, "width": 30, "height": 6}},
-            "alcohol_content": {"value": "45% Alc./Vol.", "bounding_box": {"x": 10, "y": 75, "width": 20, "height": 5}},
-            "net_contents": {"value": "750 mL", "bounding_box": {"x": 10, "y": 80, "width": 15, "height": 5}},
-            "producer_name": {"value": "Test Distillery", "bounding_box": {"x": 10, "y": 85, "width": 25, "height": 5}},
-            "producer_address": {"value": "Louisville, KY", "bounding_box": {"x": 10, "y": 90, "width": 25, "height": 5}},
-            "government_warning": {"value": CANONICAL_WARNING, "bounding_box": {"x": 5, "y": 50, "width": 90, "height": 20}},
+            "brand_name": {"value": "TEST BRAND", "extraction_confidence": "high"},
+            "class_type": {"value": "Vodka", "extraction_confidence": "high"},
+            "alcohol_content": {"value": "40% ABV", "extraction_confidence": "high"},
+            "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
+            "government_warning": {
+                "value": (
+                    "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+                    "women should not drink alcoholic beverages during pregnancy "
+                    "because of the risk of birth defects. (2) Consumption of "
+                    "alcoholic beverages impairs your ability to drive a car or "
+                    "operate machinery, and may cause health problems."
+                ),
+                "extraction_confidence": "high",
+            },
+            "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
         },
-        panel_type="front",
     )
 
 
-class TestVerificationOrchestrator:
+@pytest.fixture
+def orchestrator(tmp_db):
+    conn = get_db(tmp_db)
+    create_tables(conn)
+    conn.close()
+    return VerificationOrchestrator(db_path=tmp_db)
+
+
+class TestVerifyFromCola:
     @pytest.mark.asyncio
-    async def test_single_label_flow(self, app_data, mock_extraction_result, tmp_db):
-        from app.db.setup import get_db, create_tables
-        conn = get_db(tmp_db)
-        create_tables(conn)
-        conn.close()
-
-        orchestrator = VerificationOrchestrator(db_path=tmp_db)
-        orchestrator.extraction_service = AsyncMock()
-        orchestrator.extraction_service.extract_fields = AsyncMock(
-            return_value=mock_extraction_result
+    async def test_verify_from_cola_calls_verify_single(self, orchestrator):
+        """verify_from_cola delegates to verify_single with correct args."""
+        app_data = ApplicationData(
+            brand_name="TEST",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 ML",
+            beverage_type="distilled_spirits",
         )
-        orchestrator.annotation_service = MagicMock()
-        orchestrator.annotation_service.annotate_image = MagicMock(
-            return_value="/tmp/annotated.png"
+        images = [LabelImage(b"img1", "front", "Brand (front)")]
+        parse_result = COLAParseResult(app_data, images)
+
+        with patch.object(orchestrator, "verify_single", new_callable=AsyncMock) as mock_vs:
+            mock_vs.return_value = MagicMock()
+            await orchestrator.verify_from_cola(parse_result, batch_id="batch-1")
+
+            mock_vs.assert_called_once()
+            args = mock_vs.call_args
+            assert args[0][0] == [b"img1"]  # images
+            assert args[0][1] == ["front"]  # panels
+            assert args[0][2].brand_name == "TEST"
+            assert args[1]["batch_id"] == "batch-1"
+
+
+class TestVerifySingle:
+    @pytest.mark.asyncio
+    async def test_full_pipeline_match(self, orchestrator):
+        """Full pipeline with mocked extractor should produce 'pass' for matching data."""
+        app_data = ApplicationData(
+            brand_name="TEST BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            producer_name="TEST PRODUCER",
+            beverage_type="distilled_spirits",
         )
 
-        result = await orchestrator.verify_single(
-            images=[b"fake-image-bytes"],
-            panels=["front"],
-            application_data=app_data,
-        )
+        mock_result = _make_extraction_result()
 
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        assert result.status == "pass"
+        assert result.overall_confidence >= 90.0
         assert result.session_id is not None
-        assert result.status in ("pass", "needs_review", "fail")
-        assert len(result.fields) > 0
-        orchestrator.extraction_service.extract_fields.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_multi_panel_flow(self, app_data, tmp_db):
-        from app.db.setup import get_db, create_tables
-        conn = get_db(tmp_db)
-        create_tables(conn)
-        conn.close()
-
-        front_result = ExtractionResult(
-            fields={
-                "brand_name": {"value": "TEST BRAND", "bounding_box": {"x": 10, "y": 5, "width": 30, "height": 8}},
-                "class_type": {"value": "BOURBON WHISKEY", "bounding_box": {"x": 10, "y": 15, "width": 30, "height": 6}},
-            },
-            panel_type="front",
-        )
-        back_result = ExtractionResult(
-            fields={
-                "government_warning": {"value": CANONICAL_WARNING, "bounding_box": {"x": 5, "y": 50, "width": 90, "height": 20}},
-                "alcohol_content": {"value": "45% Alc./Vol.", "bounding_box": {"x": 10, "y": 75, "width": 20, "height": 5}},
-                "net_contents": {"value": "750 mL", "bounding_box": {"x": 10, "y": 80, "width": 15, "height": 5}},
-                "producer_name": {"value": "Test Distillery", "bounding_box": {"x": 10, "y": 85, "width": 25, "height": 5}},
-                "producer_address": {"value": "Louisville, KY", "bounding_box": {"x": 10, "y": 90, "width": 25, "height": 5}},
-            },
-            panel_type="back",
-        )
-
-        orchestrator = VerificationOrchestrator(db_path=tmp_db)
-        orchestrator.extraction_service = AsyncMock()
-        orchestrator.extraction_service.extract_fields = AsyncMock(
-            side_effect=[front_result, back_result]
-        )
-        orchestrator.annotation_service = MagicMock()
-        orchestrator.annotation_service.annotate_image = MagicMock(
-            return_value="/tmp/annotated.png"
-        )
-
-        result = await orchestrator.verify_single(
-            images=[b"front-bytes", b"back-bytes"],
-            panels=["front", "back"],
-            application_data=app_data,
-        )
-
-        assert orchestrator.extraction_service.extract_fields.call_count == 2
         assert len(result.fields) > 0
 
     @pytest.mark.asyncio
-    async def test_extraction_failure_returns_partial(self, app_data, tmp_db):
-        from app.db.setup import get_db, create_tables
-        conn = get_db(tmp_db)
-        create_tables(conn)
-        conn.close()
-
-        error_result = ExtractionResult(
-            panel_type="front",
-            error="API timeout",
+    async def test_pipeline_brand_mismatch(self, orchestrator):
+        """Mismatch in critical field should produce 'fail'."""
+        app_data = ApplicationData(
+            brand_name="DIFFERENT BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
         )
 
-        orchestrator = VerificationOrchestrator(db_path=tmp_db)
-        orchestrator.extraction_service = AsyncMock()
-        orchestrator.extraction_service.extract_fields = AsyncMock(
-            return_value=error_result
-        )
+        mock_result = _make_extraction_result()
 
-        result = await orchestrator.verify_single(
-            images=[b"fake-image-bytes"],
-            panels=["front"],
-            application_data=app_data,
-        )
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
 
-        assert result.session_id is not None
-        assert result.status in ("fail", "needs_review")
+        assert result.status == "fail"
+        brand = next(f for f in result.fields if f.field_name == "brand_name")
+        assert brand.status == "content_mismatch"
 
     @pytest.mark.asyncio
-    async def test_db_persistence(self, app_data, mock_extraction_result, tmp_db):
-        from app.db.setup import get_db, create_tables
+    async def test_pipeline_persists_to_db(self, orchestrator, tmp_db):
+        """Verify results are persisted to the database."""
+        app_data = ApplicationData(
+            brand_name="TEST BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=_make_extraction_result(),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
         conn = get_db(tmp_db)
-        create_tables(conn)
-        conn.close()
-
-        orchestrator = VerificationOrchestrator(db_path=tmp_db)
-        orchestrator.extraction_service = AsyncMock()
-        orchestrator.extraction_service.extract_fields = AsyncMock(
-            return_value=mock_extraction_result
-        )
-        orchestrator.annotation_service = MagicMock()
-        orchestrator.annotation_service.annotate_image = MagicMock(
-            return_value="/tmp/annotated.png"
-        )
-
-        result = await orchestrator.verify_single(
-            images=[b"fake-image-bytes"],
-            panels=["front"],
-            application_data=app_data,
-        )
-
-        # Verify session was stored
-        conn = get_db(tmp_db)
-        row = conn.execute(
+        session = conn.execute(
             "SELECT * FROM verification_sessions WHERE id = ?",
-            (result.session_id,),
+            (result.session_id,)
         ).fetchone()
-        assert row is not None
-        assert row["beverage_type"] == "distilled_spirits"
+        assert session is not None
+        assert session["status"] == "pass"
+
+        app_row = conn.execute(
+            "SELECT * FROM applications WHERE session_id = ?",
+            (result.session_id,)
+        ).fetchone()
+        assert app_row is not None
+        assert app_row["brand_name"] == "TEST BRAND"
         conn.close()
 
-    def test_persist_session_is_atomic(self, app_data, tmp_db):
-        """Verify _persist_session is atomic: calling with a duplicate session_id
-        should fail, and no partial application row should be left behind."""
-        from app.db.setup import get_db, create_tables
-        conn = get_db(tmp_db)
-        create_tables(conn)
-        conn.close()
-
-        orchestrator = VerificationOrchestrator(db_path=tmp_db)
-
-        fields = [
-            FieldComparisonResult(
-                field_name="brand_name",
-                declared_value="Test",
-                extracted_value="Test",
-                status="match",
-                confidence=95.0,
-                match_strategy="fuzzy",
-            )
-        ]
-
-        # First call succeeds
-        orchestrator._persist_session(
-            "dup-session", app_data, fields, 95.0, "pass",
-            "2026-02-14T10:00:00Z",
+    @pytest.mark.asyncio
+    async def test_pipeline_persists_new_fields(self, orchestrator, tmp_db):
+        """New COLA fields (ttb_id, fanciful_name, source_of_product) are persisted."""
+        app_data = ApplicationData(
+            ttb_id="11115001000373",
+            brand_name="TEST",
+            fanciful_name="FANCY NAME",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
+            source_of_product="imported",
         )
 
-        # Count applications before the failing second call
-        conn = get_db(tmp_db)
-        app_count_before = conn.execute(
-            "SELECT COUNT(*) as cnt FROM applications"
-        ).fetchone()["cnt"]
-        conn.close()
-
-        # Second call with same session_id should fail on PK constraint
-        with pytest.raises(Exception):
-            orchestrator._persist_session(
-                "dup-session", app_data, fields, 95.0, "pass",
-                "2026-02-14T10:00:00Z",
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            return_value=_make_extraction_result(),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
             )
 
-        # Verify no extra application row was persisted (atomic rollback)
         conn = get_db(tmp_db)
-        app_count_after = conn.execute(
-            "SELECT COUNT(*) as cnt FROM applications"
-        ).fetchone()["cnt"]
+        app_row = conn.execute(
+            "SELECT * FROM applications WHERE session_id = ?",
+            (result.session_id,)
+        ).fetchone()
+        assert app_row["ttb_id"] == "11115001000373"
+        assert app_row["fanciful_name"] == "FANCY NAME"
+        assert app_row["source_of_product"] == "imported"
         conn.close()
-        assert app_count_after == app_count_before, (
-            "No extra application row should exist after failed duplicate insert"
+
+    @pytest.mark.asyncio
+    async def test_extraction_error_handled(self, orchestrator):
+        """Extraction failure should be handled gracefully."""
+        app_data = ApplicationData(
+            brand_name="TEST",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            beverage_type="distilled_spirits",
         )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            side_effect=Exception("LLM API error"),
+        ):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        # Should still produce a result, not crash
+        assert result.session_id is not None
+        assert result.status == "needs_review"

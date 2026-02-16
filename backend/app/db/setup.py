@@ -119,12 +119,26 @@ def create_tables(conn: sqlite3.Connection) -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """Run incremental schema migrations for existing databases."""
-    columns = {
+    session_cols = {
         row[1]
         for row in conn.execute("PRAGMA table_info(verification_sessions)").fetchall()
     }
-    if "batch_id" not in columns:
+    if "batch_id" not in session_cols:
         conn.execute("ALTER TABLE verification_sessions ADD COLUMN batch_id TEXT REFERENCES batches(id)")
         conn.commit()
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_batch ON verification_sessions(batch_id)")
     conn.commit()
+
+    # Add new COLA fields to applications table
+    app_cols = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(applications)").fetchall()
+    }
+    for col_name, col_def in [
+        ("fanciful_name", "TEXT"),
+        ("ttb_id", "TEXT"),
+        ("source_of_product", "TEXT"),
+    ]:
+        if col_name not in app_cols:
+            conn.execute(f"ALTER TABLE applications ADD COLUMN {col_name} {col_def}")
+            conn.commit()

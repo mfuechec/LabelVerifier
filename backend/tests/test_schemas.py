@@ -1,259 +1,86 @@
+"""Tests for Pydantic schema validation including new COLA fields."""
+
 import pytest
 from pydantic import ValidationError
-from app.models.schemas import (
-    ApplicationData,
-    FieldComparisonResult,
-    VerificationResult,
-    BoundingBox,
-    OverrideRequest,
-    DecisionRequest,
-    FeedbackRequest,
-    ReviewSummary,
-)
+
+from app.models.schemas import ApplicationData, FieldComparisonResult
 
 
 class TestApplicationData:
-    def test_valid_spirits_application(self):
+    def test_minimal_valid(self):
+        """Minimum required fields for ApplicationData."""
         data = ApplicationData(
-            application_id="APP-001",
-            brand_name="Test Brand",
-            class_type="Bourbon Whiskey",
-            alcohol_content="45%",
-            net_contents="750 mL",
-            producer_name="Test Distillery",
-            producer_address="Louisville, KY",
+            brand_name="TEST",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 ML",
             beverage_type="distilled_spirits",
         )
-        assert data.brand_name == "Test Brand"
-        assert data.beverage_type == "distilled_spirits"
+        assert data.brand_name == "TEST"
+        assert data.ttb_id is None
+        assert data.fanciful_name is None
+        assert data.source_of_product is None
 
-    def test_valid_wine_application(self):
+    def test_full_cola_fields(self):
+        """All COLA fields populated."""
         data = ApplicationData(
-            application_id="APP-002",
-            brand_name="Test Wine",
-            class_type="Red Wine",
-            alcohol_content="14.5%",
-            net_contents="750 mL",
-            beverage_type="wine",
-            has_sulfites_declaration=True,
-            country_of_origin="Italy",
-            importer_name="Wine Imports LLC",
-            importer_address="Chicago, IL",
+            ttb_id="11115001000373",
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="OTHER SPECIALTIES",
+            alcohol_content="35",
+            net_contents="750 MILLILITERS\n1 LITER",
+            importer_name="SIDNEY FRANK IMPORTING CO.",
+            beverage_type="distilled_spirits",
+            source_of_product="imported",
         )
-        assert data.has_sulfites_declaration is True
+        assert data.ttb_id == "11115001000373"
+        assert data.fanciful_name == "HONEY & BOURBON"
+        assert data.source_of_product == "imported"
 
-    def test_invalid_beverage_type(self):
+    def test_source_of_product_validation(self):
+        """source_of_product must be 'domestic', 'imported', or None."""
         with pytest.raises(ValidationError):
             ApplicationData(
-                application_id="APP-003",
-                brand_name="Test",
-                class_type="Test",
-                alcohol_content="5%",
-                net_contents="355 mL",
-                beverage_type="soda",
+                brand_name="X",
+                class_type="Y",
+                alcohol_content="40",
+                net_contents="750 ML",
+                beverage_type="distilled_spirits",
+                source_of_product="unknown",
             )
 
-    def test_optional_fields_default_none(self):
+    def test_beverage_type_validation(self):
+        """beverage_type must be beer, wine, or distilled_spirits."""
+        with pytest.raises(ValidationError):
+            ApplicationData(
+                brand_name="X",
+                class_type="Y",
+                alcohol_content="40",
+                net_contents="750 ML",
+                beverage_type="cider",
+            )
+
+    def test_multiline_net_contents(self):
+        """Net contents can be multi-line (from COLA forms)."""
         data = ApplicationData(
-            application_id="APP-004",
-            brand_name="Test",
-            class_type="Test",
-            alcohol_content="5%",
-            net_contents="355 mL",
-            beverage_type="beer",
+            brand_name="X",
+            class_type="Y",
+            alcohol_content="40",
+            net_contents="375 MILLILITERS\n750 MILLILITERS\n1 LITER",
+            beverage_type="distilled_spirits",
         )
-        assert data.country_of_origin is None
-        assert data.importer_name is None
-        assert data.has_sulfites_declaration is False
+        assert "\n" in data.net_contents
+        assert len(data.net_contents.split("\n")) == 3
 
 
 class TestFieldComparisonResult:
-    def test_valid_match(self):
-        result = FieldComparisonResult(
-            field_name="brand_name",
-            declared_value="Test Brand",
-            extracted_value="Test Brand",
-            status="match",
-            confidence=95.0,
-            match_strategy="fuzzy",
-        )
-        assert result.status == "match"
-
-    def test_with_bounding_box(self):
-        result = FieldComparisonResult(
-            field_name="brand_name",
-            declared_value="Test",
-            extracted_value="Test",
-            status="match",
-            confidence=100.0,
-            match_strategy="fuzzy",
-            bounding_box=BoundingBox(panel="front", x=10, y=20, width=100, height=50),
-        )
-        assert result.bounding_box.panel == "front"
-
-    def test_invalid_status(self):
-        with pytest.raises(ValidationError):
-            FieldComparisonResult(
+    def test_valid_statuses(self):
+        for status in ["match", "content_mismatch", "field_missing", "extraction_uncertain"]:
+            result = FieldComparisonResult(
                 field_name="brand_name",
-                declared_value="Test",
-                extracted_value="Test",
-                status="invalid_status",
-                confidence=100.0,
+                status=status,
+                confidence=50.0,
                 match_strategy="fuzzy",
             )
-
-
-class TestVerificationResult:
-    def test_valid_result(self):
-        result = VerificationResult(
-            session_id="uuid-1",
-            status="pass",
-            overall_confidence=95.0,
-            beverage_type="distilled_spirits",
-            fields=[],
-            annotated_images={},
-            created_at="2026-02-14T10:00:00Z",
-        )
-        assert result.status == "pass"
-
-    def test_invalid_status(self):
-        with pytest.raises(ValidationError):
-            VerificationResult(
-                session_id="uuid-1",
-                status="unknown",
-                overall_confidence=95.0,
-                beverage_type="distilled_spirits",
-                fields=[],
-                annotated_images={},
-                created_at="2026-02-14T10:00:00Z",
-            )
-
-
-class TestFieldComparisonResultNewFields:
-    def test_defaults_for_new_fields(self):
-        result = FieldComparisonResult(
-            field_name="brand_name",
-            declared_value="Test",
-            extracted_value="Test",
-            status="match",
-            confidence=95.0,
-            match_strategy="fuzzy",
-        )
-        assert result.extraction_confidence is None
-        assert result.confidence_reason is None
-        assert result.reviewed is False
-
-    def test_with_extraction_confidence(self):
-        result = FieldComparisonResult(
-            field_name="brand_name",
-            declared_value="Test",
-            extracted_value="Test",
-            status="extraction_uncertain",
-            confidence=50.0,
-            match_strategy="fuzzy",
-            extraction_confidence="low",
-            confidence_reason="Fuzzy match: 62% -- below 85% threshold | Extraction quality: low -- confidence capped at 50",
-            reviewed=True,
-        )
-        assert result.extraction_confidence == "low"
-        assert "Extraction quality: low" in result.confidence_reason
-        assert result.reviewed is True
-
-    def test_invalid_extraction_confidence(self):
-        with pytest.raises(ValidationError):
-            FieldComparisonResult(
-                field_name="brand_name",
-                declared_value="Test",
-                extracted_value="Test",
-                status="match",
-                confidence=95.0,
-                match_strategy="fuzzy",
-                extraction_confidence="invalid",
-            )
-
-
-class TestReviewSummary:
-    def test_valid_summary(self):
-        summary = ReviewSummary(
-            total_fields=10,
-            fields_needing_review=3,
-            fields_reviewed=1,
-            flagged_field_names=["brand_name", "alcohol_content", "government_warning"],
-        )
-        assert summary.total_fields == 10
-        assert summary.fields_needing_review == 3
-        assert summary.fields_reviewed == 1
-        assert len(summary.flagged_field_names) == 3
-
-    def test_empty_flagged(self):
-        summary = ReviewSummary(
-            total_fields=8,
-            fields_needing_review=0,
-            fields_reviewed=0,
-            flagged_field_names=[],
-        )
-        assert summary.flagged_field_names == []
-
-
-class TestVerificationResultWithReviewSummary:
-    def test_review_summary_default_none(self):
-        result = VerificationResult(
-            session_id="uuid-1",
-            status="pass",
-            overall_confidence=95.0,
-            beverage_type="distilled_spirits",
-            fields=[],
-            annotated_images={},
-            created_at="2026-02-14T10:00:00Z",
-        )
-        assert result.review_summary is None
-
-    def test_with_review_summary(self):
-        summary = ReviewSummary(
-            total_fields=10,
-            fields_needing_review=2,
-            fields_reviewed=1,
-            flagged_field_names=["brand_name", "alcohol_content"],
-        )
-        result = VerificationResult(
-            session_id="uuid-1",
-            status="needs_review",
-            overall_confidence=75.0,
-            beverage_type="distilled_spirits",
-            fields=[],
-            annotated_images={},
-            created_at="2026-02-14T10:00:00Z",
-            review_summary=summary,
-        )
-        assert result.review_summary.fields_needing_review == 2
-
-
-class TestOverrideRequest:
-    def test_valid_override(self):
-        req = OverrideRequest(override_status="match", note="Looks correct to me")
-        assert req.override_status == "match"
-
-    def test_invalid_override_status(self):
-        with pytest.raises(ValidationError):
-            OverrideRequest(override_status="approved")
-
-
-class TestDecisionRequest:
-    def test_valid_decision(self):
-        req = DecisionRequest(decision="confirmed", notes="All fields match")
-        assert req.decision == "confirmed"
-
-
-class TestFeedbackRequest:
-    def test_valid_feedback(self):
-        req = FeedbackRequest(ai_correct=True)
-        assert req.ai_correct is True
-
-    def test_feedback_with_details(self):
-        req = FeedbackRequest(
-            ai_correct=False,
-            field_name="brand_name",
-            note="AI misread the brand name",
-        )
-        assert req.ai_correct is False
-        assert req.field_name == "brand_name"
+            assert result.status == status

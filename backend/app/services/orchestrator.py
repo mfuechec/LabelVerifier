@@ -16,6 +16,7 @@ from app.models.schemas import (
     ReviewSummary,
 )
 from app.services.extraction import BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult
+from app.services.pdf_parser import COLAParseResult
 
 IMAGES_BASE_DIR = "data/images"
 from app.services.comparison import ComparisonService, ConfidenceScorer
@@ -45,6 +46,18 @@ class VerificationOrchestrator:
         return GroqExtractor(
             api_key=settings.groq_api_key,
             model=settings.llm_model,
+        )
+
+    async def verify_from_cola(
+        self,
+        parse_result: COLAParseResult,
+        batch_id: str | None = None,
+    ) -> VerificationResult:
+        """Verify from a parsed COLA PDF result."""
+        images = [li.image_bytes for li in parse_result.label_images]
+        panels = [li.panel_type for li in parse_result.label_images]
+        return await self.verify_single(
+            images, panels, parse_result.application_data, batch_id=batch_id,
         )
 
     async def verify_single(
@@ -275,15 +288,18 @@ class VerificationOrchestrator:
                        (id, session_id, brand_name, class_type, alcohol_content,
                         net_contents, producer_name, producer_address,
                         country_of_origin, importer_name, importer_address,
-                        has_sulfites_declaration, raw_json)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        has_sulfites_declaration, raw_json,
+                        fanciful_name, ttb_id, source_of_product)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (app_id, session_id, app_data.brand_name, app_data.class_type,
                      app_data.alcohol_content, app_data.net_contents,
                      app_data.producer_name, app_data.producer_address,
                      app_data.country_of_origin, app_data.importer_name,
                      app_data.importer_address,
                      1 if app_data.has_sulfites_declaration else 0,
-                     app_data.model_dump_json()),
+                     app_data.model_dump_json(),
+                     app_data.fanciful_name, app_data.ttb_id,
+                     app_data.source_of_product),
                 )
 
                 for field in fields:

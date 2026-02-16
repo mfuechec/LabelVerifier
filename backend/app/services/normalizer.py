@@ -27,10 +27,18 @@ def normalize_warning_text(text: str) -> str:
 
 
 def extract_abv(text: str | None) -> float | None:
-    """Extract ABV percentage from various formats."""
+    """Extract ABV percentage from various formats.
+
+    Handles: "40%", "40% ABV", "40 %", and plain numbers like "35"
+    (as found in COLA application forms).
+    """
     if not text:
         return None
     match = re.search(r"(\d+\.?\d*)\s*%", text)
+    if match:
+        return float(match.group(1))
+    # Fallback: plain number (COLA forms store just "35")
+    match = re.search(r"^(\d+\.?\d*)$", text.strip())
     if match:
         return float(match.group(1))
     return None
@@ -76,6 +84,11 @@ def normalize_net_contents(text: str | None) -> tuple[float | None, str | None]:
     match = re.search(r"(\d+\.?\d*)\s*(?:Liters?|Litres?|L)\b", text, re.IGNORECASE)
     if match:
         return (float(match.group(1)) * 1000.0, "mL")
+
+    # Try spelled-out units: "MILLILITERS", "MILLILITER"
+    match = re.search(r"(\d+\.?\d*)\s*MILLILITERS?\b", text, re.IGNORECASE)
+    if match:
+        return (float(match.group(1)), "mL")
 
     return (None, None)
 
