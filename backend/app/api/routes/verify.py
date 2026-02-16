@@ -117,7 +117,7 @@ def get_verification(session_id: str, request: Request):
                     "total_llm_calls": row["total_llm_calls"],
                     "total_input_tokens": row["total_input_tokens"],
                     "total_output_tokens": row["total_output_tokens"],
-                    "extraction_time_ms": 0,
+                    "extraction_time_ms": row["extraction_time_ms"] or 0,
                     "total_time_ms": row["processing_time_ms"],
                 }
         except (IndexError, KeyError):

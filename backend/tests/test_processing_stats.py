@@ -290,7 +290,8 @@ class TestOrchestratorStats:
 
         conn = get_db(tmp_db)
         row = conn.execute(
-            "SELECT total_input_tokens, total_output_tokens, total_llm_calls, processing_time_ms "
+            "SELECT total_input_tokens, total_output_tokens, total_llm_calls, "
+            "processing_time_ms, extraction_time_ms "
             "FROM verification_sessions WHERE id = ?",
             (result.session_id,),
         ).fetchone()
@@ -300,6 +301,7 @@ class TestOrchestratorStats:
         assert row["total_output_tokens"] == 80
         assert row["total_llm_calls"] == 1
         assert row["processing_time_ms"] > 0
+        assert row["extraction_time_ms"] == 500
 
 
 class TestDBMigrationStats:
@@ -348,4 +350,5 @@ class TestDBMigrationStats:
         assert "total_output_tokens" in cols
         assert "total_llm_calls" in cols
         assert "processing_time_ms" in cols
+        assert "extraction_time_ms" in cols
         conn.close()

@@ -125,7 +125,7 @@ def get_batch(batch_id: str, request: Request):
         sessions = conn.execute(
             """SELECT vs.id, vs.beverage_type, vs.status, vs.overall_confidence, vs.created_at,
                       vs.total_input_tokens, vs.total_output_tokens,
-                      vs.total_llm_calls, vs.processing_time_ms,
+                      vs.total_llm_calls, vs.processing_time_ms, vs.extraction_time_ms,
                       a.brand_name
                FROM verification_sessions vs
                LEFT JOIN applications a ON a.session_id = vs.id
@@ -143,6 +143,7 @@ def get_batch(batch_id: str, request: Request):
                         total_llm_calls=s["total_llm_calls"],
                         total_input_tokens=s["total_input_tokens"],
                         total_output_tokens=s["total_output_tokens"],
+                        extraction_time_ms=s["extraction_time_ms"] or 0,
                         total_time_ms=s["processing_time_ms"],
                     )
             except (IndexError, KeyError):

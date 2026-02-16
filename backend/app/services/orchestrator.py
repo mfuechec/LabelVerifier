@@ -310,13 +310,13 @@ class VerificationOrchestrator:
                        (id, application_id, beverage_type, status,
                         overall_confidence, batch_id,
                         total_input_tokens, total_output_tokens,
-                        total_llm_calls, processing_time_ms,
+                        total_llm_calls, processing_time_ms, extraction_time_ms,
                         created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (session_id, app_data.application_id,
                      app_data.beverage_type, status, confidence, batch_id,
                      ps.total_input_tokens, ps.total_output_tokens,
-                     ps.total_llm_calls, ps.total_time_ms,
+                     ps.total_llm_calls, ps.total_time_ms, ps.extraction_time_ms,
                      now, now),
                 )
 

@@ -143,6 +143,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("total_output_tokens", "INTEGER DEFAULT 0"),
         ("total_llm_calls", "INTEGER DEFAULT 0"),
         ("processing_time_ms", "INTEGER DEFAULT 0"),
+        ("extraction_time_ms", "INTEGER DEFAULT 0"),
     ]:
         if col_name not in session_cols:
             conn.execute(f"ALTER TABLE verification_sessions ADD COLUMN {col_name} {col_def}")
