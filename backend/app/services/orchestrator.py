@@ -229,6 +229,22 @@ class VerificationOrchestrator:
                             merged_fields[key] = val
                             logger.info("Importer re-extraction found %s", key)
 
+            # Country of origin re-extract (only if null and product appears imported)
+            country_val = merged_fields.get("country_of_origin")
+            is_imported = bool(
+                application_data.importer_name
+                or application_data.country_of_origin
+            )
+            if not country_val and is_imported:
+                country_idx = _pick_best_panel(extraction_results, "country_of_origin", panels)
+                country_img = processed_images[country_idx] if country_idx < len(processed_images) else processed_images[0]
+                reextracted_country, country_stats = await self.extraction_service.reextract_country_of_origin(country_img)
+                if country_stats:
+                    all_llm_stats.append(country_stats)
+                if reextracted_country:
+                    merged_fields["country_of_origin"] = reextracted_country
+                    logger.info("Country re-extraction found: %s", reextracted_country)
+
             # Specialty re-extract (only for admin codes, once)
             if is_admin:
                 spec_idx = _pick_best_panel(extraction_results, "brand_name", panels)

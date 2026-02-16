@@ -94,22 +94,51 @@ Rules: "GOVERNMENT WARNING:" must be ALL CAPS. Full statement must be word-for-w
 - Comparison table: clickable rows highlight corresponding bounding box
 
 ### Testing
-- Backend unit tests: pytest
-- Frontend tests: Vitest + React Testing Library
-- Integration tests: test the full extraction->comparison pipeline against test data images
-- Test data is in `test data/` -- organized into 6 folders (good/bad x spirits/wine+beer/warning/photo)
-- Create corresponding application data fixtures (JSON) for each test label
 
-## Test Data Categories
+#### 1. Unit/Integration Tests (pytest)
+```
+TESTING=1 backend/.venv/bin/python -m pytest backend/tests/ -x -q
+```
+- Mocked LLM calls, tests logic in isolation (extraction, comparison, orchestrator, compliance, etc.)
+- **Run after every code change.** All tests must pass before deploying.
 
-| Folder | Images | Tests |
-|--------|--------|-------|
-| `good spirits` | 18 | Compliant spirits labels (expect Pass) |
-| `good wine+beer` | 5 | Compliant wine/beer labels (expect Pass) |
-| `bad spirits label` | 18 | Content issues: missing fields, non-English text (expect Fail) |
-| `bad spirits photo` | 23 | Extraction challenges: stylized fonts, decorative designs (expect Extraction Uncertain) |
-| `bad spirits warning` | 20 | Missing/incorrect government warning (expect Fail on warning field) |
-| `bad wine+beer` | 5 | Wine/beer compliance issues (expect Fail) |
+#### 2. End-to-End Batch Verification (deployed API)
+The real test corpus is **`backend/data/applications/`** -- COLA PDFs containing both application data and label images. This is the primary integration test.
+
+```bash
+# Submit all COLA PDFs (skip OMB template files):
+APP_DIR="backend/data/applications"
+ARGS=""
+for f in "$APP_DIR"/*.pdf; do
+    [[ "$(basename "$f")" == OMB* ]] && continue
+    ARGS="$ARGS -F 'cola_pdfs[]=@$f'"
+done
+eval curl -s -X POST '"https://labelverify-backend-production.up.railway.app/api/v1/batch"' $ARGS | python3 -m json.tool
+
+# Poll for results:
+curl -s "https://labelverify-backend-production.up.railway.app/api/v1/batch/{BATCH_ID}" | python3 -m json.tool
+```
+
+- **Run after every deploy.** Exercises the full pipeline: PDF parsing, image extraction, LLM vision calls, field merging, re-extractions, comparison, compliance, scoring, DB persistence.
+- PDFs with no embedded label images are automatically skipped (the ~26KB text-only COLAs).
+- Review each session's field-level results via `GET /api/v1/verify/{session_id}`.
+- Focus on: brand_name accuracy, government_warning match, overall status progression.
+
+#### 3. Legacy Benchmark (extraction + comparison only)
+```
+cd backend && .venv/bin/python benchmark.py [--quick] [--fixture ID]
+```
+- Uses `backend/tests/fixtures/sample_applications.json` with raw images from `test data/`
+- Does NOT exercise orchestrator re-extraction logic (brand confirmation, warning re-extract, etc.)
+- Useful for measuring raw LLM extraction accuracy, not full pipeline correctness
+
+#### Test Corpus
+
+| Source | Files | Purpose |
+|--------|-------|---------|
+| `backend/data/applications/*.pdf` | ~23 COLA PDFs | **Primary.** End-to-end via batch API |
+| `backend/tests/` | pytest suite | Unit/integration with mocked LLM |
+| `test data/` (6 folders) | Raw label images | Legacy benchmark only |
 
 ## Failure Categories
 
@@ -137,7 +166,7 @@ Rules: "GOVERNMENT WARNING:" must be ALL CAPS. Full statement must be word-for-w
 - `railway variables --set "KEY=value"` -- set env vars (auto-triggers redeploy)
 - `railway logs` -- view deployment logs
 - `railway up` -- manual deploy. **CRITICAL: Run from the project root (`LabelVerifier/`), NOT from `backend/`.** Railway applies `RAILWAY_ROOT_DIRECTORY=backend` itself, so running from `backend/` causes it to look for `backend/backend/` which doesn't exist.
-- **LLM Provider:** Currently `anthropic` with `claude-haiku-4-5-20251001`. To switch back to Groq, set `LLM_PROVIDER=groq` and `LLM_MODEL=meta-llama/llama-4-maverick-17b-128e-instruct`
+- **LLM Provider:** Currently `anthropic` with `claude-sonnet-4-5-20250929`. To switch back to Groq, set `LLM_PROVIDER=groq` and `LLM_MODEL=meta-llama/llama-4-maverick-17b-128e-instruct`
 
 ### Vercel Deployment (Frontend)
 - **Frontend URL:** `https://label-verifier-eta.vercel.app`
