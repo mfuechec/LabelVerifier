@@ -520,21 +520,21 @@ class TestBrandConfirmation:
         assert brand_field.extracted_value == "BARENJAGER"
 
     @pytest.mark.asyncio
-    async def test_brand_confirm_tries_second_panel(self, orchestrator):
-        """When first panel re-extraction fails, try next panel."""
+    async def test_brand_confirm_tries_second_panel_reextraction(self, orchestrator):
+        """When no panel has correct brand and first re-extraction fails, try next panel."""
         app_data = self._make_barenjager_app_data()
 
-        # Front: confused, Back: has correct brand in initial extraction but merge picked front
+        # Front: confused, Back: also wrong (no correct brand in any panel)
         front_result = self._make_confused_result()
         back_result = ExtractionResult(
             panel_type="back",
             fields={
-                "brand_name": {"value": "Bärenjäger", "extraction_confidence": "high"},
+                "brand_name": {"value": "SOME OTHER TEXT", "extraction_confidence": "high"},
                 "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
             },
         )
 
-        # First re-extract (front) returns HONEY & BOURBON, second (back) returns BARENJAGER
+        # First re-extract (front) returns wrong, second (back) returns correct
         reextract_responses = [
             ({"brand_name": "HONEY & BOURBON", "conf": "high", "location_description": "top"}, LLMCallStats(100, 30, 200, "reextract_brand")),
             ({"brand_name": "BARENJAGER", "conf": "high", "location_description": "back panel"}, LLMCallStats(100, 30, 200, "reextract_brand")),
@@ -604,6 +604,52 @@ class TestBrandConfirmation:
                 [b"fake_image"], ["front"], app_data
             )
 
+        brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
+        assert brand_field is not None
+        assert brand_field.extracted_value == "Bärenjäger"
+
+    @pytest.mark.asyncio
+    async def test_brand_confirm_short_circuits_from_other_panel(self, orchestrator):
+        """If another panel already extracted the correct brand, use it without re-extraction."""
+        app_data = self._make_barenjager_app_data()
+
+        # Front: confused (HONEY & BOURBON), Back: correct (Bärenjäger)
+        front_result = self._make_confused_result()
+        back_result = ExtractionResult(
+            panel_type="back",
+            fields={
+                "brand_name": {"value": "Bärenjäger", "extraction_confidence": "high"},
+                "government_warning": {"value": "GOVERNMENT WARNING: ...", "extraction_confidence": "high"},
+                "importer_name": {"value": "SIDNEY FRANK", "extraction_confidence": "high"},
+            },
+        )
+
+        with patch.object(
+            orchestrator.extraction_service,
+            "extract_fields",
+            new_callable=AsyncMock,
+            side_effect=[front_result, back_result],
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_warning",
+            new_callable=AsyncMock,
+            return_value=("GOVERNMENT WARNING: ...", LLMCallStats(100, 30, 200, "reextract_warning")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_specialty_class",
+            new_callable=AsyncMock,
+            return_value=(None, LLMCallStats(100, 30, 200, "reextract_specialty_class")),
+        ), patch.object(
+            orchestrator.extraction_service,
+            "reextract_brand",
+            new_callable=AsyncMock,
+        ) as mock_brand:
+            result = await orchestrator.verify_single(
+                [b"front_img", b"back_img"], ["front", "back"], app_data
+            )
+
+        # Should NOT call reextract_brand -- found it in existing panels
+        mock_brand.assert_not_called()
         brand_field = next((f for f in result.fields if f.field_name == "brand_name"), None)
         assert brand_field is not None
         assert brand_field.extracted_value == "Bärenjäger"
