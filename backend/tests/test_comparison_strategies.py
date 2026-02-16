@@ -8,6 +8,7 @@ from app.services.comparison import (
     numeric_match_abv,
     numeric_match_net_contents,
     presence_check,
+    specialty_class_match,
     CANONICAL_WARNING,
 )
 
@@ -186,3 +187,106 @@ class TestPresenceCheck:
     def test_not_required(self):
         status, _, _ = presence_check(None, False)
         assert status == "match"
+
+
+class TestSpecialtyClassMatch:
+    """Tests for specialty/proprietary class verification via fanciful name + composition."""
+
+    def test_both_present_no_base_spirit(self):
+        """Both fanciful name and composition present, no base spirit check."""
+        status, score, reason = specialty_class_match(
+            "Ecstasy", "Liqueur with natural flavors", None
+        )
+        assert status == "match"
+        assert score == 100.0
+
+    def test_only_fanciful_name(self):
+        """Only fanciful name present -- lower confidence match."""
+        status, score, reason = specialty_class_match(
+            "Ecstasy", None, None
+        )
+        assert status == "match"
+        assert score == 85.0
+
+    def test_only_composition(self):
+        """Only composition statement present -- lower confidence match."""
+        status, score, reason = specialty_class_match(
+            None, "Whisky with honey", None
+        )
+        assert status == "match"
+        assert score == 85.0
+
+    def test_neither_present(self):
+        """Neither fanciful name nor composition -- field_missing."""
+        status, score, reason = specialty_class_match(
+            None, None, None
+        )
+        assert status == "field_missing"
+        assert score == 0.0
+
+    def test_base_spirit_found_in_composition(self):
+        """Expected base spirit appears in composition statement."""
+        status, score, reason = specialty_class_match(
+            "Honey Bee", "Whisky with honey", "whisky"
+        )
+        assert status == "match"
+        assert score == 100.0
+
+    def test_base_spirit_missing_from_composition(self):
+        """Expected base spirit NOT found in composition -- extraction_uncertain."""
+        status, score, reason = specialty_class_match(
+            "Honey Bee", "Rum with spices", "whisky"
+        )
+        assert status == "extraction_uncertain"
+
+    def test_base_spirit_no_composition_to_check(self):
+        """Base spirit expected but no composition statement to verify."""
+        status, score, reason = specialty_class_match(
+            "Honey Bee", None, "whisky"
+        )
+        assert status == "match"
+        assert score == 85.0
+
+    def test_empty_strings_treated_as_none(self):
+        """Empty strings should be treated as missing."""
+        status, score, reason = specialty_class_match(
+            "", "", None
+        )
+        assert status == "field_missing"
+
+    # Fix #3/#4: Verify extracted fanciful name against COLA declared fanciful name
+    def test_declared_fanciful_matches_extracted(self):
+        """When COLA declares a fanciful name and label matches, full confidence."""
+        status, score, reason = specialty_class_match(
+            "Midnight Moonshine", "Corn whiskey with flavors", None,
+            declared_fanciful_name="MIDNIGHT MOONSHINE",
+        )
+        assert status == "match"
+        assert score == 100.0
+
+    def test_declared_fanciful_mismatches_extracted(self):
+        """When COLA declares a fanciful name and label has a different one, content_mismatch."""
+        status, score, reason = specialty_class_match(
+            "Totally Different Product", "Corn whiskey with flavors", None,
+            declared_fanciful_name="MIDNIGHT MOONSHINE",
+        )
+        assert status == "content_mismatch"
+
+    def test_declared_fanciful_not_found_on_label(self):
+        """COLA declares fanciful name but label extraction found nothing."""
+        status, score, reason = specialty_class_match(
+            None, "Corn whiskey with flavors", None,
+            declared_fanciful_name="MIDNIGHT MOONSHINE",
+        )
+        # Still a match (composition found) but at lower confidence
+        assert status == "match"
+        assert score == 85.0
+
+    def test_no_declared_fanciful_skips_check(self):
+        """When COLA has no fanciful name, don't penalize."""
+        status, score, reason = specialty_class_match(
+            "Ecstasy", "Liqueur with natural flavors", None,
+            declared_fanciful_name=None,
+        )
+        assert status == "match"
+        assert score == 100.0

@@ -16,6 +16,7 @@ from app.models.schemas import (
     ReviewSummary,
 )
 from app.services.extraction import BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult
+from app.services.ttb_classes import is_administrative_class_type
 from app.services.pdf_parser import COLAParseResult
 
 IMAGES_BASE_DIR = "data/images"
@@ -146,6 +147,18 @@ class VerificationOrchestrator:
             extraction_confidences = {
                 fn: fv.extraction_confidence for fn, fv in merged.fields.items()
             }
+
+        # 3b. Specialty class re-extraction for administrative COLA codes
+        # Always re-extract for admin codes -- the LLM often returns something
+        # for class_type (e.g. "Liqueur") that won't match the COLA code verbatim.
+        is_admin, _ = is_administrative_class_type(application_data.class_type)
+        if is_admin and isinstance(self.extraction_service, AnthropicExtractor):
+            # Try each panel -- composition statement may be on back label
+            for img in processed_images:
+                specialty_data = await self.extraction_service.reextract_specialty_class(img)
+                if specialty_data:
+                    merged_fields["_specialty_class_data"] = specialty_data
+                    break
 
         # 4. Compare against application data
         comparison_results = self.comparison_service.compare_fields(

@@ -8,7 +8,7 @@ from app.services.normalizer import (
     extract_proof,
     normalize_net_contents,
 )
-from app.services.ttb_classes import normalize_class_type
+from app.services.ttb_classes import normalize_class_type, is_administrative_class_type
 from app.models.schemas import ApplicationData, FieldComparisonResult
 
 
@@ -141,6 +141,60 @@ def class_type_match(
 
     reason = f"{fuzzy_reason} (fuzzy fallback: {ttb_note})"
     return (status, score, reason)
+
+
+def specialty_class_match(
+    fanciful_name: str | None,
+    composition_statement: str | None,
+    expected_base_spirit: str | None,
+    declared_fanciful_name: str | None = None,
+) -> tuple[str, float, str]:
+    """Verify a specialty/proprietary product has a fanciful name and/or composition statement.
+
+    Per 27 CFR 5.156, products with administrative COLA codes must display
+    a distinctive/fanciful name and a statement of composition on the label.
+
+    Args:
+        fanciful_name: The product's distinctive/fanciful name from the label.
+        composition_statement: The statement of composition (e.g. "Whisky with honey").
+        expected_base_spirit: If set, the composition should reference this spirit.
+        declared_fanciful_name: The fanciful name from the COLA application (for verification).
+
+    Returns:
+        (status, confidence, reason) tuple.
+    """
+    has_fanciful = bool(fanciful_name and fanciful_name.strip())
+    has_composition = bool(composition_statement and composition_statement.strip())
+
+    if not has_fanciful and not has_composition:
+        return ("field_missing", 0.0, "No fanciful name or composition statement found on label")
+
+    # Verify extracted fanciful name against COLA's declared fanciful name
+    if declared_fanciful_name and has_fanciful:
+        fn_status, fn_score, _ = fuzzy_match(fanciful_name, declared_fanciful_name)
+        if fn_status == "content_mismatch":
+            return (
+                "content_mismatch",
+                fn_score,
+                f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
+            )
+
+    if has_fanciful and has_composition:
+        # Check base spirit if expected
+        if expected_base_spirit:
+            comp_lower = composition_statement.strip().lower()
+            if expected_base_spirit.lower() not in comp_lower:
+                return (
+                    "extraction_uncertain",
+                    70.0,
+                    f"Composition '{composition_statement}' does not reference expected base spirit '{expected_base_spirit}'",
+                )
+        return ("match", 100.0, "Fanciful name and composition statement found")
+
+    # Only one present
+    present = "fanciful name" if has_fanciful else "composition statement"
+    missing = "composition statement" if has_fanciful else "fanciful name"
+    return ("match", 85.0, f"Only {present} found; {missing} not detected")
 
 
 def numeric_match_abv(
@@ -349,20 +403,44 @@ class ComparisonService:
             elif strategy == "class_type":
                 dec_value = declared_map.get(field_name)
                 if dec_value:
-                    status, score, reason = class_type_match(
-                        ext_value, dec_value, beverage_type
-                    )
-                    results.append(
-                        FieldComparisonResult(
-                            field_name=field_name,
-                            declared_value=dec_value,
-                            extracted_value=ext_value,
-                            status=status,
-                            confidence=score,
-                            match_strategy="class_type",
-                            confidence_reason=reason,
+                    is_admin, base_spirit = is_administrative_class_type(dec_value)
+                    specialty_data = extracted.get("_specialty_class_data")
+                    if is_admin and specialty_data:
+                        fn = specialty_data.get("fanciful_name")
+                        cs = specialty_data.get("composition_statement")
+                        status, score, reason = specialty_class_match(
+                            fn, cs, base_spirit,
+                            declared_fanciful_name=declared.fanciful_name,
                         )
-                    )
+                        # Build display value for extracted
+                        parts = [p for p in [fn, cs] if p]
+                        ext_display = " — ".join(parts) if parts else None
+                        results.append(
+                            FieldComparisonResult(
+                                field_name=field_name,
+                                declared_value=dec_value,
+                                extracted_value=ext_display,
+                                status=status,
+                                confidence=score,
+                                match_strategy="specialty_class",
+                                confidence_reason=reason,
+                            )
+                        )
+                    else:
+                        status, score, reason = class_type_match(
+                            ext_value, dec_value, beverage_type
+                        )
+                        results.append(
+                            FieldComparisonResult(
+                                field_name=field_name,
+                                declared_value=dec_value,
+                                extracted_value=ext_value,
+                                status=status,
+                                confidence=score,
+                                match_strategy="class_type",
+                                confidence_reason=reason,
+                            )
+                        )
 
             elif strategy == "fuzzy":
                 dec_value = declared_map.get(field_name)

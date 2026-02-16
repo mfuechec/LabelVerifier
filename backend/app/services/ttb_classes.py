@@ -137,6 +137,79 @@ _FLAVORED_PATTERN = re.compile(
 )
 
 
+# ---------------------------------------------------------------------------
+# Administrative COLA codes (27 CFR 5.156)
+# These are internal TTB category codes that won't appear on physical labels.
+# Products with these codes must display a fanciful name + statement of
+# composition instead.  Value is the expected base spirit (or None).
+# ---------------------------------------------------------------------------
+ADMINISTRATIVE_CLASS_TYPES: dict[str, str | None] = {
+    "specialties & proprietaries": None,
+    "whisky specialties": "whisky",
+    "gin specialties": "gin",
+    "vodka specialties": "vodka",
+    "rum specialties": "rum",
+    "other specialties & proprietaries": None,
+    "whisky proprietary": "whisky",
+    "malt beverages specialities - flavored": None,
+    "malt beverages specialities": None,
+}
+
+# Known spirit names for pattern-based fallback detection
+_KNOWN_SPIRITS = {
+    "whisky", "whiskey", "gin", "vodka", "rum", "brandy",
+    "tequila", "mezcal", "cognac", "armagnac",
+}
+
+# Patterns that indicate an administrative COLA code
+_ADMIN_PATTERNS: list[re.Pattern] = [
+    # "<spirit> SPECIALTIES" or "<spirit> SPECIALITIES"
+    re.compile(r"^(\w+)\s+specialt?ies$", re.IGNORECASE),
+    # "<spirit> PROPRIETARY"
+    re.compile(r"^(\w+)\s+proprietary$", re.IGNORECASE),
+    # "OTHER ... SPECIALTIES & PROPRIETARIES" variants
+    re.compile(r"^other\s+.*specialt?ies\b", re.IGNORECASE),
+    # "MALT BEVERAGES SPECIALITIES" variants
+    re.compile(r"^malt\s+beverages?\s+specialt?ies\b", re.IGNORECASE),
+]
+
+
+def is_administrative_class_type(raw: str | None) -> tuple[bool, str | None]:
+    """Check if a class/type string is an administrative COLA code.
+
+    Args:
+        raw: The raw class/type string from COLA application data.
+
+    Returns:
+        (is_admin, expected_base_spirit) where:
+        - is_admin is True if this is an administrative code
+        - expected_base_spirit is the base spirit (e.g. "whisky") or None
+    """
+    if not raw or not raw.strip():
+        return (False, None)
+
+    normalized = re.sub(r"\s+", " ", raw.strip()).lower()
+
+    # 1. Exact match against known codes
+    if normalized in ADMINISTRATIVE_CLASS_TYPES:
+        return (True, ADMINISTRATIVE_CLASS_TYPES[normalized])
+
+    # 2. Pattern-based fallback for unlisted codes
+    for pattern in _ADMIN_PATTERNS:
+        m = pattern.match(normalized)
+        if m:
+            # Extract the spirit name from group 1 if it exists
+            if m.lastindex and m.lastindex >= 1:
+                spirit = m.group(1).lower()
+                if spirit in _KNOWN_SPIRITS:
+                    return (True, spirit)
+            else:
+                # Pattern matched but no spirit capture group (e.g. "other..." or "malt...")
+                return (True, None)
+
+    return (False, None)
+
+
 def _build_variant_lookup(
     class_map: dict[str, list[str]],
 ) -> list[tuple[str, str]]:

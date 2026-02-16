@@ -150,3 +150,182 @@ class TestCompareFieldsImportedApplication:
         )
         imp = next(r for r in results if r.field_name == "importer_name")
         assert imp.status == "match"
+
+
+class TestCompareFieldsSpecialtyClass:
+    """Administrative COLA codes should use specialty class matching."""
+
+    def test_specialty_with_data_matches(self, service, sample_application_data):
+        """When _specialty_class_data is present with both fields, class_type should match."""
+        extracted = {
+            "brand_name": "HOWLING MOON",
+            "class_type": None,  # won't match verbatim -- but specialty data present
+            "alcohol_content": "50% ABV",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Midnight Moonshine",
+                "composition_statement": "Corn whiskey with natural flavors",
+            },
+        }
+        results = service.compare_fields(
+            extracted, sample_application_data, "distilled_spirits"
+        )
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "match"
+        assert ct.confidence == 100.0
+        assert ct.match_strategy == "specialty_class"
+
+    def test_specialty_without_data_falls_back(self, service, sample_application_data):
+        """Without _specialty_class_data, admin codes still go through normal class_type_match."""
+        extracted = {
+            "brand_name": "HOWLING MOON",
+            "class_type": None,
+            "alcohol_content": "50% ABV",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+        }
+        results = service.compare_fields(
+            extracted, sample_application_data, "distilled_spirits"
+        )
+        ct = next(r for r in results if r.field_name == "class_type")
+        # Without specialty data and null extracted, this should be field_missing
+        assert ct.status == "field_missing"
+
+    def test_specialty_partial_data(self, service, sample_application_data):
+        """Only fanciful name present -- should match at lower confidence."""
+        extracted = {
+            "brand_name": "HOWLING MOON",
+            "class_type": None,
+            "alcohol_content": "50% ABV",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Midnight Moonshine",
+                "composition_statement": None,
+            },
+        }
+        results = service.compare_fields(
+            extracted, sample_application_data, "distilled_spirits"
+        )
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "match"
+        assert ct.confidence == 85.0
+
+    def test_specialty_display_values(self, service, sample_application_data):
+        """Declared should show COLA text, extracted should show fanciful + composition."""
+        extracted = {
+            "brand_name": "HOWLING MOON",
+            "class_type": None,
+            "alcohol_content": "50% ABV",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Midnight Moonshine",
+                "composition_statement": "Corn whiskey with natural flavors",
+            },
+        }
+        results = service.compare_fields(
+            extracted, sample_application_data, "distilled_spirits"
+        )
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.declared_value == "OTHER SPECIALTIES & PROPRIETARIES"
+        assert "Midnight Moonshine" in ct.extracted_value
+
+    def test_non_admin_class_type_ignores_specialty_data(self, service):
+        """Regular class types should NOT use specialty matching even if _specialty_class_data exists."""
+        app_data = ApplicationData(
+            brand_name="TEST",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "TEST",
+            "class_type": "Vodka",
+            "alcohol_content": "40%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Something",
+                "composition_statement": "Something else",
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        # Should use normal class_type matching, not specialty
+        assert ct.match_strategy == "class_type"
+
+    # Fix #1: Re-extraction should fire even when LLM extracted something for class_type
+    def test_specialty_with_data_overrides_extracted_class(self, service, sample_application_data):
+        """When _specialty_class_data is present, it takes priority even if class_type was extracted."""
+        extracted = {
+            "brand_name": "HOWLING MOON",
+            "class_type": "Liqueur",  # LLM found something -- should still use specialty path
+            "alcohol_content": "50% ABV",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Midnight Moonshine",
+                "composition_statement": "Corn whiskey with natural flavors",
+            },
+        }
+        results = service.compare_fields(
+            extracted, sample_application_data, "distilled_spirits"
+        )
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.match_strategy == "specialty_class"
+        assert ct.status == "match"
+
+    # Fix #3: COLA fanciful_name passed into specialty comparison
+    def test_specialty_verifies_declared_fanciful_name(self, service):
+        """Specialty match should verify extracted fanciful name against COLA's fanciful_name."""
+        app_data = ApplicationData(
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="35",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "BARENJAGER",
+            "class_type": "Honey Liqueur",
+            "alcohol_content": "35%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Honey & Bourbon",
+                "composition_statement": "Honey flavored liqueur with bourbon",
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "match"
+        assert ct.confidence == 100.0
+
+    def test_specialty_fanciful_name_mismatch_flags(self, service):
+        """When extracted fanciful name doesn't match COLA's, flag as content_mismatch."""
+        app_data = ApplicationData(
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="35",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "BARENJAGER",
+            "class_type": None,
+            "alcohol_content": "35%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Totally Wrong Name",
+                "composition_statement": "Honey flavored liqueur",
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "content_mismatch"

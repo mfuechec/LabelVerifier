@@ -87,6 +87,26 @@ Rules:
 - Extract EXACTLY as printed -- do NOT correct errors"""
 
 
+# Focused prompt for specialty class/type re-extraction (fanciful name + composition)
+SPECIALTY_CLASS_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find the product's distinctive/fanciful name and its statement of composition on this label.
+
+For specialty and proprietary spirits, the label will NOT say a standard class like "Vodka" or "Whiskey". Instead it shows:
+1. A FANCIFUL/DISTINCTIVE NAME -- the creative product name (e.g. "Fireball", "Jagermeister", "Barenjager")
+2. A STATEMENT OF COMPOSITION -- describes what the product is (e.g. "Cinnamon Whisky", "Liqueur", "Honey & Bourbon Liqueur", "Whisky with natural honey flavor")
+
+The fanciful name is usually the most prominent text. The composition statement is often in smaller text nearby, describing the product type or ingredients.
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"fanciful_name": {"value": null, "conf": "high"}, "composition_statement": {"value": null, "conf": "high"}}
+
+Rules:
+- fanciful_name: The creative/brand product name (NOT the company name, NOT regulatory text)
+- composition_statement: The description of what the product is or contains
+- Replace null with the extracted string, or keep null if not found
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- Extract EXACTLY as printed -- do NOT correct errors"""
+
+
 @dataclass
 class ExtractionResult:
     fields: dict = field(default_factory=dict)
@@ -497,4 +517,62 @@ class AnthropicExtractor(BaseExtractor):
 
         except Exception as e:
             logger.exception("Importer re-extraction failed: %s", e)
+            return None
+
+    async def reextract_specialty_class(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> dict | None:
+        """Re-extract fanciful name and composition statement for specialty products.
+
+        Returns:
+            Dict with fanciful_name and composition_statement values, or None on failure.
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": SPECIALTY_CLASS_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            response_text = response.content[0].text
+            logger.info("Specialty class re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None
+
+            result = {}
+            for key in ("fanciful_name", "composition_statement"):
+                field = parsed.get(key)
+                if isinstance(field, dict) and "value" in field:
+                    result[key] = field["value"]
+                elif isinstance(field, str):
+                    result[key] = field
+
+            return result if any(result.values()) else None
+
+        except Exception as e:
+            logger.exception("Specialty class re-extraction failed: %s", e)
             return None
