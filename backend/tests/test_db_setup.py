@@ -19,6 +19,7 @@ class TestCreateTables:
         assert "applications" in tables
         assert "comparison_results" in tables
         assert "batches" in tables
+        assert "batch_skipped_items" in tables
         assert "agent_feedback" in tables
 
     def test_idempotent(self, db_conn):

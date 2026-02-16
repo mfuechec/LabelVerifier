@@ -119,7 +119,7 @@ export function useBatchUpload() {
       const formData = new FormData();
       colaPdfs.forEach((pdf) => formData.append('cola_pdfs[]', pdf));
 
-      const res = await client.post<{ data: { batch_id: string; total_items: number } }>(
+      const res = await client.post<{ data: { batch_id: string; total_items: number; skipped_count: number } }>(
         '/batch',
         formData
       );

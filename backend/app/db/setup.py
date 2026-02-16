@@ -109,7 +109,15 @@ def create_tables(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_images_session ON label_images(session_id);
         CREATE INDEX IF NOT EXISTS idx_extracted_session ON extracted_fields(session_id);
         CREATE INDEX IF NOT EXISTS idx_comparison_session ON comparison_results(session_id);
+        CREATE TABLE IF NOT EXISTS batch_skipped_items (
+            id TEXT PRIMARY KEY,
+            batch_id TEXT NOT NULL REFERENCES batches(id),
+            filename TEXT NOT NULL,
+            reason TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_feedback_session ON agent_feedback(session_id);
+        CREATE INDEX IF NOT EXISTS idx_skipped_batch ON batch_skipped_items(batch_id);
     """)
     conn.commit()
 

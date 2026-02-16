@@ -8,7 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, Up
 logger = logging.getLogger(__name__)
 
 from app.api.dependencies import get_db, get_db_path
-from app.models.schemas import BatchResponse, BatchSessionItem, BatchStatus
+from app.models.schemas import BatchResponse, BatchSessionItem, BatchSkippedItem, BatchStatus
 from app.services.orchestrator import VerificationOrchestrator
 from app.services.pdf_parser import COLAPDFParser, COLAParseResult
 
@@ -30,28 +30,40 @@ async def create_batch(
     if not cola_pdfs:
         raise HTTPException(status_code=422, detail="At least one COLA PDF is required")
 
-    # Parse each PDF upfront to fail fast on bad inputs
+    # Parse each PDF, collecting valid results and skipped items
     parse_results: list[COLAParseResult] = []
+    skipped: list[tuple[str, str]] = []  # (filename, reason)
+
     for pdf_file in cola_pdfs:
+        filename = pdf_file.filename or "unknown"
         pdf_bytes = await pdf_file.read()
+
         if not pdf_bytes:
-            raise HTTPException(status_code=422, detail="COLA PDF is empty")
+            skipped.append((filename, "Empty file"))
+            continue
+
         if pdf_file.content_type and pdf_file.content_type != "application/pdf":
-            raise HTTPException(
-                status_code=422,
-                detail=f"File must be a PDF, got: {pdf_file.content_type}",
-            )
+            skipped.append((filename, f"Not a PDF (got {pdf_file.content_type})"))
+            continue
+
         try:
             result = _pdf_parser.parse(pdf_bytes)
         except ValueError as e:
-            raise HTTPException(status_code=422, detail=str(e))
+            skipped.append((filename, str(e)))
+            continue
+
         if not result.label_images:
             brand = result.application_data.brand_name or "unknown"
-            raise HTTPException(
-                status_code=422,
-                detail=f"No label images found in PDF for '{brand}'",
-            )
+            skipped.append((filename, f"No label images found in PDF for '{brand}'"))
+            continue
+
         parse_results.append(result)
+
+    if not parse_results:
+        raise HTTPException(
+            status_code=422,
+            detail=f"No valid COLA PDFs to process ({len(skipped)} skipped)",
+        )
 
     # Create batch record
     batch_id = str(uuid.uuid4())
@@ -66,6 +78,12 @@ async def create_batch(
                VALUES (?, ?, ?, ?, ?)""",
             (batch_id, "processing", total_items, now, now),
         )
+        for filename, reason in skipped:
+            conn.execute(
+                """INSERT INTO batch_skipped_items (id, batch_id, filename, reason)
+                   VALUES (?, ?, ?, ?)""",
+                (str(uuid.uuid4()), batch_id, filename, reason),
+            )
         conn.commit()
     finally:
         conn.close()
@@ -77,7 +95,13 @@ async def create_batch(
         parse_results=parse_results,
     )
 
-    return {"data": {"batch_id": batch_id, "total_items": total_items}}
+    return {
+        "data": {
+            "batch_id": batch_id,
+            "total_items": total_items,
+            "skipped_count": len(skipped),
+        }
+    }
 
 
 @router.get("/batch/{batch_id}")
@@ -120,7 +144,16 @@ def get_batch(batch_id: str, request: Request):
             for s in sessions
         ]
 
-        return {"data": BatchResponse(batch=batch, items=items).model_dump()}
+        skipped_rows = conn.execute(
+            "SELECT filename, reason FROM batch_skipped_items WHERE batch_id = ?",
+            (batch_id,),
+        ).fetchall()
+        skipped_items = [
+            BatchSkippedItem(filename=r["filename"], reason=r["reason"])
+            for r in skipped_rows
+        ]
+
+        return {"data": BatchResponse(batch=batch, items=items, skipped_items=skipped_items).model_dump()}
     finally:
         conn.close()
 

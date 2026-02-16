@@ -14,6 +14,7 @@ export default function BatchPage() {
   const [colaPdfs, setColaPdfs] = useState<File[]>([]);
   const [batchId, setBatchId] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [skippedCount, setSkippedCount] = useState<number>(0);
 
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,6 +39,7 @@ export default function BatchPage() {
       setSubmitError(null);
       const result = await batchMutation.mutateAsync({ colaPdfs });
       setBatchId(result.batch_id);
+      setSkippedCount(result.skipped_count ?? 0);
     } catch (err) {
       setSubmitError(getErrorMessage(err));
     }
@@ -178,6 +180,34 @@ export default function BatchPage() {
             </h2>
           </div>
 
+          {/* Skipped items warning */}
+          {(skippedCount > 0 || (batchData?.skipped_items?.length ?? 0) > 0) && (
+            <div
+              style={{
+                background: '#fffbeb',
+                border: '1px solid #f59e0b',
+                borderRadius: 8,
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                fontSize: '0.875rem',
+                color: '#92400e',
+              }}
+            >
+              <strong>
+                {batchData?.skipped_items?.length ?? skippedCount} PDF{(batchData?.skipped_items?.length ?? skippedCount) !== 1 ? 's' : ''} skipped
+              </strong>
+              {batchData?.skipped_items && batchData.skipped_items.length > 0 && (
+                <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+                  {batchData.skipped_items.map((item, i) => (
+                    <li key={i}>
+                      <strong>{item.filename}</strong>: {item.reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {/* Progress bar */}
           <div style={{ marginBottom: '1.5rem' }}>
             <div
@@ -267,6 +297,7 @@ export default function BatchPage() {
                 onClick={() => {
                   setBatchId(undefined);
                   setColaPdfs([]);
+                  setSkippedCount(0);
                 }}
               >
                 New Batch

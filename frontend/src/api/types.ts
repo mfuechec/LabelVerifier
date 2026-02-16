@@ -80,9 +80,15 @@ export interface BatchSessionItem {
   created_at: string;
 }
 
+export interface BatchSkippedItem {
+  filename: string;
+  reason: string;
+}
+
 export interface BatchResponse {
   batch: BatchStatus;
   items: BatchSessionItem[];
+  skipped_items: BatchSkippedItem[];
 }
 
 export interface OverrideRequest {

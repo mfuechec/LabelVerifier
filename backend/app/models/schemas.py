@@ -100,9 +100,15 @@ class BatchSessionItem(BaseModel):
     created_at: str
 
 
+class BatchSkippedItem(BaseModel):
+    filename: str
+    reason: str
+
+
 class BatchResponse(BaseModel):
     batch: BatchStatus
     items: list[BatchSessionItem]
+    skipped_items: list[BatchSkippedItem] = []
 
 
 class HistoryItem(BaseModel):
