@@ -1,7 +1,5 @@
 import pytest
-import pytest_asyncio
 from unittest.mock import patch
-from httpx import AsyncClient, ASGITransport
 from app.main import create_app
 from app.db.setup import get_db, create_tables
 
@@ -30,13 +28,6 @@ def app(tmp_db):
     conn.commit()
     conn.close()
     return application
-
-
-@pytest_asyncio.fixture
-async def client(app):
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
 
 
 class TestFieldOverride:

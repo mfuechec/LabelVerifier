@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 import groq
-from app.services.extraction import ExtractionService, _repair_json, BaseExtractor, GroqExtractor, AnthropicExtractor
+from app.services.extraction import _repair_json, BaseExtractor, GroqExtractor, AnthropicExtractor
 
 
 def _make_groq_response(content: str):
@@ -48,7 +48,7 @@ def combined_response():
     }))
 
 
-class TestExtractionService:
+class TestGroqExtractor:
     @pytest.mark.asyncio
     async def test_extract_fields_makes_one_call(self, combined_response):
         with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
@@ -58,7 +58,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
             assert mock_client.chat.completions.create.call_count == 1
@@ -72,7 +72,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
             assert result.fields["brand_name"]["value"] == "Test Brand"
@@ -92,7 +92,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
             assert len(result.fields) == 0
@@ -106,7 +106,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             await service.extract_fields(b"fake-image-bytes", "front")
 
             call_kwargs = mock_client.chat.completions.create.call_args
@@ -125,7 +125,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key", model="custom/model-name")
+            service = GroqExtractor(api_key="test-key", model="custom/model-name")
             await service.extract_fields(b"fake-image-bytes", "front")
 
             call_kwargs = mock_client.chat.completions.create.call_args
@@ -140,7 +140,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             await service.extract_fields(b"fake-image-bytes", "front")
 
             call_kwargs = mock_client.chat.completions.create.call_args
@@ -155,7 +155,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             await service.extract_fields(b"fake-image-bytes", "front")
 
             call_kwargs = mock_client.chat.completions.create.call_args
@@ -176,7 +176,7 @@ class TestExtractionService:
             )
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
             assert result.error is not None
@@ -196,7 +196,7 @@ class TestRetryLogic:
             mock_groq_cls.return_value = mock_client
 
             with patch("app.services.extraction.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-                service = ExtractionService(api_key="test-key")
+                service = GroqExtractor(api_key="test-key")
                 result = await service.extract_fields(b"fake-image-bytes", "front")
 
                 assert result.error is None
@@ -217,7 +217,7 @@ class TestRetryLogic:
             mock_groq_cls.return_value = mock_client
 
             with patch("app.services.extraction.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-                service = ExtractionService(api_key="test-key")
+                service = GroqExtractor(api_key="test-key")
                 result = await service.extract_fields(b"fake-image-bytes", "front")
 
                 assert result.error is None
@@ -234,7 +234,7 @@ class TestRetryLogic:
             mock_groq_cls.return_value = mock_client
 
             with patch("app.services.extraction.asyncio.sleep", new_callable=AsyncMock):
-                service = ExtractionService(api_key="test-key")
+                service = GroqExtractor(api_key="test-key")
                 result = await service.extract_fields(b"fake-image-bytes", "front")
 
                 # Should return error result after exhausting retries
@@ -259,7 +259,7 @@ class TestRetryLogic:
             mock_groq_cls.return_value = mock_client
 
             with patch("app.services.extraction.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
-                service = ExtractionService(api_key="test-key")
+                service = GroqExtractor(api_key="test-key")
                 result = await service.extract_fields(b"fake-image-bytes", "front")
 
                 assert result.error is None
@@ -350,7 +350,7 @@ class TestConfidenceParsing:
             mock_client.chat.completions.create = AsyncMock(return_value=response)
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
             assert result.fields["brand_name"]["value"] == "Test Brand"
@@ -370,7 +370,7 @@ class TestConfidenceParsing:
             mock_client.chat.completions.create = AsyncMock(return_value=response)
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
             assert result.fields["brand_name"]["value"] == "Test Brand"
@@ -387,7 +387,7 @@ class TestConfidenceParsing:
             mock_client.chat.completions.create = AsyncMock(return_value=response)
             mock_groq_cls.return_value = mock_client
 
-            service = ExtractionService(api_key="test-key")
+            service = GroqExtractor(api_key="test-key")
             await service.extract_fields(b"fake-image-bytes", "front")
 
             call_kwargs = mock_client.chat.completions.create.call_args

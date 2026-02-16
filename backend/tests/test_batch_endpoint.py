@@ -70,11 +70,11 @@ class TestBatchPostEndpoint:
             "app.api.routes.batch._pdf_parser.parse_application_pdf",
             return_value=app_data,
         ), patch(
-            "app.api.routes.batch.get_orchestrator",
-        ) as mock_get_orch:
+            "app.api.routes.batch.VerificationOrchestrator",
+        ) as mock_orch_cls:
             mock_orch = MagicMock()
             mock_orch.verify_single = AsyncMock(return_value=mock_verification_result)
-            mock_get_orch.return_value = mock_orch
+            mock_orch_cls.return_value = mock_orch
 
             # Build form data: 1 PDF, 1 image, assignment mapping PDF 0 -> image [0]
             files = [
@@ -100,11 +100,11 @@ class TestBatchPostEndpoint:
             "app.api.routes.batch._pdf_parser.parse_application_pdf",
             return_value=app_data,
         ), patch(
-            "app.api.routes.batch.get_orchestrator",
-        ) as mock_get_orch:
+            "app.api.routes.batch.VerificationOrchestrator",
+        ) as mock_orch_cls:
             mock_orch = MagicMock()
             mock_orch.verify_single = AsyncMock(return_value=mock_verification_result)
-            mock_get_orch.return_value = mock_orch
+            mock_orch_cls.return_value = mock_orch
 
             files = [
                 ("application_pdfs[]", ("app1.pdf", _fake_pdf_bytes(), "application/pdf")),

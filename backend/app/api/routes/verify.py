@@ -4,10 +4,10 @@ import re
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Request
 from fastapi.responses import FileResponse
 from app.models.schemas import VerificationResult
-from app.services.orchestrator import VerificationOrchestrator, IMAGES_BASE_DIR
+from app.services.orchestrator import IMAGES_BASE_DIR
 from app.services.pdf_parser import PDFApplicationParser
 from app.config import settings
-from app.api.dependencies import get_db, get_db_path
+from app.api.dependencies import get_db, get_db_path, get_orchestrator
 
 router = APIRouter()
 
@@ -17,11 +17,6 @@ _pdf_parser = PDFApplicationParser()
 VALID_PANELS = {"front", "back", "other"}
 # Regex for batch upload panel names: label_1, label_2, etc.
 _LABEL_PANEL_RE = re.compile(r'^label_\d+$')
-
-
-def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
-    db_path = get_db_path(request)
-    return VerificationOrchestrator(db_path=db_path)
 
 
 @router.post("/verify")

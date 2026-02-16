@@ -29,11 +29,6 @@ def _assign_panels(count: int) -> list[str]:
 _pdf_parser = PDFApplicationParser()
 
 
-def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
-    db_path = get_db_path(request)
-    return VerificationOrchestrator(db_path=db_path)
-
-
 @router.post("/batch")
 async def create_batch(
     request: Request,

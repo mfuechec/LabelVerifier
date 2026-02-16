@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import settings
-from app.db.setup import get_db, create_tables
+from app.db.setup import get_db
 from app.models.schemas import (
     ApplicationData,
     ComplianceIssueResponse,

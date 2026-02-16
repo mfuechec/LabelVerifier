@@ -1,8 +1,6 @@
 import io
 from unittest.mock import AsyncMock, patch
 import pytest
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
@@ -71,13 +69,6 @@ def app(tmp_db):
     create_tables(conn)
     conn.close()
     return application
-
-
-@pytest_asyncio.fixture
-async def client(app):
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
 
 
 @pytest.fixture

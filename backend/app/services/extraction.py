@@ -498,7 +498,3 @@ class AnthropicExtractor(BaseExtractor):
         except Exception as e:
             logger.exception("Importer re-extraction failed: %s", e)
             return None
-
-
-# Backward compatibility alias
-ExtractionService = GroqExtractor
