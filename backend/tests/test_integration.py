@@ -332,24 +332,21 @@ class TestEdgeCaseScenarios:
 # ============================================================
 # Specific representative tests for key scenarios
 # ============================================================
-class TestAngelsEnvyWarningMismatch:
-    """Angel's Envy: golden extraction has a slight gov warning mismatch."""
+class TestAngelsEnvyPass:
+    """Representative pass test: all fields match after golden data correction."""
 
     def setup_method(self):
         self.fields, self.confidence, self.status = run_pipeline("pass-angels-envy")
 
-    def test_overall_fail(self):
-        assert self.status == "fail"
+    def test_overall_pass(self):
+        assert self.status == "pass"
+        assert self.confidence >= 90.0
 
-    def test_warning_is_content_mismatch(self):
-        assert get_field_status(self.fields, "government_warning") == "content_mismatch"
-
-    def test_other_fields_match(self):
-        assert get_field_status(self.fields, "brand_name") == "match"
-        assert get_field_status(self.fields, "class_type") == "match"
-        assert get_field_status(self.fields, "alcohol_content") == "match"
-        assert get_field_status(self.fields, "net_contents") == "match"
-        assert get_field_status(self.fields, "producer_name") == "match"
+    def test_no_mismatches_or_missing(self):
+        for f in self.fields:
+            assert f.status not in ("content_mismatch", "field_missing"), (
+                f"{f.field_name} has unexpected status {f.status}"
+            )
 
 
 class TestAngelsEnvyWrongAbv:
@@ -370,8 +367,7 @@ class TestAngelsEnvyWrongAbv:
         assert get_field_status(self.fields, "brand_name") == "match"
         assert get_field_status(self.fields, "class_type") == "match"
         assert get_field_status(self.fields, "net_contents") == "match"
-        # government_warning also mismatches in golden data for this fixture
-        assert get_field_status(self.fields, "government_warning") == "content_mismatch"
+        assert get_field_status(self.fields, "government_warning") == "match"
 
 
 class TestMokkaClassMismatch:

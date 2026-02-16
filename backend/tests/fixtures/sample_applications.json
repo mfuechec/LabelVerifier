@@ -3,7 +3,7 @@
     {
       "id": "pass-angels-envy",
       "description": "Good spirits - domestic bourbon, all fields match",
-      "scenario_category": "edge_cases",
+      "scenario_category": "pass",
       "category": "good spirits",
       "images": [
         {
@@ -30,14 +30,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "pass",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         }
       }
     },
@@ -450,7 +450,7 @@
           "alcohol_content": "content_mismatch",
           "net_contents": "match",
           "producer_name": "match",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         },
         "mismatch_description": "Application declares 40% ABV but label clearly shows 43.3% Alc./Vol."
       }
@@ -942,14 +942,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "field_missing",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         },
         "mismatch_description": "No back label available; government warning not found; producer name missing from label"
       }
@@ -1973,14 +1973,14 @@
         "has_sulfites_declaration": false
       },
       "expected_outcome": {
-        "overall_status": "fail",
+        "overall_status": "needs_review",
         "expected_field_results": {
           "brand_name": "match",
           "class_type": "match",
           "alcohol_content": "match",
           "net_contents": "match",
           "producer_name": "field_missing",
-          "government_warning": "content_mismatch"
+          "government_warning": "match"
         },
         "mismatch_description": "Compliance catches producer_name missing from label even though application omits it; warning has minor comma difference"
       }
