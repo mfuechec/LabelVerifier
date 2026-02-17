@@ -33,6 +33,9 @@ export default function HistoryTable({ items }: HistoryTableProps) {
           <th>Type</th>
           <th>Status</th>
           <th>Confidence</th>
+          <th>Time</th>
+          <th>Tokens</th>
+          <th>Cost</th>
           <th>Decision</th>
           <th>Date</th>
         </tr>
@@ -54,6 +57,23 @@ export default function HistoryTable({ items }: HistoryTableProps) {
               ) : (
                 <span style={{ color: 'var(--slate-400)', fontSize: '0.78rem' }}>-</span>
               )}
+            </td>
+            <td className="stats-cell">
+              {item.processing_time_ms != null
+                ? `${(item.processing_time_ms / 1000).toFixed(1)}s`
+                : '-'}
+            </td>
+            <td className="stats-cell">
+              {item.total_tokens != null
+                ? item.total_tokens >= 1000
+                  ? `${(item.total_tokens / 1000).toFixed(1)}K`
+                  : item.total_tokens
+                : '-'}
+            </td>
+            <td className="stats-cell">
+              {item.estimated_cost_usd != null
+                ? `$${item.estimated_cost_usd.toFixed(4)}`
+                : '-'}
             </td>
             <td className="decision-cell">{item.agent_decision || '-'}</td>
             <td className="date-cell">{new Date(item.created_at).toLocaleDateString()}</td>

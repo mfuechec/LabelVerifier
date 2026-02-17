@@ -1,0 +1,1224 @@
+{
+  "version": "2.0",
+  "products": [
+    {
+      "id": "angels-envy",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Angels Envy burbon front.jpg",
+        "Angels Envy burbon back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Angel's Envy",
+        "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
+        "alcohol_content": "43.3% Alc./Vol. (86.6 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Louisville Distilling Company",
+        "producer_address": "Louisville, Kentucky",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Clear front+back, all fields readable"
+    },
+    {
+      "id": "den-of-thieves",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Den of Thieves chocolate whiskey front.jpg",
+        "Den of Thieves chocolate whiskey back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Den of Thieves",
+        "class_type": "Chocolate Flavored Whiskey",
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Strong Spirits",
+        "producer_address": "Bardstown, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Clear front+back, all fields readable"
+    },
+    {
+      "id": "hanami-gin",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Hanami gin front.jpg",
+        "Hanami gin back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Hanami",
+        "class_type": "Dry Gin",
+        "alcohol_content": "43% Alc./Vol. (86 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "P. Melchers Distilleries BV",
+        "producer_address": "Lelystad, The Netherlands",
+        "country_of_origin": "Holland",
+        "importer_name": "The Red Sea Import Company",
+        "importer_address": "Princeton, MN",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Clear front+back, imported product, all fields readable"
+    },
+    {
+      "id": "rosso-veneto",
+      "source_folder": "good wine+beer",
+      "image_files": [
+        "Rosso Veneto wine front.jpg",
+        "Rosso Veneto wine back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Rosso Veneto",
+        "class_type": "Red Wine",
+        "alcohol_content": "14.5%",
+        "net_contents": "750 mL",
+        "country_of_origin": "Italy",
+        "importer_name": "Marcato Direct",
+        "importer_address": "Addison, IL 60108",
+        "beverage_type": "wine",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": true
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match",
+        "sulfites_declaration": "match"
+      },
+      "notes": "Clear front+back, imported wine with sulfites"
+    },
+    {
+      "id": "black-maple-hill",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Black Maple Hill whiskey front.jpg",
+        "Black Maple Hill whiskey back.jpg",
+        "Black Maple Hill whiskey other.jpg"
+      ],
+      "panels": [
+        "front",
+        "back",
+        "other"
+      ],
+      "application_data": {
+        "brand_name": "Black Maple Hill",
+        "class_type": "Oregon Straight Rye Whiskey",
+        "alcohol_content": "47.5% Alc./Vol. (95 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Stein Distillery",
+        "producer_address": "Joseph, Oregon",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Clear front+back+other, all fields readable"
+    },
+    {
+      "id": "fuel-moonshine",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Fuel moonshine.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "Fuel",
+        "class_type": "Grain Neutral Spirits with Natural Flavor Added",
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Redline Beverage",
+        "producer_address": "Bardstown, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Single image with all fields visible"
+    },
+    {
+      "id": "market-alley",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Market Alley gin (front).jpg",
+        "Market Alley gin (back).jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Market Alley",
+        "class_type": "Barrel Rested Gin",
+        "alcohol_content": "45% Alc./Vol. (90 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Thistle Finch Distilling LLC",
+        "producer_address": "Lancaster, PA",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Clear front+back, all fields readable"
+    },
+    {
+      "id": "mckenzie-brew-house",
+      "source_folder": "good spirits",
+      "image_files": [
+        "McKenzie Brew House vodka.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "McKenzie Brew House",
+        "class_type": "Locally Crafted Vodka",
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "1 Liter",
+        "producer_name": "Kiki Vodka Company LLC",
+        "producer_address": "Hatfield, PA",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Single image, clear text, 1 Liter size"
+    },
+    {
+      "id": "misunderstood",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Misunderstood ginger whiskey front.jpg",
+        "Misunderstood ginger whiskey other.jpg"
+      ],
+      "panels": [
+        "front",
+        "other"
+      ],
+      "application_data": {
+        "brand_name": "Misunderstood",
+        "class_type": "Ginger Spiced Whiskey",
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Misunderstood Whiskey",
+        "producer_address": "Bardstown, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Front+other panels, all fields readable"
+    },
+    {
+      "id": "gordian-knot-rum",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Nicks & Bruce aged rum front.jpg",
+        "Nicks & Bruce aged rum back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Gordian Knot",
+        "class_type": "Aged Rum",
+        "alcohol_content": "42% Alc./Vol. (84 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Nicks and Bruce",
+        "producer_address": "Bardstown, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Clear front+back, all fields readable"
+    },
+    {
+      "id": "twelv-31",
+      "source_folder": "good spirits",
+      "image_files": [
+        "Twelv 31 liqeur front.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "Twelv 31",
+        "class_type": "Velvet Berry Liqueur",
+        "alcohol_content": "20% Alc./Vol. (40 Proof)",
+        "net_contents": "750 mL",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "government_warning": "match"
+      },
+      "notes": "Single front image, limited fields visible"
+    },
+    {
+      "id": "cascade-val",
+      "source_folder": "good wine+beer",
+      "image_files": [
+        "Cascade Val wine.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "Cascade",
+        "class_type": "Red Wine",
+        "alcohol_content": "11.5%",
+        "net_contents": "750 mL",
+        "producer_name": "Cascade Winery",
+        "producer_address": "Grand Rapids, MI",
+        "beverage_type": "wine",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": true
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match",
+        "sulfites_declaration": "match"
+      },
+      "notes": "Single image, domestic wine with sulfites"
+    },
+    {
+      "id": "lenz-moser",
+      "source_folder": "good wine+beer",
+      "image_files": [
+        "Lenz Moser wine front.jpg",
+        "Lenz Moser wine back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Lenz Moser",
+        "class_type": "Dry White Wine",
+        "alcohol_content": "12%",
+        "net_contents": "1.0 L",
+        "country_of_origin": "Austria",
+        "importer_name": "Niche Import Co.",
+        "importer_address": "Cedar Knolls, NJ",
+        "beverage_type": "wine",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": true
+      },
+      "expected_status": "pass",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match",
+        "sulfites_declaration": "match"
+      },
+      "notes": "Clear front+back, imported Austrian wine"
+    },
+    {
+      "id": "woodford-reserve",
+      "source_folder": "bad spirits warning",
+      "image_files": [
+        "Woodford Reserve burbon front.jpg",
+        "Woodford Reserve burbon front2.jpg",
+        "Woodford Reserve burbon back.jpg"
+      ],
+      "panels": [
+        "front",
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Woodford Reserve",
+        "class_type": "Kentucky Straight Bourbon Whiskey",
+        "alcohol_content": "45.2% Alc./Vol. (90.4 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "The Woodford Reserve Distillery",
+        "producer_address": "Versailles, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "content_mismatch"
+      },
+      "notes": "Warning text omits 'during pregnancy'"
+    },
+    {
+      "id": "casamigos",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Casamigos tequila front.jpg",
+        "Casamigos tequila back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Casamigos",
+        "class_type": "Licor de Agave Joven",
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Productos Finos de Agave",
+        "producer_address": "Jalisco, Mexico",
+        "country_of_origin": "Mexico",
+        "importer_name": "Casamigos Spirits Company",
+        "importer_address": "New York, NY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Front label in Spanish (class/type), back has English info"
+    },
+    {
+      "id": "fete-rose",
+      "source_folder": "bad wine+beer",
+      "image_files": [
+        "Fete Rose wine.jpg",
+        "Fete Rose wine back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Fete",
+        "class_type": "Rose Wine",
+        "alcohol_content": "12.5%",
+        "net_contents": "750 mL",
+        "country_of_origin": "France",
+        "beverage_type": "wine",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": true
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "country_of_origin": "match",
+        "government_warning": "content_mismatch",
+        "sulfites_declaration": "match"
+      },
+      "notes": "Warning has hyphenation issue (BEV-ERAGES) and missing comma"
+    },
+    {
+      "id": "barenjager-warning",
+      "source_folder": "bad spirits warning",
+      "image_files": [
+        "Barenjager front.jpg",
+        "Barenjager back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Barenjager",
+        "class_type": "Honey Liqueur",
+        "alcohol_content": "35% Alc./Vol. (70 Proof)",
+        "net_contents": "50 mL",
+        "producer_name": "Schwarze und Schlichte GmbH",
+        "producer_address": "Oelde, Germany",
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "content_mismatch"
+      },
+      "notes": "COMSUMPTION typo in warning (missing N)"
+    },
+    {
+      "id": "seven-fathoms",
+      "source_folder": "bad spirits warning",
+      "image_files": [
+        "Seven Fathoms rum front.jpg",
+        "Seven Fathoms rum back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Seven Fathoms",
+        "class_type": "Cayman Islands Premium Rum",
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Cayman Spirits Co.",
+        "producer_address": "Grand Cayman, Cayman Islands",
+        "country_of_origin": "Cayman Islands",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "government_warning": "content_mismatch"
+      },
+      "notes": "Extra space in warning ('GOVERNMENT WARNING :' instead of 'GOVERNMENT WARNING:')"
+    },
+    {
+      "id": "monkey-47",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Monkey 47 gin front.jpg",
+        "Monkey 47 gin back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Monkey 47",
+        "class_type": "Schwarzwald Dry Gin",
+        "alcohol_content": "47% Alc./Vol. (94 Proof)",
+        "net_contents": "375 mL",
+        "producer_name": "Black Forest Distillers",
+        "producer_address": "Lossburg, Germany",
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "German 'Schwarzwald' on label vs English 'Black Forest' potential mismatch"
+    },
+    {
+      "id": "collabor-and-tion",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Collabor&tion whiskey.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "Collabor&tion",
+        "class_type": "Straight Bourbon Whiskey Finished in Brandy Barrels",
+        "alcohol_content": "60% Alc./Vol. (120 Proof)",
+        "net_contents": "750 mL",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "government_warning": "field_missing"
+      },
+      "notes": "Single front image only, no back label, gov warning missing"
+    },
+    {
+      "id": "cotton-hollow",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Cotton Hollow burbon front.jpg",
+        "Cotton Hollow burbon other.jpg"
+      ],
+      "panels": [
+        "front",
+        "other"
+      ],
+      "application_data": {
+        "brand_name": "Cotton Hollow",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "46.5% Alc./Vol. (93 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Cotton Hollow Distillery",
+        "producer_address": "Indiana",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "field_missing"
+      },
+      "notes": "Second image is 'other' not back, gov warning missing"
+    },
+    {
+      "id": "resilient",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Resilient burbon front.jpg",
+        "Resilient burbon other.jpg"
+      ],
+      "panels": [
+        "front",
+        "other"
+      ],
+      "application_data": {
+        "brand_name": "Resilient",
+        "class_type": "Straight Bourbon Whisky",
+        "alcohol_content": "53.5% Alc./Vol. (107 Proof)",
+        "net_contents": "750 mL",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "government_warning": "field_missing"
+      },
+      "notes": "Uses 'Whisky' spelling; no back label, gov warning missing"
+    },
+    {
+      "id": "warm",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Warm whiskey.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "Warm",
+        "class_type": "Bourbon Whiskey",
+        "alcohol_content": "48% Alc./Vol. (96 Proof)",
+        "net_contents": "750 mL",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "government_warning": "field_missing"
+      },
+      "notes": "Single image, tiny rotated warning text not extractable"
+    },
+    {
+      "id": "barrilito",
+      "source_folder": "bad wine+beer",
+      "image_files": [
+        "Cerveza Barrilito.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "brand_name": "Barrilito",
+        "class_type": "Cerveza",
+        "alcohol_content": "3.6%",
+        "net_contents": "1 QT 8 FL.OZ.",
+        "producer_name": "Cerveceria Moctezuma",
+        "producer_address": "Monterrey, Mexico",
+        "country_of_origin": "Mexico",
+        "importer_name": "Labatt USA Operating Co. LLC",
+        "importer_address": "Norwalk, CT",
+        "beverage_type": "beer",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Class/type in Spanish (Cerveza vs Beer)"
+    },
+    {
+      "id": "forte-masso",
+      "source_folder": "bad wine+beer",
+      "image_files": [
+        "Forte Masso beer front.jpg",
+        "Forte Masso beer back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Forte Masso",
+        "class_type": "Red Wine",
+        "alcohol_content": "13.5%",
+        "net_contents": "750 mL",
+        "country_of_origin": "Italy",
+        "importer_name": "Pacific Highway Wines",
+        "importer_address": "San Rafael, CA",
+        "beverage_type": "wine",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": true
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match",
+        "sulfites_declaration": "match"
+      },
+      "notes": "Importer address incomplete on label"
+    },
+    {
+      "id": "mokka",
+      "source_folder": "bad spirits photo",
+      "image_files": [
+        "Mokka whiskey front.jpg",
+        "Mokka whiskey back.jpg",
+        "Mokka whiskey other.jpg"
+      ],
+      "panels": [
+        "front",
+        "back",
+        "other"
+      ],
+      "application_data": {
+        "alcohol_content": "35% Alc./Vol. (70 Proof)",
+        "net_contents": "750 mL",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "government_warning": "match"
+      },
+      "notes": "Highly stylized fonts make brand/class extraction uncertain"
+    },
+    {
+      "id": "alpine-lafayette",
+      "source_folder": "bad spirits photo",
+      "image_files": [
+        "Alpine Lafayette whiskey.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Alpine Distilling",
+        "producer_address": "7132 N Silver Creek Rd, Park City, UT 84098",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Decorative damask background obscures brand/class text"
+    },
+    {
+      "id": "howling-moon-photo",
+      "source_folder": "bad spirits photo",
+      "image_files": [
+        "Howling Moon whiskey front.jpg",
+        "Howling Moon whiskey back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "alcohol_content": "40% Alc./Vol. (80 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Howling Moon",
+        "producer_address": "Asheville, North Carolina",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "White italic script on dark night sky photo, low contrast"
+    },
+    {
+      "id": "rocky-mount",
+      "source_folder": "bad spirits photo",
+      "image_files": [
+        "Rocky Mount whiskey front.jpg",
+        "Rocky Mount whiskey back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "alcohol_content": "50% Alc./Vol. (100 Proof)",
+        "net_contents": "750 mL",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "government_warning": "match"
+      },
+      "notes": "Italic cursive throughout, producer info hard to read"
+    },
+    {
+      "id": "sailor-jerry-photo",
+      "source_folder": "bad spirits photo",
+      "image_files": [
+        "Sailor Jerry rum.jpg"
+      ],
+      "panels": [
+        "front"
+      ],
+      "application_data": {
+        "alcohol_content": "46% Alc./Vol. (92 Proof)",
+        "net_contents": "50 mL",
+        "importer_address": "Edison, NJ",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "importer_address": "match",
+        "government_warning": "extraction_uncertain"
+      },
+      "notes": "Miniature 50mL, vintage tattoo art, extremely small text"
+    },
+    {
+      "id": "salted-caramel",
+      "source_folder": "bad spirits photo",
+      "image_files": [
+        "Salted Caramel whiskey front.jpg",
+        "Salted Caramel whiskey back.jpg",
+        "Salted Caramel whiskey other.jpg"
+      ],
+      "panels": [
+        "front",
+        "back",
+        "other"
+      ],
+      "application_data": {
+        "alcohol_content": "35% Alc./Vol. (70 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Redline Beverage",
+        "producer_address": "Bardstown, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Dripping caramel graphic obscures brand text"
+    },
+    {
+      "id": "barenjager-bourbon",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Barenjager burbon front.jpg",
+        "Barenjager burbon back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Barenjager",
+        "class_type": "Honey & Bourbon",
+        "alcohol_content": "35% Alc./Vol. (70 Proof)",
+        "net_contents": "1 L",
+        "producer_name": "Schwarze und Schlichte GmbH",
+        "producer_address": "Oelde, Germany",
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "fail",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "German text mixed with English, class/type differs from app"
+    },
+    {
+      "id": "gordian-knot-rum-bad",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Gordian Knot rum front.jpg",
+        "Gordian Knot rum back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Gordian Knot",
+        "class_type": "Caribbean Rum",
+        "alcohol_content": "42% Alc./Vol. (84 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Nicks and Bruce",
+        "producer_address": "Bardstown, KY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Label says 'Caribbean Rum' vs app 'Reserve Rum'"
+    },
+    {
+      "id": "dutch-courage",
+      "source_folder": "bad spirits warning",
+      "image_files": [
+        "Dutch Courage gin front.jpg",
+        "Dutch Courage gin back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Dutch Courage",
+        "class_type": "Dry Gin",
+        "alcohol_content": "44.5% Alc./Vol. (89 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Zuidam Distillers BV",
+        "producer_address": "Baarle-Nassau, Netherlands",
+        "country_of_origin": "Netherlands",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "government_warning": "content_mismatch"
+      },
+      "notes": "Warning has spacing/formatting issues"
+    },
+    {
+      "id": "sortilege-label",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Sortilege liqueur front.jpg",
+        "Sortilege liqueur back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Sortilege",
+        "class_type": "Liqueur with Canadian Whisky and Maple Syrup",
+        "alcohol_content": "30% Alc./Vol. (60 Proof)",
+        "net_contents": "375 mL",
+        "producer_name": "La Maison des Futailles",
+        "producer_address": "Montreal, Quebec, Canada",
+        "country_of_origin": "Canada",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "imported",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "country_of_origin": "match",
+        "importer_name": "match",
+        "importer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "Bilingual French/English, class/type may not match app exactly"
+    },
+    {
+      "id": "uncle-nearest",
+      "source_folder": "bad spirits label",
+      "image_files": [
+        "Uncle Nearest whiskey front.jpg",
+        "Uncle Nearest whiskey back.jpg"
+      ],
+      "panels": [
+        "front",
+        "back"
+      ],
+      "application_data": {
+        "brand_name": "Uncle Nearest",
+        "class_type": "Premium Whiskey",
+        "alcohol_content": "50% Alc./Vol. (100 Proof)",
+        "net_contents": "750 mL",
+        "producer_name": "Uncle Nearest, Inc.",
+        "producer_address": "Shelbyville, TN",
+        "beverage_type": "distilled_spirits",
+        "source_of_product": "domestic",
+        "has_sulfites_declaration": false
+      },
+      "expected_status": "needs_review",
+      "expected_fields": {
+        "brand_name": "match",
+        "class_type": "match",
+        "alcohol_content": "match",
+        "net_contents": "match",
+        "producer_name": "match",
+        "producer_address": "match",
+        "government_warning": "match"
+      },
+      "notes": "'Premium Whiskey' not a standard TTB class/type"
+    }
+  ]
+}

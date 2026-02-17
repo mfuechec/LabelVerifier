@@ -29,6 +29,8 @@ PRICING: dict[str, ModelPricing] = {
     "claude-4-5-sonnet": ModelPricing(3.0, 15.0),
     "claude-opus-4-5-20250929": ModelPricing(15.0, 75.0),
     "claude-4-5-opus": ModelPricing(15.0, 75.0),
+    "claude-haiku-4-5-20251001": ModelPricing(1.0, 5.0),
+    "claude-4-5-haiku": ModelPricing(1.0, 5.0),
     # Groq models (approximate)
     "meta-llama/llama-4-maverick-17b-128e-instruct": ModelPricing(0.05, 0.08),
     "meta-llama/llama-4-scout-17b-16e-instruct": ModelPricing(0.05, 0.08),

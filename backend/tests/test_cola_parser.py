@@ -229,19 +229,21 @@ def _make_pdf_with_image_on_page(page_with_image: int, total_pages: int = 3) -> 
 
     page_with_image is 0-indexed.
     """
+    import os
+    import struct
+    import zlib
+
     doc = fitz.open()
     for i in range(total_pages):
         page = doc.new_page(width=612, height=792)
         page.insert_text((72, 100), f"Page {i + 1}")
         if i == page_with_image:
-            # Insert a large enough image (solid color 200x200 PNG)
-            import struct
-            import zlib
-
-            width, height = 200, 200
+            # Insert a large enough image with random pixels so it exceeds
+            # _MIN_IMAGE_BYTES (5000) after compression.
+            width, height = 300, 300
             raw_data = b""
             for _ in range(height):
-                raw_data += b"\x00" + b"\xff\x00\x00" * width  # red pixels
+                raw_data += b"\x00" + os.urandom(width * 3)  # random RGB
             compressed = zlib.compress(raw_data)
 
             # Minimal PNG
@@ -261,17 +263,65 @@ def _make_pdf_with_image_on_page(page_with_image: int, total_pages: int = 3) -> 
     return pdf_bytes
 
 
+def _make_pdf_with_annotation(pages_with_annotation: list[int], total_pages: int = 3) -> bytes:
+    """Create a PDF where specific pages have 'Image Type:' annotations.
+
+    pages_with_annotation is 0-indexed page numbers that get annotation text.
+    Pages without annotations and without XObject images simulate form pages.
+    """
+    doc = fitz.open()
+    for i in range(total_pages):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 100), f"Page {i + 1}")
+        if i in pages_with_annotation:
+            page.insert_text((72, 200), "Image Type:\nBrand (front) or keg collar")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+class TestImageTypeAnnotations:
+    """Tests for per-page annotation extraction."""
+
+    def test_returns_dict_keyed_by_page_number(self):
+        """Annotations should be returned as dict[int, list[str]]."""
+        parser = COLAPDFParser()
+        # Page 0 = no annotation, page 1 = has annotation
+        pdf_bytes = _make_pdf_with_annotation([1], total_pages=2)
+        result = parser._extract_image_type_annotations(pdf_bytes)
+        assert isinstance(result, dict)
+        assert 1 in result
+        assert result[1] == ["Brand (front) or keg collar"]
+
+    def test_pages_without_annotation_absent_from_dict(self):
+        """Pages with no 'Image Type:' text should not appear in the dict."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_with_annotation([1], total_pages=3)
+        result = parser._extract_image_type_annotations(pdf_bytes)
+        assert 0 not in result
+        assert 2 not in result
+
+
 class TestPixmapFallback:
     """Tests for pixmap fallback when get_images() finds no XObject images."""
 
-    def test_fallback_produces_image_when_get_images_empty(self):
-        """Pages with no XObject images should produce a pixmap fallback PNG."""
+    def test_form_page_skipped_no_images_no_annotations(self):
+        """Page with no XObject images AND no annotations should be skipped."""
         parser = COLAPDFParser()
+        # 2 pages, neither has annotations -- page 2 (index 1) has no images
         pdf_bytes = _make_pdf_no_xobject_images(num_pages=2)
         images = parser._extract_label_images(pdf_bytes)
+        assert len(images) == 0
+
+    def test_fallback_when_annotation_present(self):
+        """Page with no XObject images BUT with annotation should get pixmap."""
+        parser = COLAPDFParser()
+        # page 0 = form, page 1 = has annotation (label page)
+        pdf_bytes = _make_pdf_with_annotation([1], total_pages=2)
+        images = parser._extract_label_images(pdf_bytes)
         assert len(images) == 1
-        # Should be valid PNG (starts with PNG signature)
         assert images[0].image_bytes[:4] == b"\x89PNG"
+        assert images[0].panel_type == "front"
 
     def test_xobject_path_still_used_when_images_present(self):
         """Barenjager PDF has XObject images -- should still extract >= 3."""
@@ -280,13 +330,13 @@ class TestPixmapFallback:
         images = parser._extract_label_images(pdf_bytes)
         assert len(images) >= 3
 
-    def test_mixed_pages_xobject_and_fallback(self):
-        """PDF with XObject image on page 2 and text-only page 3.
+    def test_mixed_pages_xobject_and_form_skipped(self):
+        """PDF with XObject image on page 2 and text-only form page 3.
 
-        Should produce 2 images: one from XObject extraction, one from pixmap.
+        Form page (no annotations, no images) should be skipped.
         """
         parser = COLAPDFParser()
-        # page 0 = form (skipped), page 1 = has image, page 2 = text only
+        # page 0 = form (skipped by range), page 1 = has image, page 2 = text only no annotation
         pdf_bytes = _make_pdf_with_image_on_page(page_with_image=1, total_pages=3)
         images = parser._extract_label_images(pdf_bytes)
-        assert len(images) == 2
+        assert len(images) == 1  # only the XObject image page

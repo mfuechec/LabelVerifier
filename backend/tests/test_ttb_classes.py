@@ -31,6 +31,16 @@ class TestNormalizeClassType:
         canonical, _ = normalize_class_type("Red Wine", "wine")
         assert canonical == "red wine"
 
+    def test_rose_wine_with_accent(self):
+        """'Rosé Wine' (with diacritic) should match canonical 'rose wine'."""
+        canonical, _ = normalize_class_type("Rosé Wine", "wine")
+        assert canonical == "rose wine"
+
+    def test_rose_wine_uppercase_accent(self):
+        """'ROSÉ WINE' should match canonical 'rose wine'."""
+        canonical, _ = normalize_class_type("ROSÉ WINE", "wine")
+        assert canonical == "rose wine"
+
     def test_champagne(self):
         canonical, _ = normalize_class_type("Champagne", "wine")
         assert canonical == "champagne"

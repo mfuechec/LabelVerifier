@@ -1,165 +1,349 @@
-import { useState, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import HistoryFilters from '../components/history/HistoryFilters';
-import HistoryTable from '../components/history/HistoryTable';
-import LoadingSpinner from '../components/shared/LoadingSpinner';
+import { useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ErrorBanner from '../components/shared/ErrorBanner';
-import { useVerify, useVerifications } from '../api/verifications';
+import LoadingSpinner from '../components/shared/LoadingSpinner';
+import StatusBadge from '../components/shared/StatusBadge';
+import ConfidenceBar from '../components/shared/ConfidenceBar';
+import { useVerify, useBatchUpload, useBatchStatus } from '../api/verifications';
 import { getErrorMessage } from '../api/errors';
 
 export default function UploadPage() {
   const navigate = useNavigate();
   const verifyMutation = useVerify();
+  const batchMutation = useBatchUpload();
 
+  const [colaPdfs, setColaPdfs] = useState<File[]>([]);
+  const [batchId, setBatchId] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [colaPdf, setColaPdf] = useState<File | null>(null);
+  const [skippedCount, setSkippedCount] = useState<number>(0);
 
-  // History state
-  const [status, setStatus] = useState('');
-  const [beverageType, setBeverageType] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: historyData, isLoading: historyLoading } = useVerifications({
-    status: status || undefined,
-    beverage_type: beverageType || undefined,
-    brand: search || undefined,
-    page,
-    per_page: 10,
-  });
+  const { data: batchData } = useBatchStatus(batchId);
 
-  const handlePdfSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setColaPdf(file);
+  const handlePdfFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    setColaPdfs((prev) => [...prev, ...Array.from(files)]);
   }, []);
 
-  const handlePdfDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) setColaPdf(file);
+  const removePdf = useCallback((index: number) => {
+    setColaPdfs((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleSubmit = async () => {
-    if (!colaPdf) {
-      setSubmitError('Please upload a COLA PDF.');
+    if (colaPdfs.length === 0) {
+      setSubmitError('Please upload at least one COLA PDF.');
       return;
     }
 
     try {
       setSubmitError(null);
-      const result = await verifyMutation.mutateAsync({ colaPdf });
-      navigate(`/verify/${result.session_id}`);
+
+      if (colaPdfs.length === 1) {
+        // Single file: synchronous verify, navigate to results
+        const result = await verifyMutation.mutateAsync({ colaPdf: colaPdfs[0] });
+        navigate(`/verify/${result.session_id}`);
+      } else {
+        // Multiple files: async batch
+        const result = await batchMutation.mutateAsync({ colaPdfs });
+        setBatchId(result.batch_id);
+        setSkippedCount(result.skipped_count ?? 0);
+      }
     } catch (err) {
       setSubmitError(getErrorMessage(err));
-      console.error(err);
     }
   };
 
-  const totalPages = historyData ? Math.ceil(historyData.total / 10) : 0;
+  const isProcessing = !!batchId;
+  const isPending = verifyMutation.isPending || batchMutation.isPending;
+  const isDone =
+    batchData?.batch?.status === 'completed' ||
+    batchData?.batch?.status === 'failed';
+  const progress = batchData
+    ? batchData.batch.completed_items + batchData.batch.failed_items
+    : 0;
+  const total = batchData?.batch?.total_items ?? 0;
+  const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
+
+  const buttonLabel =
+    colaPdfs.length <= 1
+      ? 'Verify Label'
+      : `Start Batch (${colaPdfs.length} PDFs)`;
 
   return (
     <div>
       {/* Upload Section */}
-      <section className="section-card animate-in">
-        <div className="section-header">
-          <h2>New Verification</h2>
-          <p>Upload a COLA application PDF to verify TTB compliance.</p>
-        </div>
+      {!isProcessing && (
+        <section className="section-card animate-in">
+          <div className="section-header">
+            <h2>New Verification</h2>
+            <p>Upload COLA application PDFs to verify TTB compliance.</p>
+          </div>
 
-        <div>
-          <div className="form-card">
-            <div className="form-card-label">COLA PDF</div>
-            <label
-              className={`upload-zone pdf-zone${colaPdf ? ' has-file' : ''}`}
-              onDrop={handlePdfDrop}
+          {/* COLA PDF upload */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+              COLA PDFs
+            </h3>
+            <div
+              className="upload-zone pdf-zone"
+              onClick={() => pdfInputRef.current?.click()}
+              onDrop={(e) => {
+                e.preventDefault();
+                handlePdfFiles(e.dataTransfer.files);
+              }}
               onDragOver={(e) => e.preventDefault()}
+              style={{ cursor: 'pointer' }}
             >
               <input
+                ref={pdfInputRef}
                 type="file"
                 accept="application/pdf"
-                onChange={handlePdfSelect}
+                multiple
+                onChange={(e) => handlePdfFiles(e.target.files)}
                 style={{ display: 'none' }}
               />
-              {colaPdf ? (
-                <>
-                  <svg className="zone-svg-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  <span className="zone-label">COLA PDF</span>
-                  <span className="zone-filename">{colaPdf.name}</span>
-                </>
-              ) : (
-                <>
-                  <svg className="zone-svg-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                  <span className="zone-label">COLA PDF</span>
-                  <span className="zone-hint">Drop or click to browse</span>
-                </>
-              )}
-            </label>
+              <svg
+                className="zone-svg-icon"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              <span className="zone-label">Drop COLA PDFs here or click to browse</span>
+            </div>
+            {colaPdfs.length > 0 && (
+              <ul style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem' }}>
+                {colaPdfs.map((file, i) => (
+                  <li
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.35rem 0',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>{file.name}</span>
+                    <button
+                      onClick={() => removePdf(i)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--red-600)',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        </div>
 
-        <div style={{ borderTop: '1px solid var(--slate-200)', marginTop: '1.5rem', paddingTop: '1.5rem' }}>
-          {submitError && <ErrorBanner message={submitError} />}
-          <div className="verify-action">
-            <button
-              className="btn-verify"
-              onClick={handleSubmit}
-              disabled={verifyMutation.isPending}
+          <div
+            style={{
+              borderTop: '1px solid var(--slate-200)',
+              marginTop: '1.5rem',
+              paddingTop: '1.5rem',
+            }}
+          >
+            {submitError && <ErrorBanner message={submitError} />}
+            <div className="verify-action">
+              <button
+                className="btn-verify"
+                onClick={handleSubmit}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <>
+                    <span className="spinner-sm" />
+                    {verifyMutation.isPending ? 'Analyzing Label...' : 'Starting Batch...'}
+                  </>
+                ) : (
+                  buttonLabel
+                )}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Batch Processing / Results Section */}
+      {isProcessing && (
+        <section className="section-card animate-in">
+          <div className="history-header">
+            <h2>
+              Batch{' '}
+              {batchData?.batch?.status === 'completed'
+                ? 'Complete'
+                : batchData?.batch?.status === 'failed'
+                  ? 'Failed'
+                  : 'Processing'}
+            </h2>
+          </div>
+
+          {/* Skipped items warning */}
+          {(skippedCount > 0 || (batchData?.skipped_items?.length ?? 0) > 0) && (
+            <div
+              style={{
+                background: '#fffbeb',
+                border: '1px solid #f59e0b',
+                borderRadius: 8,
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                fontSize: '0.875rem',
+                color: '#92400e',
+              }}
             >
-              {verifyMutation.isPending ? (
-                <>
-                  <span className="spinner-sm" />
-                  Analyzing Label...
-                </>
-              ) : (
-                'Verify Label'
+              <strong>
+                {batchData?.skipped_items?.length ?? skippedCount} PDF{(batchData?.skipped_items?.length ?? skippedCount) !== 1 ? 's' : ''} skipped
+              </strong>
+              {batchData?.skipped_items && batchData.skipped_items.length > 0 && (
+                <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+                  {batchData.skipped_items.map((item, i) => (
+                    <li key={i}>
+                      <strong>{item.filename}</strong>: {item.reason}
+                    </li>
+                  ))}
+                </ul>
               )}
-            </button>
-          </div>
-        </div>
-      </section>
+            </div>
+          )}
 
-      {/* History Section */}
-      <section className="section-card animate-in-delay-1">
-        <div className="history-header">
-          <h2>Recent Verifications</h2>
-          <Link to="/history" className="view-all-link">View All &rarr;</Link>
-          <HistoryFilters
-            status={status}
-            beverageType={beverageType}
-            search={search}
-            onStatusChange={setStatus}
-            onBeverageTypeChange={setBeverageType}
-            onSearchChange={setSearch}
-          />
-        </div>
-
-        {historyLoading ? (
-          <LoadingSpinner message="Loading history..." />
-        ) : (
-          <>
-            <HistoryTable items={historyData?.items || []} />
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </button>
-                <span className="page-info">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= totalPages}
-                >
-                  Next
-                </button>
+          {/* Progress bar */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.85rem',
+                marginBottom: '0.35rem',
+              }}
+            >
+              <span>
+                {progress} of {total} completed
+                {batchData && batchData.batch.failed_items > 0 &&
+                  ` (${batchData.batch.failed_items} failed)`}
+              </span>
+              <span>{pct}%</span>
+            </div>
+            <div
+              style={{
+                height: 8,
+                background: 'var(--slate-200)',
+                borderRadius: 4,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${pct}%`,
+                  background: isDone ? 'var(--emerald-600)' : 'var(--blue-600)',
+                  borderRadius: 4,
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+            {!isDone && (
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <LoadingSpinner message="Processing labels..." />
               </div>
             )}
-          </>
-        )}
-      </section>
+          </div>
+
+          {/* Results table */}
+          {batchData && batchData.items.length > 0 && (
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Brand</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Confidence</th>
+                  <th>Time</th>
+                  <th>Tokens</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batchData.items.map((item) => {
+                  const ps = item.processing_stats;
+                  const timeFmt = ps
+                    ? `${(ps.total_time_ms / 1000).toFixed(1)}s`
+                    : '-';
+                  const totalTokens = ps
+                    ? ps.total_input_tokens + ps.total_output_tokens
+                    : 0;
+                  const tokensFmt = ps
+                    ? totalTokens >= 1000
+                      ? `${(totalTokens / 1000).toFixed(1)}K`
+                      : `${totalTokens}`
+                    : '-';
+                  return (
+                    <tr
+                      key={item.session_id}
+                      onClick={() => navigate(`/verify/${item.session_id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>{item.brand_name || '-'}</td>
+                      <td>{item.beverage_type}</td>
+                      <td>
+                        <StatusBadge status={item.status} size="sm" />
+                      </td>
+                      <td>
+                        {item.overall_confidence != null ? (
+                          <ConfidenceBar value={item.overall_confidence} />
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        {timeFmt}
+                      </td>
+                      <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        {tokensFmt}
+                      </td>
+                      <td style={{ fontSize: '0.8rem' }}>
+                        {new Date(item.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+
+          {isDone && (
+            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+              <button
+                className="btn-verify"
+                onClick={() => {
+                  setBatchId(undefined);
+                  setColaPdfs([]);
+                  setSkippedCount(0);
+                }}
+              >
+                New Upload
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

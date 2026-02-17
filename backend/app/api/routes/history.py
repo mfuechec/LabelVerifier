@@ -47,7 +47,9 @@ def list_verifications(
         query_sql = f"""
             SELECT vs.id as session_id, vs.application_id, a.brand_name,
                    vs.beverage_type, vs.status, vs.overall_confidence,
-                   vs.agent_decision, vs.created_at
+                   vs.agent_decision, vs.created_at,
+                   vs.processing_time_ms, vs.total_input_tokens,
+                   vs.total_output_tokens, vs.estimated_cost_usd
             FROM verification_sessions vs
             LEFT JOIN applications a ON a.session_id = vs.id
             {where_sql}
@@ -66,6 +68,9 @@ def list_verifications(
                 "overall_confidence": r["overall_confidence"],
                 "agent_decision": r["agent_decision"],
                 "created_at": r["created_at"],
+                "processing_time_ms": r["processing_time_ms"],
+                "total_tokens": (r["total_input_tokens"] or 0) + (r["total_output_tokens"] or 0),
+                "estimated_cost_usd": r["estimated_cost_usd"],
             }
             for r in rows
         ]

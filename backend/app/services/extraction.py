@@ -7,7 +7,7 @@ import re
 import time
 from dataclasses import dataclass, field
 
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, RateLimitError as AnthropicRateLimitError
 from groq import AsyncGroq, RateLimitError
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 2
 
-# Single combined prompt: all fields + government warning in one call
+# Legacy 13-field prompt kept for GroqExtractor backward compat
 EXTRACTION_PROMPT = """You are an alcohol beverage label analysis system for the US TTB. Extract ALL compliance-relevant fields from this label image.
 
 Return ONLY a JSON object exactly like this (no markdown, no extra text):
@@ -26,15 +26,15 @@ Rules:
 - If a field is NOT clearly visible on the label, set value to null. Do NOT guess or fabricate text.
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
-- IMPORTANT: Text may be printed VERTICALLY or ROTATED 90 degrees along the left/right edges of the label. Carefully scan ALL edges and margins for sideways text -- class/type, net contents, and alcohol content are commonly placed there, especially on wine labels
+- MANDATORY: Before returning null for ANY field, scan the left edge, right edge, and all four corners of the label for VERTICALLY ROTATED or tiny text. Wine labels almost ALWAYS print class/type vertically along an edge and net contents in small text at the bottom corner. You MUST check these areas
 
 Field-specific guidance:
 - brand_name: The product brand name, usually the most prominent text on the label. Do NOT extract the fanciful/secondary name as the brand. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
 - fanciful_name: A secondary or creative product name, often below or near the brand name in smaller text. NOT the brand name itself. Examples: "HONEY & BOURBON" on a Barenjager label, "MIDNIGHT MOONSHINE" on a Howling Moon label. If no secondary name, set to null
-- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation. CHECK VERTICAL TEXT along label edges -- wine labels often print class/type sideways (e.g. "DRY RED WINE" rotated along the right edge)
+- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation. MANDATORY: Scan left and right edges for VERTICALLY ROTATED text -- wine labels almost always print class/type sideways (e.g. "DRY RED WINE" rotated 90 degrees along the right edge, "TROCKEN" along the left edge). Do NOT return null without checking edges
 - alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
 - alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
-- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ", "1 LTR."). Read the number carefully. CHECK VERTICAL TEXT along label edges -- net contents is often printed sideways
+- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ", "1 LTR.", "1.0L"). Read the number carefully. MANDATORY: Check the bottom-left corner, bottom-right corner, and both vertical edges -- net contents is very often printed in tiny text in a corner or rotated along an edge. Do NOT return null without checking all four corners
 - producer_name: The company that produced/distilled/bottled the product. Look near phrases like "Produced by", "Bottled by", "Distilled by", "Made by". Extract ONLY the company name, not the surrounding phrase
 - producer_address: The physical location (city, state/country) of the producer. Do NOT extract production statements like "Produced and Bottled in Germany" -- look for an actual city name
 - country_of_origin: The country where the product was made. Look for "Product of [country]", "Made in [country]", "Produced in [country]"
@@ -44,77 +44,38 @@ Field-specific guidance:
 - sulfites_declaration: Look for "Contains Sulfites" or similar declaration
 - Return ONLY the JSON object"""
 
-# Focused prompt for government warning re-extraction (fix #2)
-WARNING_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to extract the GOVERNMENT WARNING text from this label image.
+# --- Focused extraction prompts (Group A/B/C) ---
 
-Focus on finding the block of text that starts with "GOVERNMENT WARNING:" -- it is a legally required statement on all US alcohol labels. It contains two numbered points:
-(1) About women not drinking during pregnancy / risk of birth defects
-(2) About consumption impairing ability to drive / operate machinery / health problems
+IDENTITY_PROMPT = """Extract identity fields from this US alcohol label. Return ONLY JSON (no markdown):
+{"brand_name":{"value":null,"conf":"high"},"fanciful_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"}}
 
-Read EVERY SINGLE WORD carefully, character by character. Pay special attention to:
-- The exact wording in point (2): it should say "CONSUMPTION OF ALCOHOLIC BEVERAGES" (not just "ALCOHOL")
-- Every word matters for compliance -- do NOT skip, summarize, or paraphrase
+Rules: Replace null with extracted text or keep null if not found. conf: high/medium/low. Extract EXACTLY as printed.
 
-Return ONLY a JSON object (no markdown, no extra text):
-{"government_warning": {"value": null, "conf": "high"}}
+- brand_name: Most prominent text. NOT fanciful/secondary name. NOT "Product of...", "Made in...", "Produced by..."
+- fanciful_name: Secondary/creative name below brand. null if none
+- class_type: Beverage classification (e.g. "Vodka", "Red Wine"). MUST check left/right edges for VERTICAL text
+- alcohol_content: Full format as printed (e.g. "45% Alc./Vol.")
+- alcohol_proof: Only if separately stated (e.g. "90 Proof")"""
 
-Rules:
-- Replace null with the full verbatim text starting from "GOVERNMENT WARNING:" through the end of the statement
-- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
-- If no government warning is visible on this label, return null
-- Extract EXACTLY as printed -- do NOT correct errors"""
+REGULATORY_PROMPT = """Extract regulatory fields from this US alcohol label. Return ONLY JSON (no markdown):
+{"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"}}
 
-# Focused prompt for importer re-extraction when initial pass returns null
-IMPORTER_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find and extract the IMPORTER information from this label image.
+Rules: Replace null with extracted text or keep null if not found. conf: high/medium/low. Extract EXACTLY as printed.
 
-Look carefully for text containing "IMPORTED BY" or "IMPORTER" -- this is usually printed in small text near the bottom of the label or on the back panel, often near the government warning or barcode.
+- government_warning: Find "GOVERNMENT WARNING:" block with (1) pregnancy/birth defects and (2) driving/machinery/health. Read EVERY WORD verbatim. Point (2) says "CONSUMPTION OF ALCOHOLIC BEVERAGES". Include prefix + full text.
+- sulfites_declaration: "Contains Sulfites" or similar
+- net_contents: Volume as printed (e.g. "750mL", "1.0L"). MUST check all 4 corners and vertical edges for tiny text."""
 
-The importer line typically follows this pattern:
-IMPORTED BY [Company Name], [City], [State]
+PRODUCER_ORIGIN_PROMPT = """Extract producer and origin fields from this US alcohol label. Return ONLY JSON (no markdown):
+{"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"}}
 
-Examples:
-- "IMPORTED BY SIDNEY FRANK IMPORTING CO. INC. NEW ROCHELLE, N.Y."
-- "IMPORTED BY NICHE W. & S., CEDAR KNOLLS, NJ"
-- "IMPORTED BY KOBRAND CORPORATION, NEW YORK, N.Y."
+Rules: Replace null with extracted text or keep null if not found. conf: high/medium/low. Extract EXACTLY as printed.
 
-Read every word carefully, especially small text at the bottom of the label.
-
-Return ONLY a JSON object (no markdown, no extra text):
-{"importer_name": {"value": null, "conf": "high"}, "importer_address": {"value": null, "conf": "high"}}
-
-Rules:
-- importer_name: The company name AFTER "IMPORTED BY". Do NOT include the "IMPORTED BY" prefix.
-- importer_address: The city and state that follow the company name.
-- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
-- If no importer information is visible, return null for both fields
-- Extract EXACTLY as printed -- do NOT correct errors"""
-
-
-# Focused prompt for country of origin re-extraction
-COUNTRY_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find the COUNTRY OF ORIGIN on this label.
-
-Look carefully for ANY text indicating where this product was made. Check ALL areas of the label including edges, back panel, neck labels, and fine print.
-
-Common patterns:
-- "Product of [country]"
-- "Made in [country]"
-- "Produced in [country]"
-- "Bottled in [country]"
-- "Imported from [country]"
-- "Hecho en [country]" (Spanish)
-- "Produit de [country]" / "Mis en bouteille en [country]" (French)
-- A country name near "Imported by" text
-
-Also look for geographic indicators like wine regions (e.g. "Niederösterreich, Austria") that imply country of origin.
-
-Return ONLY a JSON object (no markdown, no extra text):
-{"country_of_origin": {"value": null, "conf": "high"}}
-
-Rules:
-- Extract the country name as printed on the label
-- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
-- If no country of origin is visible, return null
-- Extract EXACTLY as printed -- do NOT correct errors"""
+- producer_name: Company that produced/distilled/bottled. Near "Produced by", "Bottled by", "Distilled by". ONLY company name, not prefix
+- producer_address: City, state/country of producer. NOT "Produced in Germany" -- look for actual city
+- country_of_origin: "Product of [country]", "Made in [country]", "Hecho en [country]", wine regions (e.g. "Niederosterreich, Austria")
+- importer_name: After "IMPORTED BY" -- small text near bottom/barcode. Company name only, NOT prefix
+- importer_address: City and state after importer name (e.g. "New Rochelle, N.Y.")"""
 
 
 # Focused prompt for specialty class/type re-extraction (fanciful name + composition)
@@ -137,6 +98,19 @@ Rules:
 - Extract EXACTLY as printed -- do NOT correct errors"""
 
 
+MISSING_FIELDS_PROMPT = """You are an expert text reader for US alcohol labels. Some fields were missed in a prior extraction. Your ONLY job is to find the specific missing fields listed below.
+
+SEARCH STRATEGY -- these fields are often in hard-to-read locations:
+- Fine print at the very bottom of the label
+- Vertically rotated text along left/right edges
+- Tiny text near barcodes or UPC codes
+- Text in corners, especially bottom-left and bottom-right
+- Text partially obscured by decorative elements
+
+Return ONLY a JSON object with the requested fields (no markdown, no extra text).
+Each field: {{"value": "extracted text or null", "conf": "high/medium/low"}}
+Extract EXACTLY as printed. Set null only if truly not visible anywhere on the label."""
+
 BRAND_CONFIRM_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to locate the BRAND NAME on this label.
 
 The application declares the brand name as: "{declared_brand}"
@@ -157,6 +131,12 @@ Rules:
 - brand_name.conf: "high" = clearly readable, "medium" = stylized/decorative, "low" = barely legible
 - location_description: Where on the label you found it (e.g. "large text at top center")
 - Extract EXACTLY as printed -- do NOT correct spelling"""
+
+TRANSCRIPTION_PROMPT = """Transcribe ALL visible text on this alcohol beverage label image.
+Include everything: brand names, product descriptions, warnings, volumes, percentages,
+company names, addresses, fine print, vertically rotated text along edges, and tiny text
+in corners. Preserve the text as printed (do not correct spelling).
+Separate distinct text blocks with newlines. Return ONLY the transcribed text."""
 
 
 @dataclass
@@ -321,7 +301,7 @@ class GroqExtractor(BaseExtractor):
             t0 = time.monotonic()
             response = await self.client.chat.completions.create(
                 model=self.model,
-                max_tokens=2048,
+                max_tokens=1024,
                 temperature=0,
                 messages=[
                     {
@@ -392,9 +372,12 @@ def _convert_parsed_to_fields(parsed: dict) -> dict:
 
 
 class AnthropicExtractor(BaseExtractor):
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-5-20250929"):
+    HAIKU_MODEL = "claude-haiku-4-5-20251001"
+
+    def __init__(self, api_key: str, model: str = "claude-sonnet-4-5-20250929", reextract_model: str | None = None):
         self.client = AsyncAnthropic(api_key=api_key)
         self.model = model
+        self.reextract_model = reextract_model or self.HAIKU_MODEL
 
     async def extract_fields(
         self,
@@ -402,289 +385,204 @@ class AnthropicExtractor(BaseExtractor):
         panel_type: str,
         mime_type: str = "image/jpeg",
     ) -> ExtractionResult:
-        """Extract all fields from a label image using Anthropic's vision API."""
+        """Extract all fields by running 3 focused calls in parallel and merging."""
+        results = await asyncio.gather(
+            self.extract_identity(image_bytes, panel_type, mime_type),
+            self.extract_regulatory(image_bytes, panel_type, mime_type),
+            self.extract_producer_origin(image_bytes, panel_type, mime_type),
+        )
+        merged = ExtractionResult(panel_type=panel_type)
+        for r in results:
+            merged.fields.update(r.fields)
+            merged.llm_stats.extend(r.llm_stats)
+            if r.error and not merged.error:
+                merged.error = r.error
+        return merged
+
+    async def _focused_extract(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        prompt: str,
+        call_type: str,
+        user_text: str,
+        mime_type: str = "image/jpeg",
+        max_tokens: int = 300,
+    ) -> ExtractionResult:
+        """Common implementation for focused extraction calls with retry on rate limits."""
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
         llm_stats: list[LLMCallStats] = []
 
-        try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=2048,
-                temperature=0,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
+        last_error = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                t0 = time.monotonic()
+                response = await self.client.messages.create(
+                    model=self.reextract_model,
+                    max_tokens=max_tokens,
+                    temperature=0,
+                    system=[
+                        {
+                            "type": "text",
+                            "text": prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": mime_type,
+                                        "data": base64_image,
+                                    },
                                 },
-                            },
-                            {
-                                "type": "text",
-                                "text": EXTRACTION_PROMPT,
-                            },
-                        ],
-                    }
-                ],
-            )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
+                                {
+                                    "type": "text",
+                                    "text": user_text,
+                                },
+                            ],
+                        }
+                    ],
+                )
+                elapsed_ms = int((time.monotonic() - t0) * 1000)
 
-            usage = response.usage
-            main_stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="extract_fields",
-            )
-            llm_stats.append(main_stats)
-            logger.info(
-                "Anthropic LLM stats (%s): %d in / %d out tokens, %dms",
-                panel_type, main_stats.input_tokens, main_stats.output_tokens, main_stats.elapsed_ms,
-            )
+                usage = response.usage
+                stats = LLMCallStats(
+                    input_tokens=getattr(usage, "input_tokens", 0),
+                    output_tokens=getattr(usage, "output_tokens", 0),
+                    elapsed_ms=elapsed_ms,
+                    call_type=call_type,
+                )
+                llm_stats.append(stats)
+                logger.info(
+                    "Anthropic %s (%s): %d in / %d out tokens, %dms",
+                    call_type, panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+                )
 
-            response_text = response.content[0].text
-            logger.info("Anthropic response (%s): %s", panel_type, response_text[:200])
+                response_text = response.content[0].text
+                logger.info("Anthropic %s response (%s): %s", call_type, panel_type, response_text[:200])
 
-            parsed = _repair_json(response_text)
-            if parsed is None:
-                logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
-                return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=llm_stats)
+                parsed = _repair_json(response_text)
+                if parsed is None:
+                    logger.error("JSON parse error (%s, %s): %s", call_type, panel_type, response_text[:200])
+                    return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=llm_stats)
 
-            fields = _convert_parsed_to_fields(parsed)
+                fields = _convert_parsed_to_fields(parsed)
+                return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=llm_stats)
 
-            return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=llm_stats)
+            except AnthropicRateLimitError as e:
+                last_error = e
+                if attempt >= MAX_RETRIES:
+                    break
+                delay = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
+                logger.warning(
+                    "Anthropic rate limited %s (%s, attempt %d/%d), retrying in %.1fs...",
+                    call_type, panel_type, attempt + 1, MAX_RETRIES, delay,
+                )
+                await asyncio.sleep(delay)
 
-        except Exception as e:
-            logger.exception("Anthropic extraction failed (%s): %s", panel_type, e)
-            return ExtractionResult(
-                panel_type=panel_type,
-                error=f"Extraction failed: {e}",
-                llm_stats=llm_stats,
-            )
+            except Exception as e:
+                logger.exception("Anthropic %s failed (%s): %s", call_type, panel_type, e)
+                return ExtractionResult(
+                    panel_type=panel_type,
+                    error=f"Extraction failed: {e}",
+                    llm_stats=llm_stats,
+                )
 
-    async def reextract_warning(
+        # All retries exhausted on rate limit
+        logger.error("Anthropic %s rate limit exhausted (%s): %s", call_type, panel_type, last_error)
+        return ExtractionResult(
+            panel_type=panel_type,
+            error=f"Rate limited after {MAX_RETRIES + 1} attempts: {last_error}",
+            llm_stats=llm_stats,
+        )
+
+    async def extract_identity(
         self,
         image_bytes: bytes,
+        panel_type: str,
         mime_type: str = "image/jpeg",
-        model_override: str | None = None,
-    ) -> tuple[str | None, LLMCallStats | None]:
-        """Re-extract just the government warning with a focused prompt.
+    ) -> ExtractionResult:
+        """Extract identity fields: brand, fanciful name, class/type, ABV, proof."""
+        return await self._focused_extract(
+            image_bytes, panel_type, IDENTITY_PROMPT,
+            "extract_identity", "Extract the identity fields from this label.",
+            mime_type, max_tokens=300,
+        )
+
+    async def extract_regulatory(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        mime_type: str = "image/jpeg",
+    ) -> ExtractionResult:
+        """Extract regulatory fields: government warning, sulfites, net contents."""
+        return await self._focused_extract(
+            image_bytes, panel_type, REGULATORY_PROMPT,
+            "extract_regulatory", "Extract the regulatory fields from this label.",
+            mime_type, max_tokens=512,
+        )
+
+    async def extract_producer_origin(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        mime_type: str = "image/jpeg",
+    ) -> ExtractionResult:
+        """Extract producer/origin fields: producer, address, country, importer."""
+        return await self._focused_extract(
+            image_bytes, panel_type, PRODUCER_ORIGIN_PROMPT,
+            "extract_producer_origin", "Extract the producer and origin fields from this label.",
+            mime_type, max_tokens=512,
+        )
+
+    async def reextract_missing_fields(
+        self,
+        image_bytes: bytes,
+        missing_fields: list[str],
+        mime_type: str = "image/jpeg",
+    ) -> ExtractionResult:
+        """Re-extract specific fields that were null after initial extraction.
 
         Args:
             image_bytes: The label image.
+            missing_fields: List of field names to re-extract.
             mime_type: Image MIME type.
-            model_override: Use a different model (e.g. Sonnet) for this call.
 
         Returns:
-            Tuple of (extracted warning text or None, LLMCallStats or None).
+            ExtractionResult with only the requested fields populated.
         """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-        model = model_override or self.model
+        # Build field-specific guidance for the user message
+        field_hints = {
+            "government_warning": "Look for 'GOVERNMENT WARNING:' block -- often in small print on back label. Two numbered points about (1) pregnancy and (2) driving.",
+            "net_contents": "Volume measurement (e.g. '750mL', '1.0L'). Check all 4 corners and vertical edges.",
+            "producer_name": "Company name near 'Produced by', 'Bottled by', 'Distilled by'.",
+            "producer_address": "City/state near producer name.",
+            "importer_name": "Company name after 'Imported by' -- small text near bottom/barcode.",
+            "importer_address": "City/state after importer name.",
+        }
 
-        try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=model,
-                max_tokens=1024,
-                temperature=0,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": WARNING_REEXTRACT_PROMPT,
-                            },
-                        ],
-                    }
-                ],
-            )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
+        json_template = {f: {"value": None, "conf": "high"} for f in missing_fields}
+        field_guidance = "\n".join(
+            f"- {f}: {field_hints.get(f, 'Extract as printed.')}"
+            for f in missing_fields
+        )
 
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_warning",
-            )
-            logger.info(
-                "Warning re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
+        user_text = (
+            f"Find these MISSING fields: {', '.join(missing_fields)}\n\n"
+            f"Return JSON: {json.dumps(json_template)}\n\n"
+            f"Field guidance:\n{field_guidance}"
+        )
 
-            response_text = response.content[0].text
-            logger.info("Warning re-extraction (%s): %s", model, response_text[:200])
-
-            parsed = _repair_json(response_text)
-            if parsed is None:
-                return None, stats
-
-            gw = parsed.get("government_warning")
-            if isinstance(gw, dict) and "value" in gw:
-                return gw["value"], stats
-            return gw, stats
-
-        except Exception as e:
-            logger.exception("Warning re-extraction failed: %s", e)
-            return None, None
-
-
-    async def reextract_importer(
-        self,
-        image_bytes: bytes,
-        mime_type: str = "image/jpeg",
-    ) -> tuple[dict | None, LLMCallStats | None]:
-        """Re-extract importer name and address with a focused prompt.
-
-        Returns:
-            Tuple of (dict with importer values or None, LLMCallStats or None).
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
-        try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                temperature=0,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": IMPORTER_REEXTRACT_PROMPT,
-                            },
-                        ],
-                    }
-                ],
-            )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_importer",
-            )
-            logger.info(
-                "Importer re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            response_text = response.content[0].text
-            logger.info("Importer re-extraction: %s", response_text[:200])
-
-            parsed = _repair_json(response_text)
-            if parsed is None:
-                return None, stats
-
-            result = {}
-            for key in ("importer_name", "importer_address"):
-                fld = parsed.get(key)
-                if isinstance(fld, dict) and "value" in fld:
-                    result[key] = fld["value"]
-                elif isinstance(fld, str):
-                    result[key] = fld
-
-            return (result if any(result.values()) else None), stats
-
-        except Exception as e:
-            logger.exception("Importer re-extraction failed: %s", e)
-            return None, None
-
-    async def reextract_country_of_origin(
-        self,
-        image_bytes: bytes,
-        mime_type: str = "image/jpeg",
-    ) -> tuple[str | None, LLMCallStats | None]:
-        """Re-extract country of origin with a focused prompt.
-
-        Returns:
-            Tuple of (country string or None, LLMCallStats or None).
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
-        try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=256,
-                temperature=0,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": COUNTRY_REEXTRACT_PROMPT,
-                            },
-                        ],
-                    }
-                ],
-            )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_country",
-            )
-            logger.info(
-                "Country re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            response_text = response.content[0].text
-            logger.info("Country re-extraction: %s", response_text[:200])
-
-            parsed = _repair_json(response_text)
-            if parsed is None:
-                return None, stats
-
-            fld = parsed.get("country_of_origin")
-            if isinstance(fld, dict) and "value" in fld:
-                return fld["value"], stats
-            elif isinstance(fld, str):
-                return fld, stats
-            return None, stats
-
-        except Exception as e:
-            logger.exception("Country re-extraction failed: %s", e)
-            return None, None
+        return await self._focused_extract(
+            image_bytes, "reextract", MISSING_FIELDS_PROMPT,
+            "reextract_missing_fields", user_text,
+            mime_type, max_tokens=512,
+        )
 
     async def reextract_specialty_class(
         self,
@@ -701,9 +599,16 @@ class AnthropicExtractor(BaseExtractor):
         try:
             t0 = time.monotonic()
             response = await self.client.messages.create(
-                model=self.model,
+                model=self.reextract_model,
                 max_tokens=512,
                 temperature=0,
+                system=[
+                    {
+                        "type": "text",
+                        "text": SPECIALTY_CLASS_PROMPT,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
                 messages=[
                     {
                         "role": "user",
@@ -718,7 +623,7 @@ class AnthropicExtractor(BaseExtractor):
                             },
                             {
                                 "type": "text",
-                                "text": SPECIALTY_CLASS_PROMPT,
+                                "text": "Extract the specialty class information from this label.",
                             },
                         ],
                     }
@@ -775,9 +680,16 @@ class AnthropicExtractor(BaseExtractor):
         try:
             t0 = time.monotonic()
             response = await self.client.messages.create(
-                model=self.model,
+                model=self.reextract_model,
                 max_tokens=256,
                 temperature=0,
+                system=[
+                    {
+                        "type": "text",
+                        "text": BRAND_CONFIRM_PROMPT.format(declared_brand=declared_brand),
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
                 messages=[
                     {
                         "role": "user",
@@ -792,7 +704,7 @@ class AnthropicExtractor(BaseExtractor):
                             },
                             {
                                 "type": "text",
-                                "text": BRAND_CONFIRM_PROMPT.format(declared_brand=declared_brand),
+                                "text": "Confirm the brand name on this label.",
                             },
                         ],
                     }
@@ -837,3 +749,89 @@ class AnthropicExtractor(BaseExtractor):
         except Exception as e:
             logger.exception("Brand re-extraction failed: %s", e)
             return None, None
+
+    async def transcribe_label(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[str, list[LLMCallStats]]:
+        """Single LLM call to transcribe all visible text on a label image.
+
+        Returns:
+            (full_text, stats) where full_text is the transcribed text.
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        llm_stats: list[LLMCallStats] = []
+
+        last_error = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                t0 = time.monotonic()
+                response = await self.client.messages.create(
+                    model=self.reextract_model,
+                    max_tokens=1500,
+                    temperature=0,
+                    system=[
+                        {
+                            "type": "text",
+                            "text": TRANSCRIPTION_PROMPT,
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": mime_type,
+                                        "data": base64_image,
+                                    },
+                                },
+                                {
+                                    "type": "text",
+                                    "text": "Transcribe all text visible on this label.",
+                                },
+                            ],
+                        }
+                    ],
+                )
+                elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+                usage = response.usage
+                stats = LLMCallStats(
+                    input_tokens=getattr(usage, "input_tokens", 0),
+                    output_tokens=getattr(usage, "output_tokens", 0),
+                    elapsed_ms=elapsed_ms,
+                    call_type="transcribe_label",
+                )
+                llm_stats.append(stats)
+                logger.info(
+                    "Transcription (%s): %d in / %d out tokens, %dms",
+                    panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+                )
+
+                text = response.content[0].text
+                logger.info("Transcription (%s): %s", panel_type, text[:200])
+                return text, llm_stats
+
+            except AnthropicRateLimitError as e:
+                last_error = e
+                if attempt >= MAX_RETRIES:
+                    break
+                delay = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
+                logger.warning(
+                    "Anthropic rate limited transcribe (%s, attempt %d/%d), retrying in %.1fs...",
+                    panel_type, attempt + 1, MAX_RETRIES, delay,
+                )
+                await asyncio.sleep(delay)
+
+            except Exception as e:
+                logger.exception("Transcription failed (%s): %s", panel_type, e)
+                return "", llm_stats
+
+        logger.error("Transcription rate limit exhausted (%s): %s", panel_type, last_error)
+        return "", llm_stats

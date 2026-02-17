@@ -1,52 +1,79 @@
 # Evaluation Framework
 
-This directory contains tools for evaluating LLM extraction accuracy.
+End-to-end pipeline evaluation for LabelVerifier. Calls `VerificationOrchestrator.verify_single()` per product and compares the full pipeline output against ground truth.
 
 ## Quick Start
 
 ```bash
 cd backend
 
-# Run evaluation against ground truth
+# 1. Generate ground truth from label_catalog.json (one-time)
+python -m evals.convert_catalog
+
+# 2. Run full evaluation
 python -m evals.run_eval
 
-# Generate template for new test images
-python -m evals.run_eval --generate-template "test data/**/*.jpg"
+# 3. Quick smoke test (2 products)
+python -m evals.run_eval --max-products 2
 
-# Save detailed results to JSON
+# 4. Filter by product ID or source folder
+python -m evals.run_eval --filter "angels-envy"
+python -m evals.run_eval --filter "good spirits"
+
+# 5. Save detailed JSON results
 python -m evals.run_eval --output results.json
 ```
 
 ## Files
 
-- **ground_truth_schema.json** - JSON schema for ground truth data format
-- **ground_truth_data.json** - Actual ground truth entries (edit this!)
+- **convert_catalog.py** - Converts `test data/label_catalog.json` to `eval_ground_truth.json`
+- **eval_ground_truth.json** - Per-product ground truth (generated, do not hand-edit)
 - **run_eval.py** - Main evaluation script
 
-## Adding Ground Truth Data
+## Ground Truth Format
 
-1. Add label images to `test data/` or `data/applications/`
-2. Generate a template:
-   ```bash
-   python -m evals.run_eval --generate-template "test data/0. Spirits Complete/*.jpg"
-   ```
-3. Edit `ground_truth_template.json` to fill in expected values
-4. Copy entries to `ground_truth_data.json`
-5. Run evaluation to verify
+```json
+{
+  "version": "2.0",
+  "products": [{
+    "id": "angels-envy",
+    "source_folder": "good spirits",
+    "image_files": ["Angels Envy burbon front.jpg", "Angels Envy burbon back.jpg"],
+    "panels": ["front", "back"],
+    "application_data": {
+      "brand_name": "Angel's Envy",
+      "class_type": "Kentucky Straight Bourbon Whiskey...",
+      "alcohol_content": "43.3% Alc./Vol. (86.6 Proof)",
+      "net_contents": "750 mL",
+      "beverage_type": "distilled_spirits",
+      "source_of_product": "domestic",
+      "has_sulfites_declaration": false
+    },
+    "expected_status": "pass",
+    "expected_fields": {
+      "government_warning": "match",
+      "brand_name": "match",
+      "alcohol_content": "match"
+    },
+    "notes": "Clear front+back, all fields readable"
+  }]
+}
+```
+
+## CLI Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--ground-truth`, `-g` | `evals/eval_ground_truth.json` | Path to ground truth file |
+| `--output`, `-o` | (none) | Save detailed JSON results |
+| `--concurrency`, `-c` | 3 | Max parallel products |
+| `--max-products`, `-n` | (all) | Limit products for quick tests |
+| `--filter`, `-f` | (none) | Filter by product ID or source_folder |
 
 ## Metrics
 
-The evaluation reports:
-
-- **Accuracy**: % of fields correctly extracted
-- **Precision**: When we extract a value, how often is it correct?
-- **Recall**: Of fields that should have values, how many did we find?
-- **F1**: Harmonic mean of precision and recall
-- **Confidence Calibration**: When model says "high confidence", how often is it actually correct?
-
-## Tips
-
-- Focus on fields with <90% accuracy for prompt improvements
-- Check confidence calibration to detect overconfident extractions
-- Use `--output results.json` to track accuracy over time
-- Re-run after prompt changes to check for regressions
+- **Status accuracy** - % products where expected_status == actual_status
+- **Status confusion matrix** - Shows pass->fail, pass->needs_review, etc.
+- **Per-field assertion accuracy** - % of field status expectations met
+- **Cost** - Total and per-product USD
+- **Performance** - Total and per-product time, LLM calls

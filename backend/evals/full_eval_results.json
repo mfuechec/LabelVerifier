@@ -1,0 +1,2599 @@
+{
+  "total_products": 36,
+  "products_evaluated": 36,
+  "products_errored": 0,
+  "status_accuracy": 0.3055555555555556,
+  "field_accuracy": 0.7665369649805448,
+  "total_cost_usd": 1.0597770000000002,
+  "total_time_ms": 165410,
+  "total_llm_calls": 112,
+  "status_confusion": {
+    "pass": {
+      "needs_review": 3,
+      "pass": 4,
+      "fail": 6
+    },
+    "needs_review": {
+      "pass": 2,
+      "fail": 11,
+      "needs_review": 3
+    },
+    "fail": {
+      "pass": 1,
+      "needs_review": 2,
+      "fail": 4
+    }
+  },
+  "field_accuracy_by_name": {
+    "brand_name": {
+      "total": 30,
+      "correct": 30
+    },
+    "class_type": {
+      "total": 30,
+      "correct": 19
+    },
+    "alcohol_content": {
+      "total": 36,
+      "correct": 31
+    },
+    "net_contents": {
+      "total": 36,
+      "correct": 35
+    },
+    "producer_name": {
+      "total": 25,
+      "correct": 19
+    },
+    "producer_address": {
+      "total": 25,
+      "correct": 17
+    },
+    "government_warning": {
+      "total": 36,
+      "correct": 20
+    },
+    "country_of_origin": {
+      "total": 13,
+      "correct": 12
+    },
+    "importer_name": {
+      "total": 10,
+      "correct": 4
+    },
+    "importer_address": {
+      "total": 11,
+      "correct": 5
+    },
+    "sulfites_declaration": {
+      "total": 5,
+      "correct": 5
+    }
+  },
+  "product_results": [
+    {
+      "product_id": "angels-envy",
+      "expected_status": "pass",
+      "actual_status": "needs_review",
+      "status_correct": false,
+      "overall_confidence": 95.87195891543718,
+      "cost_usd": 0.027219,
+      "total_time_ms": 4390,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Angel's Envy",
+          "extracted_value": "ANGELS ENVY"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
+          "extracted_value": "KENTUCKY STRAIGHT BOURBON WHISKEY FINISHED IN PORT WINE BARRELS"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "43.3% Alc./Vol. (86.6 Proof)",
+          "extracted_value": "43.3% ALCOHOL BY VOLUME"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Louisville Distilling Company",
+          "extracted_value": "LOUISVILLE SPIRITS GROUP"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Louisville, Kentucky",
+          "extracted_value": "LOUISVILLE, KENTUCKY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "den-of-thieves",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "status_correct": true,
+      "overall_confidence": 100.0,
+      "cost_usd": 0.030756,
+      "total_time_ms": 4141,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Den of Thieves",
+          "extracted_value": "Den of Thieves"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Chocolate Flavored Whiskey",
+          "extracted_value": "Chocolate Flavored Whiskey"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC. BY VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Strong Spirits",
+          "extracted_value": "Strong Spirits"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Bardstown, KY",
+          "extracted_value": "Bardstown, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "hanami-gin",
+      "expected_status": "pass",
+      "actual_status": "needs_review",
+      "status_correct": false,
+      "overall_confidence": 88.79310344827587,
+      "cost_usd": 0.038682,
+      "total_time_ms": 5750,
+      "llm_calls": 4,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Hanami",
+          "extracted_value": "HANAMI"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Dry Gin",
+          "extracted_value": "DRY GIN"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "43% Alc./Vol. (86 Proof)",
+          "extracted_value": "43% ALC/VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750mL"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "P. Melchers Distilleries BV",
+          "extracted_value": "P. Melchers Distilleries BV"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Lelystad, The Netherlands",
+          "extracted_value": "Lelystad - The Netherlands"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Holland",
+          "extracted_value": "HOLLAND"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "The Red Sea Import Company",
+          "extracted_value": null
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Princeton, MN",
+          "extracted_value": null
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "rosso-veneto",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 76.5118050266565,
+      "cost_usd": 0.024039,
+      "total_time_ms": 3225,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Rosso Veneto",
+          "extracted_value": "ROSSO VENETO"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Red Wine",
+          "extracted_value": "Rosso Veneto"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "14.5%",
+          "extracted_value": "14,5% by Vol."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 mL"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Italy",
+          "extracted_value": "Italia"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Marcato Direct",
+          "extracted_value": "MARCATO DIRECT"
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Addison, IL 60108",
+          "extracted_value": "Addison, IL 60108"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING:(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        },
+        {
+          "field_name": "sulfites_declaration",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Required",
+          "extracted_value": "CONTAINS SULPHITES"
+        }
+      ]
+    },
+    {
+      "product_id": "black-maple-hill",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "status_correct": true,
+      "overall_confidence": 99.16666666666667,
+      "cost_usd": 0.038943,
+      "total_time_ms": 3917,
+      "llm_calls": 4,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Black Maple Hill",
+          "extracted_value": "Black Maple Hill"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Oregon Straight Rye Whiskey",
+          "extracted_value": "Oregon Straight Rye Whiskey"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "47.5% Alc./Vol. (95 Proof)",
+          "extracted_value": "47.5 % by Vol."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ml"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Stein Distillery",
+          "extracted_value": "Stein Distillery"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Joseph, Oregon",
+          "extracted_value": "Joseph, Oregon"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "fuel-moonshine",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 99.12747403488144,
+      "cost_usd": 0.019683,
+      "total_time_ms": 4243,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Fuel",
+          "extracted_value": "FUEL"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Grain Neutral Spirits with Natural Flavor Added",
+          "extracted_value": "GRAIN NEUTRAL SPIRITS WITH NATURAL FLAVOR ADDED"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC BY VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Redline Beverage",
+          "extracted_value": "Redline Beverage"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Bardstown, KY",
+          "extracted_value": "Bardstown, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISKS OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "market-alley",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 99.12733529990167,
+      "cost_usd": 0.037548,
+      "total_time_ms": 4797,
+      "llm_calls": 4,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Market Alley",
+          "extracted_value": "Market Alley"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Barrel Rested Gin",
+          "extracted_value": "Barrel Rested Gin"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "45% Alc./Vol. (90 Proof)",
+          "extracted_value": "45% ALC by VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Thistle Finch Distilling LLC",
+          "extracted_value": "Thistle Finch"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Lancaster, PA",
+          "extracted_value": "Lancaster, PA"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "mckenzie-brew-house",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "status_correct": true,
+      "overall_confidence": 100.0,
+      "cost_usd": 0.021876,
+      "total_time_ms": 5353,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "McKenzie Brew House",
+          "extracted_value": "McKenzie Brew House"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Locally Crafted Vodka",
+          "extracted_value": "VODKA"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "1 Liter",
+          "extracted_value": "1 LITER"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Kiki Vodka Company LLC",
+          "extracted_value": "Kiki Vodka Company, LLC"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Hatfield, PA",
+          "extracted_value": "Hatfield, PA"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) According to the surgeon general, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      ]
+    },
+    {
+      "product_id": "misunderstood",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 93.94736842105263,
+      "cost_usd": 0.027306,
+      "total_time_ms": 5869,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Misunderstood",
+          "extracted_value": "Misunderstood"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Ginger Spiced Whiskey",
+          "extracted_value": "WHISKEY WITH NATURAL GINGER FLAVOR & CARAMEL COLOR"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Misunderstood Whiskey",
+          "extracted_value": "Misunderstood"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Bardstown, KY",
+          "extracted_value": "Bardstown, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "gordian-knot-rum",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "status_correct": true,
+      "overall_confidence": 99.16666666666667,
+      "cost_usd": 0.031023,
+      "total_time_ms": 4838,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Gordian Knot",
+          "extracted_value": "GORDIAN KNOT"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Aged Rum",
+          "extracted_value": "AGED RUM"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "42% Alc./Vol. (84 Proof)",
+          "extracted_value": "42% ALC BY VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Nicks and Bruce",
+          "extracted_value": "NICKS AND BRUCE"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Bardstown, KY",
+          "extracted_value": "BARDSTOWN, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "twelv-31",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 58.75816993464053,
+      "cost_usd": 0.026835,
+      "total_time_ms": 4189,
+      "llm_calls": 4,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Twelv 31",
+          "extracted_value": "Twelv 31"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Velvet Berry Liqueur",
+          "extracted_value": "Liqueur"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "20% Alc./Vol. (40 Proof)",
+          "extracted_value": "20% ALC/VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": null
+        }
+      ]
+    },
+    {
+      "product_id": "cascade-val",
+      "expected_status": "pass",
+      "actual_status": "needs_review",
+      "status_correct": false,
+      "overall_confidence": 91.57894736842105,
+      "cost_usd": 0.026319,
+      "total_time_ms": 4985,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Cascade",
+          "extracted_value": "Cascade Winery"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Red Wine",
+          "extracted_value": "Red Wine"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "11.5%",
+          "extracted_value": "11.5% by volume"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Cascade Winery",
+          "extracted_value": "Cascade Winery"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Grand Rapids, MI",
+          "extracted_value": "Grand Rapids, MI 49546"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "extraction_uncertain",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        },
+        {
+          "field_name": "sulfites_declaration",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Required",
+          "extracted_value": "Contains Sulfites"
+        }
+      ]
+    },
+    {
+      "product_id": "lenz-moser",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 86.56105610561056,
+      "cost_usd": 0.024618,
+      "total_time_ms": 3559,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Lenz Moser",
+          "extracted_value": "Lenz Moser"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Dry White Wine",
+          "extracted_value": "Gr\u00fcner Veltliner"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "12%",
+          "extracted_value": "12% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "1.0 L",
+          "extracted_value": "1.0L"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Austria",
+          "extracted_value": "Austria"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Niche Import Co.",
+          "extracted_value": "Nico W & S"
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Cedar Knolls, NJ",
+          "extracted_value": "CEDAR KNOLLS, NJ"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        },
+        {
+          "field_name": "sulfites_declaration",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Required",
+          "extracted_value": "CONTAINS SULFITES"
+        }
+      ]
+    },
+    {
+      "product_id": "woodford-reserve",
+      "expected_status": "needs_review",
+      "actual_status": "pass",
+      "status_correct": false,
+      "overall_confidence": 100.0,
+      "cost_usd": 0.036234,
+      "total_time_ms": 4807,
+      "llm_calls": 4,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Woodford Reserve",
+          "extracted_value": "WOODFORD RESERVE"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Kentucky Straight Bourbon Whiskey",
+          "extracted_value": "Kentucky Straight Bourbon Whiskey"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "45.2% Alc./Vol. (90.4 Proof)",
+          "extracted_value": "45.2% ALC/VOL (90.4 PROOF)"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 mL"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "The Woodford Reserve Distillery",
+          "extracted_value": "THE WOODFORD RESERVE DISTILLERY"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Versailles, KY",
+          "extracted_value": "VERSAILLES, KENTUCKY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "content_mismatch",
+          "actual_status": "match",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "casamigos",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 76.55386531761039,
+      "cost_usd": 0.02409,
+      "total_time_ms": 2697,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Casamigos",
+          "extracted_value": "CASAMIGOS"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Licor de Agave Joven",
+          "extracted_value": "Tequila 100% Agave Azul Blanco"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC. / VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Productos Finos de Agave",
+          "extracted_value": null
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Jalisco, Mexico",
+          "extracted_value": "Jalisco, Mexico"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Mexico",
+          "extracted_value": "Mexico"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Casamigos Spirits Company",
+          "extracted_value": "SIDNEY FRANK IMPORTING CO., INC."
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "New York, NY",
+          "extracted_value": "NEW ROCHELLE, NY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "fete-rose",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 66.10537190082644,
+      "cost_usd": 0.030855,
+      "total_time_ms": 4166,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Fete",
+          "extracted_value": "Fete"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Rose Wine",
+          "extracted_value": "Qualit\u00e4tswein trocken"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "12.5%",
+          "extracted_value": "12% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "France",
+          "extracted_value": "\u00d6sterreich"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "content_mismatch",
+          "actual_status": "match",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        },
+        {
+          "field_name": "sulfites_declaration",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Required",
+          "extracted_value": "CONTAINS SULFITES"
+        }
+      ]
+    },
+    {
+      "product_id": "barenjager-warning",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 70.97971452778712,
+      "cost_usd": 0.023745,
+      "total_time_ms": 3282,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Barenjager",
+          "extracted_value": "B\u00e4renj\u00e4ger"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Honey Liqueur",
+          "extracted_value": "Honey Liqueur"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "35% Alc./Vol. (70 Proof)",
+          "extracted_value": "39% ALC. BY VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "extraction_uncertain",
+          "correct": false,
+          "declared_value": "50 mL",
+          "extracted_value": "500ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Schwarze und Schlichte GmbH",
+          "extracted_value": "TEUCKE & K\u00d6NIG B\u00c4RENFANGFABRIK"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Oelde, Germany",
+          "extracted_value": "RINTELN"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Germany",
+          "extracted_value": "Germany"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Sidney Frank Importing Co., Inc.",
+          "extracted_value": "SIDNEY FRANK IMPORTING CO., INC."
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "New Rochelle, NY",
+          "extracted_value": "NEW ROCHELLE, N.Y."
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "content_mismatch",
+          "actual_status": "content_mismatch",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "seven-fathoms",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 86.33741016535438,
+      "cost_usd": 0.024405,
+      "total_time_ms": 2948,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Seven Fathoms",
+          "extracted_value": "SEVEN FATHOMS"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Cayman Islands Premium Rum",
+          "extracted_value": "Artisan Small Batch Rum"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Cayman Spirits Co.",
+          "extracted_value": "Cayman Island Distilleries Ltd."
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Grand Cayman, Cayman Islands",
+          "extracted_value": "George Town, Grand Cayman"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Cayman Islands",
+          "extracted_value": "Cayman Islands"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "content_mismatch",
+          "actual_status": "content_mismatch",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING : (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "monkey-47",
+      "expected_status": "needs_review",
+      "actual_status": "needs_review",
+      "status_correct": true,
+      "overall_confidence": 94.81981981981983,
+      "cost_usd": 0.023586,
+      "total_time_ms": 2729,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Monkey 47",
+          "extracted_value": "MONKEY 47"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Schwarzwald Dry Gin",
+          "extracted_value": "SCHWARZWALD DRY GIN"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "47% Alc./Vol. (94 Proof)",
+          "extracted_value": "47% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "375 mL",
+          "extracted_value": "375 ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Black Forest Distillers",
+          "extracted_value": "Black Forest Distillers"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Lossburg, Germany",
+          "extracted_value": null
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Germany",
+          "extracted_value": "GERMANY"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Sidney Frank Importing Co., Inc.",
+          "extracted_value": "SIDNEY FRANK IMPORTING CO., INC."
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "New Rochelle, NY",
+          "extracted_value": "NEW ROCHELLE, NY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      ]
+    },
+    {
+      "product_id": "collabor-and-tion",
+      "expected_status": "fail",
+      "actual_status": "pass",
+      "status_correct": false,
+      "overall_confidence": 100.0,
+      "cost_usd": 0.019053,
+      "total_time_ms": 3797,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Collabor&tion",
+          "extracted_value": "COLLABOR&TION"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Straight Bourbon Whiskey Finished in Brandy Barrels",
+          "extracted_value": "Straight Bourbon Whiskey"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "60% Alc./Vol. (120 Proof)",
+          "extracted_value": "60% ALC. BY VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "field_missing",
+          "actual_status": "match",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "cotton-hollow",
+      "expected_status": "fail",
+      "actual_status": "needs_review",
+      "status_correct": false,
+      "overall_confidence": 85.65601503759399,
+      "cost_usd": 0.026784,
+      "total_time_ms": 3760,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Cotton Hollow",
+          "extracted_value": "Cotton Hollow"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Straight Bourbon Whiskey",
+          "extracted_value": "Straight Bourbon Whiskey"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "46.5% Alc./Vol. (93 Proof)",
+          "extracted_value": "46.5% alc./vol."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ml"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Cotton Hollow Distillery",
+          "extracted_value": "Cotton Hollow Distilling, LLC"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Indiana",
+          "extracted_value": "Bardstown, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "field_missing",
+          "actual_status": "extraction_uncertain",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK BIRTH DEFECTS (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY AND MAY CAUSE HEALTH PROBLEMS"
+        }
+      ]
+    },
+    {
+      "product_id": "resilient",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "status_correct": true,
+      "overall_confidence": 99.90543735224585,
+      "cost_usd": 0.027204,
+      "total_time_ms": 3541,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Resilient",
+          "extracted_value": "RESILIENT"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Straight Bourbon Whisky",
+          "extracted_value": "STRAIGHT BOURBON WHISKY"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "53.5% Alc./Vol. (107 Proof)",
+          "extracted_value": "53.5% ALC/VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "field_missing",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "warm",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "status_correct": true,
+      "overall_confidence": 80.0,
+      "cost_usd": 0.017028,
+      "total_time_ms": 3790,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Warm",
+          "extracted_value": "WARM"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Bourbon Whiskey",
+          "extracted_value": null
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "48% Alc./Vol. (96 Proof)",
+          "extracted_value": "48%"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "field_missing",
+          "actual_status": "match",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "barrilito",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "status_correct": true,
+      "overall_confidence": 70.22949462171368,
+      "cost_usd": 0.01329,
+      "total_time_ms": 3426,
+      "llm_calls": 1,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Barrilito",
+          "extracted_value": "BARRILITO"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Cerveza",
+          "extracted_value": null
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "3.6%",
+          "extracted_value": "ALC 3.6% BY VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "1 QT 8 FL.OZ.",
+          "extracted_value": "1 QT., 8FL.OZ."
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Cerveceria Moctezuma",
+          "extracted_value": "CERVECERIA MODELO S. DE R.L DE C.V."
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Monterrey, Mexico",
+          "extracted_value": null
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Mexico",
+          "extracted_value": "MEXICO"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Labatt USA Operating Co. LLC",
+          "extracted_value": "RR IMPORTACIONES INC."
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Norwalk, CT",
+          "extracted_value": "141 3RD ST, UNIT. # 143 Passaic, N.J. 07055-0000"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS, (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS"
+        }
+      ]
+    },
+    {
+      "product_id": "forte-masso",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "status_correct": true,
+      "overall_confidence": 67.26354117272764,
+      "cost_usd": 0.024129,
+      "total_time_ms": 3608,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Forte Masso",
+          "extracted_value": "FORTEMASSO"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Red Wine",
+          "extracted_value": "BARBERA D'ALBA"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "13.5%",
+          "extracted_value": "13,5% vol"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Italy",
+          "extracted_value": "ITALIA"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Pacific Highway Wines",
+          "extracted_value": "DUE FRATELLI IMPORTS, LLC"
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "San Rafael, CA",
+          "extracted_value": "PORTLAND MAINE"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        },
+        {
+          "field_name": "sulfites_declaration",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Required",
+          "extracted_value": "CONTIENE SOLFITI - CONTAINS SULPHITES - ENTH\u00c4LT SULFITE - CONTIENT SULFITES"
+        }
+      ]
+    },
+    {
+      "product_id": "mokka",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 70.12871521882123,
+      "cost_usd": 0.058518,
+      "total_time_ms": 9729,
+      "llm_calls": 7,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "35% Alc./Vol. (70 Proof)",
+          "extracted_value": "35% alc by vol"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ML"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISKS OF BIRTHDEFECTS. (2) CONSUMPTION OF ALCO-HOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "alpine-lafayette",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 73.34766682592769,
+      "cost_usd": 0.032082,
+      "total_time_ms": 5272,
+      "llm_calls": 4,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC BY VOL (80 PROOF)"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Alpine Distilling",
+          "extracted_value": "ALPINE DISTILLING"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "7132 N Silver Creek Rd, Park City, UT 84098",
+          "extracted_value": "PARK CITY, UT 84098"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "howling-moon-photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 77.39341798552326,
+      "cost_usd": 0.043653,
+      "total_time_ms": 7043,
+      "llm_calls": 5,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "40% Alc./Vol. (80 Proof)",
+          "extracted_value": "40% ALC/VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ml"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Howling Moon",
+          "extracted_value": "Howling Moon"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Asheville, North Carolina",
+          "extracted_value": "Asheville, North Carolina"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1)According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects.(2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."
+        }
+      ]
+    },
+    {
+      "product_id": "rocky-mount",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 69.89942228952829,
+      "cost_usd": 0.03546,
+      "total_time_ms": 6767,
+      "llm_calls": 5,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "50% Alc./Vol. (100 Proof)",
+          "extracted_value": "50% Alc/Vol"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 mL"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) COMSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "sailor-jerry-photo",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 42.613196594427244,
+      "cost_usd": 0.026652,
+      "total_time_ms": 6413,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "46% Alc./Vol. (92 Proof)",
+          "extracted_value": "40% ALC./VOL."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "50 mL",
+          "extracted_value": "50mL"
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "field_missing",
+          "correct": false,
+          "declared_value": "Edison, NJ",
+          "extracted_value": null
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "extraction_uncertain",
+          "actual_status": "match",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "salted-caramel",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 71.91281823790658,
+      "cost_usd": 0.059598,
+      "total_time_ms": 9065,
+      "llm_calls": 7,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "35% Alc./Vol. (70 Proof)",
+          "extracted_value": "35% alc by vol"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 mL"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Redline Beverage",
+          "extracted_value": "Redline Beverage"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Bardstown, KY",
+          "extracted_value": "Bardstown, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISKS OF BIRTHDEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "barenjager-bourbon",
+      "expected_status": "fail",
+      "actual_status": "needs_review",
+      "status_correct": false,
+      "overall_confidence": 85.35752353143658,
+      "cost_usd": 0.022593,
+      "total_time_ms": 2796,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Barenjager",
+          "extracted_value": "B\u00e4renj\u00e4ger"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Honey & Bourbon",
+          "extracted_value": "B\u00c4RENJ\u00c4GER HONEY LIQUEUR AND BOURBON WHISKEY"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "35% Alc./Vol. (70 Proof)",
+          "extracted_value": "35% ALC / VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "1 L",
+          "extracted_value": "1 L"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Schwarze und Schlichte GmbH",
+          "extracted_value": "TEUCKE + KOENIG B\u00c4RENFANGFABRIK"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Oelde, Germany",
+          "extracted_value": "RINTELN GERMANY"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Germany",
+          "extracted_value": "GERMANY"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Sidney Frank Importing Co., Inc.",
+          "extracted_value": "NICHE W. & S."
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "New Rochelle, NY",
+          "extracted_value": "CEDAR KNOLLS, NJ"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "gordian-knot-rum-bad",
+      "expected_status": "needs_review",
+      "actual_status": "fail",
+      "status_correct": false,
+      "overall_confidence": 92.70833333333333,
+      "cost_usd": 0.030828,
+      "total_time_ms": 4535,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Gordian Knot",
+          "extracted_value": "GORDIAN KNOT"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Caribbean Rum",
+          "extracted_value": "Reserve Rum"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "42% Alc./Vol. (84 Proof)",
+          "extracted_value": "42% ALC BY VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Nicks and Bruce",
+          "extracted_value": "NICKS AND BRUCE"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Bardstown, KY",
+          "extracted_value": "BARDSTOWN, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "dutch-courage",
+      "expected_status": "needs_review",
+      "actual_status": "needs_review",
+      "status_correct": true,
+      "overall_confidence": 97.51610218555507,
+      "cost_usd": 0.030171,
+      "total_time_ms": 3807,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Dutch Courage",
+          "extracted_value": "Dutch Courage"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Dry Gin",
+          "extracted_value": "Dry Gin"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "44.5% Alc./Vol. (89 Proof)",
+          "extracted_value": "44.5% Alc. by Vol."
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 ml"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Zuidam Distillers BV",
+          "extracted_value": "Zuidam Distillers Export BV"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Baarle-Nassau, Netherlands",
+          "extracted_value": "The Netherlands"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Netherlands",
+          "extracted_value": "Holland"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "content_mismatch",
+          "actual_status": "match",
+          "correct": false,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "sortilege-label",
+      "expected_status": "needs_review",
+      "actual_status": "pass",
+      "status_correct": false,
+      "overall_confidence": 100.0,
+      "cost_usd": 0.023985,
+      "total_time_ms": 3519,
+      "llm_calls": 2,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Sortilege",
+          "extracted_value": "SORTIL\u00c8GE"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Liqueur with Canadian Whisky and Maple Syrup",
+          "extracted_value": "LIQUEUR"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "30% Alc./Vol. (60 Proof)",
+          "extracted_value": "30% ALC/VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "375 mL",
+          "extracted_value": "375ML"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "La Maison des Futailles",
+          "extracted_value": "LA MAISON DES FUTAILLES"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Montreal, Quebec, Canada",
+          "extracted_value": "MONTR\u00c9AL, QU\u00c9BEC, CANADA"
+        },
+        {
+          "field_name": "country_of_origin",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Canada",
+          "extracted_value": "CANADA"
+        },
+        {
+          "field_name": "importer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Sidney Frank Importing Co., Inc.",
+          "extracted_value": "SIDNEY FRANK IMPORTING CO., INC."
+        },
+        {
+          "field_name": "importer_address",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "New Rochelle, NY",
+          "extracted_value": "NEW ROCHELLE, NY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    },
+    {
+      "product_id": "uncle-nearest",
+      "expected_status": "needs_review",
+      "actual_status": "needs_review",
+      "status_correct": true,
+      "overall_confidence": 95.81807081807081,
+      "cost_usd": 0.030987,
+      "total_time_ms": 4657,
+      "llm_calls": 3,
+      "error": null,
+      "field_assertions": [
+        {
+          "field_name": "brand_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Uncle Nearest",
+          "extracted_value": "UNCLE NEAREST"
+        },
+        {
+          "field_name": "class_type",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Premium Whiskey",
+          "extracted_value": "Premium Whiskey"
+        },
+        {
+          "field_name": "alcohol_content",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "50% Alc./Vol. (100 Proof)",
+          "extracted_value": "50% ALC/VOL"
+        },
+        {
+          "field_name": "net_contents",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "750 mL",
+          "extracted_value": "750 mL"
+        },
+        {
+          "field_name": "producer_name",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": "Uncle Nearest, Inc.",
+          "extracted_value": "Uncle Nearest 1856"
+        },
+        {
+          "field_name": "producer_address",
+          "expected_status": "match",
+          "actual_status": "content_mismatch",
+          "correct": false,
+          "declared_value": "Shelbyville, TN",
+          "extracted_value": "Bardstown, KY"
+        },
+        {
+          "field_name": "government_warning",
+          "expected_status": "match",
+          "actual_status": "match",
+          "correct": true,
+          "declared_value": null,
+          "extracted_value": "GOVERNMENT WARNING:(1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      ]
+    }
+  ]
+}

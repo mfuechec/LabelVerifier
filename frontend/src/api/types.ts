@@ -53,6 +53,9 @@ export interface HistoryItem {
   overall_confidence: number | null;
   agent_decision: string | null;
   created_at: string;
+  processing_time_ms: number | null;
+  total_tokens: number | null;
+  estimated_cost_usd: number | null;
 }
 
 export interface HistoryResponse {

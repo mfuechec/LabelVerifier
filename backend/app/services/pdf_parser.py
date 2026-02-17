@@ -429,8 +429,8 @@ class COLAPDFParser:
             doc.close()
             return []
 
-        # Extract image type annotations from text
-        image_types = self._extract_image_type_annotations(pdf_bytes)
+        # Extract image type annotations per page
+        image_types_by_page = self._extract_image_type_annotations(pdf_bytes)
 
         label_images = []
         img_index = 0
@@ -463,13 +463,19 @@ class COLAPDFParser:
                 page_images.append(img_bytes)
 
             # Pixmap fallback: render full page as PNG when no XObject images
+            # but ONLY if the page has Image Type annotations (label page).
+            # Pages with no images and no annotations are form/certificate
+            # pages -- skip them.
             if not page_images:
+                if page_num not in image_types_by_page:
+                    continue
                 pixmap = page.get_pixmap(dpi=150)
                 page_images = [pixmap.tobytes("png")]
 
-            for img_bytes in page_images:
-                if img_index < len(image_types):
-                    raw_type = image_types[img_index]
+            page_annotations = image_types_by_page.get(page_num, [])
+            for ann_idx, img_bytes in enumerate(page_images):
+                if ann_idx < len(page_annotations):
+                    raw_type = page_annotations[ann_idx]
                     panel_type = _classify_panel(raw_type)
                 else:
                     raw_type = f"label_{img_index + 1}"
@@ -487,17 +493,25 @@ class COLAPDFParser:
         doc.close()
         return label_images
 
-    def _extract_image_type_annotations(self, pdf_bytes: bytes) -> list[str]:
-        """Extract 'Image Type:' text annotations from pages 2+."""
-        types = []
+    def _extract_image_type_annotations(self, pdf_bytes: bytes) -> dict[int, list[str]]:
+        """Extract 'Image Type:' text annotations from pages 2+.
+
+        Returns a dict mapping page number (0-indexed from doc start) to
+        the list of annotation strings found on that page.
+        """
+        types_by_page: dict[int, list[str]] = {}
         try:
             pdf = pdfplumber.open(io.BytesIO(pdf_bytes))
         except Exception:
-            return types
+            return types_by_page
 
         for page in pdf.pages[1:]:
             text = page.extract_text() or ""
-            for match in re.finditer(r"Image Type:\n(.+?)(?:\n|$)", text):
-                types.append(match.group(1).strip())
+            page_types = [
+                match.group(1).strip()
+                for match in re.finditer(r"Image Type:\n(.+?)(?:\n|$)", text)
+            ]
+            if page_types:
+                types_by_page[page.page_number - 1] = page_types
         pdf.close()
-        return types
+        return types_by_page

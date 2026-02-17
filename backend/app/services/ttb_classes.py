@@ -4,6 +4,7 @@ Based on 27 CFR Parts 4 (wine), 5 (spirits), and 7 (malt beverages).
 """
 
 import re
+import unicodedata
 
 # ---------------------------------------------------------------------------
 # TTB Spirit Classes (27 CFR Part 5)
@@ -244,12 +245,26 @@ def _strip_qualifiers(text: str) -> tuple[str, list[str]]:
     return current, qualifiers
 
 
+def _fold_diacritics(text: str) -> str:
+    """Fold diacritics to ASCII (e.g. rosé -> rose, Jägermeister -> Jagermeister)."""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", text)
+        if unicodedata.category(c) != "Mn"
+    )
+
+
 def _match_class(text_lower: str, beverage_type: str) -> str | None:
     """Try to match text against known TTB classes. Returns canonical name or None."""
     lookup = _LOOKUPS.get(beverage_type, [])
     for variant, canonical in lookup:
         if text_lower == variant:
             return canonical
+    # Retry with diacritics folded (e.g. "rosé wine" -> "rose wine")
+    folded = _fold_diacritics(text_lower)
+    if folded != text_lower:
+        for variant, canonical in lookup:
+            if folded == variant:
+                return canonical
     return None
 
 

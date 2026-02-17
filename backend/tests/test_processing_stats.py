@@ -84,30 +84,12 @@ class TestAnthropicExtractorStats:
         ):
             result = await extractor.extract_fields(b"fake_image", "front")
 
-        assert len(result.llm_stats) == 1  # only main extract, no re-extractions
-        assert result.llm_stats[0].call_type == "extract_fields"
-        assert result.llm_stats[0].input_tokens == 150
-        assert result.llm_stats[0].output_tokens == 80
-        assert result.llm_stats[0].elapsed_ms >= 0
-
-    @pytest.mark.asyncio
-    async def test_reextract_warning_captures_stats(self):
-        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
-
-        mock_resp = _make_anthropic_response(WARNING_RESPONSE, 120, 30)
-
-        with patch.object(
-            extractor.client.messages,
-            "create",
-            new_callable=AsyncMock,
-            return_value=mock_resp,
-        ):
-            result, stats = await extractor.reextract_warning(b"fake_image")
-
-        assert stats is not None
-        assert stats.call_type == "reextract_warning"
-        assert stats.input_tokens == 120
-        assert stats.output_tokens == 30
+        assert len(result.llm_stats) == 3  # 3 focused calls (identity, regulatory, producer)
+        call_types = {s.call_type for s in result.llm_stats}
+        assert call_types == {"extract_identity", "extract_regulatory", "extract_producer_origin"}
+        assert all(s.input_tokens == 150 for s in result.llm_stats)
+        assert all(s.output_tokens == 80 for s in result.llm_stats)
+        assert all(s.elapsed_ms >= 0 for s in result.llm_stats)
 
     @pytest.mark.asyncio
     async def test_reextract_specialty_class_captures_stats(self):

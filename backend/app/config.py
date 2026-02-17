@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     anthropic_api_key: str = ""
     llm_model: str = "meta-llama/llama-4-maverick-17b-128e-instruct"
+    reextract_model: str = "claude-haiku-4-5-20251001"
     database_url: str = "sqlite:///./data/labelverify.db"
     allowed_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175"
 

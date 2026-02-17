@@ -13,8 +13,7 @@ export default function Layout() {
             <span className="logo-subtitle">TTB Compliance Division</span>
           </div>
           <nav className="header-nav">
-            <Link to="/" className="nav-link">Single Verify</Link>
-            <Link to="/batch" className="nav-link">Batch Upload</Link>
+            <Link to="/" className="nav-link">Verify</Link>
             <Link to="/history" className="nav-link">History</Link>
           </nav>
           <div className="header-status">

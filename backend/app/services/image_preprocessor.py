@@ -13,24 +13,27 @@ from PIL import Image, ImageEnhance, ImageFilter
 logger = logging.getLogger(__name__)
 
 # Images with longest side below this are upscaled
-MIN_DIMENSION = 1500
+MIN_DIMENSION = 800
 
-# Target longest side after upscaling
-TARGET_DIMENSION = 2000
+# Target longest side after upscaling small images
+TARGET_DIMENSION = 1000
+
+# Larger images are downscaled to reduce token count and API latency.
+MAX_DIMENSION = 1000
 
 # JPEG quality for output
-JPEG_QUALITY = 92
+JPEG_QUALITY = 75
 
 
 def preprocess_image(image_bytes: bytes) -> bytes:
     """Preprocess a label image for better LLM text extraction.
 
-    - Upscales small images to TARGET_DIMENSION (preserving aspect ratio)
+    - Downscales large images to MAX_DIMENSION (Anthropic's internal limit)
+    - Upscales small images to TARGET_DIMENSION for text readability
     - Applies mild sharpening to improve text edges
     - Enhances contrast slightly for text readability
 
-    Returns JPEG bytes. Passes through large images with only
-    sharpening/contrast applied (no resize).
+    Returns JPEG bytes.
     """
     try:
         img = Image.open(io.BytesIO(image_bytes))
@@ -45,7 +48,17 @@ def preprocess_image(image_bytes: bytes) -> bytes:
     original_size = img.size
     longest = max(img.size)
 
-    if longest < MIN_DIMENSION:
+    if longest > MAX_DIMENSION:
+        # Downscale large images to reduce token count and API latency
+        scale = MAX_DIMENSION / longest
+        new_w = round(img.size[0] * scale)
+        new_h = round(img.size[1] * scale)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+        logger.info(
+            "Downscaled image from %dx%d to %dx%d (%.2fx)",
+            original_size[0], original_size[1], new_w, new_h, scale,
+        )
+    elif longest < MIN_DIMENSION:
         scale = TARGET_DIMENSION / longest
         new_w = round(img.size[0] * scale)
         new_h = round(img.size[1] * scale)

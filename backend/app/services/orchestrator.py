@@ -27,36 +27,11 @@ from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
 from app.services.image_preprocessor import preprocess_image
 from app.services.cost import calculate_cost
+from app.services.text_matcher import TextMatcher
 
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-def _pick_best_panel(results: list[ExtractionResult], field_name: str, panels: list[str]) -> int:
-    """Return index of the panel with best extraction for a field.
-
-    Prefers non-null + high confidence + front panel priority.
-    """
-    best_idx = 0
-    best_score = -1
-    for i, result in enumerate(results):
-        fd = result.fields.get(field_name)
-        if not isinstance(fd, dict):
-            continue
-        val = fd.get("value")
-        if val is None:
-            continue
-        conf = fd.get("extraction_confidence", "high")
-        score = {"high": 3, "medium": 2, "low": 1}.get(conf, 0)
-        # Prefer front panel on ties
-        panel = panels[i] if i < len(panels) else ""
-        if panel == "front":
-            score += 0.5
-        if score > best_score:
-            best_score = score
-            best_idx = i
-    return best_idx
 
 
 class VerificationOrchestrator:
@@ -67,6 +42,7 @@ class VerificationOrchestrator:
         self.compliance_checker = ComplianceChecker()
         self.merger = ImageMerger()
         self.scorer = ConfidenceScorer()
+        self.text_matcher = TextMatcher()
 
     @staticmethod
     def _create_extractor() -> BaseExtractor:
@@ -74,6 +50,7 @@ class VerificationOrchestrator:
             return AnthropicExtractor(
                 api_key=settings.anthropic_api_key,
                 model=settings.llm_model,
+                reextract_model=settings.reextract_model,
             )
         return GroqExtractor(
             api_key=settings.groq_api_key,
@@ -113,284 +90,110 @@ class VerificationOrchestrator:
             img_path.write_bytes(img_bytes)
             annotated_images[panel] = f"/api/v1/images/{session_id}/{panel}"
 
-        # 1. Preprocess images (upscale small images, sharpen for text readability)
+        # 1. Preprocess images
         processed_images = [preprocess_image(img) for img in images]
 
-        # Extract fields from each panel (parallel)
-        extraction_tasks = [
-            self.extraction_service.extract_fields(img, panel)
-            for img, panel in zip(processed_images, panels)
-        ]
-        extraction_results: list[ExtractionResult] = await asyncio.gather(
-            *extraction_tasks, return_exceptions=True
-        )
+        is_admin, _ = is_administrative_class_type(application_data.class_type)
+        is_anthropic = isinstance(self.extraction_service, AnthropicExtractor)
 
-        # Handle any extraction errors and collect LLM stats
-        valid_results: list[ExtractionResult] = []
-        for r in extraction_results:
+        if is_anthropic:
+            return await self._verify_transcription_pipeline(
+                processed_images, panels, application_data,
+                session_id, now, all_llm_stats, annotated_images,
+                is_admin, batch_id, t_start,
+            )
+        else:
+            # Groq / legacy: use old extraction pipeline
+            return await self._verify_legacy_pipeline(
+                processed_images, panels, application_data,
+                session_id, now, all_llm_stats, annotated_images,
+                batch_id, t_start,
+            )
+
+    async def _verify_transcription_pipeline(
+        self,
+        processed_images: list[bytes],
+        panels: list[str],
+        application_data: ApplicationData,
+        session_id: str,
+        now: str,
+        all_llm_stats: list[LLMCallStats],
+        annotated_images: dict,
+        is_admin: bool,
+        batch_id: str | None,
+        t_start: float,
+    ) -> VerificationResult:
+        """New pipeline: transcribe all text, then search for declared values."""
+
+        # 2. Transcribe each image in parallel (+ specialty extraction for admin codes)
+        all_tasks: dict[str, any] = {}
+        for i, (img, panel) in enumerate(zip(processed_images, panels)):
+            all_tasks[f"transcribe_{i}"] = self.extraction_service.transcribe_label(img, panel)
+
+        if is_admin:
+            front_idx = next((i for i, p in enumerate(panels) if p == "front"), 0)
+            all_tasks["specialty"] = self.extraction_service.reextract_specialty_class(
+                processed_images[front_idx]
+            )
+
+        task_keys = list(all_tasks.keys())
+        gathered = await asyncio.gather(*all_tasks.values(), return_exceptions=True)
+        results_map = dict(zip(task_keys, gathered))
+
+        # 3. Concatenate transcriptions from all panels
+        transcriptions = []
+        has_error = False
+        for i in range(len(processed_images)):
+            key = f"transcribe_{i}"
+            r = results_map[key]
             if isinstance(r, Exception):
-                valid_results.append(ExtractionResult(panel_type="unknown", error=str(r)))
-            else:
-                valid_results.append(r)
-                all_llm_stats.extend(r.llm_stats)
-        extraction_results = valid_results
-
-        # 2. Check for extraction errors
-        has_error = any(r.error for r in extraction_results)
-
-        # 2b. Detect empty extraction (no label content found)
-        all_fields_empty = True
-        for r in extraction_results:
-            if r.error:
+                logger.error("Transcription failed for panel %s: %s", panels[i], r)
+                has_error = True
                 continue
-            for field_data in r.fields.values():
-                if isinstance(field_data, dict) and field_data.get("value") is not None:
-                    all_fields_empty = False
-                    break
-            if not all_fields_empty:
-                break
-        has_empty_extraction = all_fields_empty and not has_error
+            text, stats = r
+            all_llm_stats.extend(stats)
+            transcriptions.append(text)
+
+        label_text = "\n".join(transcriptions)
+        has_empty_extraction = not label_text.strip() and not has_error
 
         if has_empty_extraction:
             logger.warning(
-                "No label content detected across %d panel(s) — possible missing label image",
-                len(extraction_results),
+                "No label content detected across %d panel(s) -- possible missing label image",
+                len(processed_images),
             )
 
-        # 3. Merge panels
-        extraction_confidences = {}
-        if len(extraction_results) == 1:
-            merged_fields = {}
-            result = extraction_results[0]
-            for field_name, field_data in result.fields.items():
-                if isinstance(field_data, dict):
-                    merged_fields[field_name] = field_data.get("value")
-                    ext_conf = field_data.get("extraction_confidence", "high")
-                    extraction_confidences[field_name] = ext_conf
-            panel_bboxes = {
-                fn: {
-                    "panel": result.panel_type,
-                    **(fd.get("bounding_box") or {})
-                }
-                for fn, fd in result.fields.items()
-                if isinstance(fd, dict) and fd.get("bounding_box")
-            }
-        else:
-            panel_data = {}
-            panel_bboxes = {}
-            for result in extraction_results:
-                panel_fields = {}
-                for field_name, field_data in result.fields.items():
-                    if isinstance(field_data, dict):
-                        panel_fields[field_name] = {
-                            "value": field_data.get("value"),
-                            "confidence": 90.0,
-                            "bounding_box": field_data.get("bounding_box"),
-                            "extraction_confidence": field_data.get("extraction_confidence", "high"),
-                        }
-                        if field_data.get("bounding_box"):
-                            panel_bboxes[field_name] = {
-                                "panel": result.panel_type,
-                                **field_data["bounding_box"],
-                            }
-                panel_data[result.panel_type] = panel_fields
+        # 4. For admin class codes: extract specialty class data
+        specialty_class_data = None
+        if is_admin and "specialty" in results_map and not isinstance(results_map["specialty"], Exception):
+            specialty_data, spec_stats = results_map["specialty"]
+            if spec_stats:
+                all_llm_stats.append(spec_stats)
+            specialty_class_data = specialty_data
 
-            merged = self.merger.merge_panels(panel_data)
-            merged_fields = {
-                fn: fv.value for fn, fv in merged.fields.items()
-            }
-            extraction_confidences = {
-                fn: fv.extraction_confidence for fn, fv in merged.fields.items()
-            }
-
-        # 3b. Post-merge targeted re-extractions (Anthropic only, skip if empty)
-        is_admin, _ = is_administrative_class_type(application_data.class_type)
-        if isinstance(self.extraction_service, AnthropicExtractor) and not has_empty_extraction:
-            # Warning re-extract (always, once): pick best panel
-            warn_idx = _pick_best_panel(extraction_results, "government_warning", panels)
-            warn_img = processed_images[warn_idx] if warn_idx < len(processed_images) else processed_images[0]
-            reextracted_warn, warn_stats = await self.extraction_service.reextract_warning(warn_img)
-            if warn_stats:
-                all_llm_stats.append(warn_stats)
-            if reextracted_warn:
-                merged_fields["government_warning"] = reextracted_warn
-
-            # Importer re-extract (only if merged importer is null)
-            imp_val = merged_fields.get("importer_name")
-            if not imp_val:
-                imp_idx = _pick_best_panel(extraction_results, "importer_name", panels)
-                imp_img = processed_images[imp_idx] if imp_idx < len(processed_images) else processed_images[0]
-                reextracted_imp, imp_stats = await self.extraction_service.reextract_importer(imp_img)
-                if imp_stats:
-                    all_llm_stats.append(imp_stats)
-                if reextracted_imp:
-                    for key in ("importer_name", "importer_address"):
-                        val = reextracted_imp.get(key)
-                        if val:
-                            merged_fields[key] = val
-                            logger.info("Importer re-extraction found %s", key)
-
-            # Country of origin re-extract (only if null and product appears imported)
-            country_val = merged_fields.get("country_of_origin")
-            is_imported = bool(
-                application_data.importer_name
-                or application_data.country_of_origin
-            )
-            if not country_val and is_imported:
-                country_idx = _pick_best_panel(extraction_results, "country_of_origin", panels)
-                country_img = processed_images[country_idx] if country_idx < len(processed_images) else processed_images[0]
-                reextracted_country, country_stats = await self.extraction_service.reextract_country_of_origin(country_img)
-                if country_stats:
-                    all_llm_stats.append(country_stats)
-                if reextracted_country:
-                    merged_fields["country_of_origin"] = reextracted_country
-                    logger.info("Country re-extraction found: %s", reextracted_country)
-
-            # Specialty re-extract (only for admin codes, once)
-            if is_admin:
-                spec_idx = _pick_best_panel(extraction_results, "brand_name", panels)
-                spec_img = processed_images[spec_idx] if spec_idx < len(processed_images) else processed_images[0]
-                specialty_data, spec_stats = await self.extraction_service.reextract_specialty_class(spec_img)
-                if spec_stats:
-                    all_llm_stats.append(spec_stats)
-                if specialty_data:
-                    merged_fields["_specialty_class_data"] = specialty_data
-
-        # 3c. Fanciful-to-specialty enrichment fallback for admin codes
-        if is_admin and "_specialty_class_data" not in merged_fields:
-            extracted_fanciful = merged_fields.get("fanciful_name")
-            extracted_class = merged_fields.get("class_type")
-            if extracted_fanciful:
-                merged_fields["_specialty_class_data"] = {
-                    "fanciful_name": extracted_fanciful,
-                    "composition_statement": extracted_class,
-                }
-                logger.info("Populated _specialty_class_data from main extraction fanciful_name")
-
-        # 3d. Brand/fanciful swap heuristic
-        if application_data.fanciful_name and application_data.brand_name:
-            ext_brand = merged_fields.get("brand_name") or ""
-            ext_fanciful = merged_fields.get("fanciful_name") or ""
-            decl_brand = application_data.brand_name
-            decl_fanciful = application_data.fanciful_name
-
-            if ext_brand and ext_fanciful:
-                from rapidfuzz import fuzz
-                # Check if they're swapped: extracted brand matches declared fanciful
-                # AND extracted fanciful matches declared brand
-                brand_matches_fanciful = fuzz.ratio(ext_brand.upper(), decl_fanciful.upper()) > 85
-                fanciful_matches_brand = fuzz.ratio(ext_fanciful.upper(), decl_brand.upper()) > 85
-                if brand_matches_fanciful and fanciful_matches_brand:
-                    logger.info(
-                        "Swapping brand/fanciful: brand '%s' <-> fanciful '%s'",
-                        ext_brand, ext_fanciful,
-                    )
-                    merged_fields["brand_name"] = ext_fanciful
-                    merged_fields["fanciful_name"] = ext_brand
-
-        # 3e. Brand confirmation re-extraction (mismatch-triggered)
-        # Try each panel (best first, then others) until we find a match
-        if isinstance(self.extraction_service, AnthropicExtractor) and application_data.brand_name and not has_empty_extraction:
-            import unicodedata
-            from rapidfuzz import fuzz as _fuzz
-
-            def _strip_accents(s: str) -> str:
-                return "".join(
-                    c for c in unicodedata.normalize("NFD", s)
-                    if unicodedata.category(c) != "Mn"
-                )
-
-            ext_brand = _strip_accents((merged_fields.get("brand_name") or "").strip().upper())
-            decl_brand = _strip_accents(application_data.brand_name.strip().upper())
-            if _fuzz.ratio(ext_brand, decl_brand) < 85:
-                # Short-circuit: check if any panel already extracted the correct brand
-                brand_fixed = False
-                for i, er in enumerate(extraction_results):
-                    bn_field = er.fields.get("brand_name")
-                    if not isinstance(bn_field, dict):
-                        continue
-                    panel_brand = bn_field.get("value")
-                    if not panel_brand:
-                        continue
-                    if _fuzz.ratio(_strip_accents(panel_brand.strip().upper()), decl_brand) >= 85:
-                        logger.info(
-                            "Brand short-circuit: '%s' -> '%s' (from %s panel initial extraction)",
-                            merged_fields.get("brand_name"), panel_brand,
-                            panels[i] if i < len(panels) else "?",
-                        )
-                        merged_fields["brand_name"] = panel_brand
-                        brand_fixed = True
-                        break
-
-                # Fallback: re-extract with hint across panels
-                if not brand_fixed:
-                    best_idx = _pick_best_panel(extraction_results, "brand_name", panels)
-                    panel_order = [best_idx] + [i for i in range(len(processed_images)) if i != best_idx]
-                    for pidx in panel_order:
-                        if brand_fixed:
-                            break
-                        brand_img = processed_images[pidx]
-                        reextracted, brand_stats = await self.extraction_service.reextract_brand(
-                            brand_img, declared_brand=application_data.brand_name,
-                        )
-                        if brand_stats:
-                            all_llm_stats.append(brand_stats)
-                        if reextracted and reextracted.get("conf") != "low":
-                            new_brand = reextracted.get("brand_name")
-                            if new_brand and _fuzz.ratio(_strip_accents(new_brand.strip().upper()), decl_brand) >= 85:
-                                logger.info(
-                                    "Brand confirmation: '%s' -> '%s' (panel=%s, location: %s)",
-                                    merged_fields.get("brand_name"), new_brand,
-                                    panels[pidx] if pidx < len(panels) else "?",
-                                    reextracted.get("location_description"),
-                                )
-                                merged_fields["brand_name"] = new_brand
-                                brand_fixed = True
-
-        # 4. Compare against application data
-        comparison_results = self.comparison_service.compare_fields(
-            merged_fields, application_data, application_data.beverage_type,
-            extraction_confidences=extraction_confidences,
+        # 5. Run TextMatcher against transcribed text
+        comparison_results = self.text_matcher.match_fields(
+            label_text, application_data, application_data.beverage_type,
+            specialty_class_data=specialty_class_data,
         )
 
-        # 5. Add bounding boxes to comparison results
-        enriched_results = []
+        # 6. Build extracted_fields dict for compliance checker
+        # (compliance checker expects a dict of field_name -> value)
+        extracted_fields = {}
         for cr in comparison_results:
-            bbox = None
-            if cr.field_name in panel_bboxes:
-                bb = panel_bboxes[cr.field_name]
-                if "x" in bb:
-                    bbox = BoundingBox(
-                        panel=bb.get("panel", "front"),
-                        x=bb["x"],
-                        y=bb["y"],
-                        width=bb["width"],
-                        height=bb["height"],
-                    )
-            enriched_results.append(
-                FieldComparisonResult(
-                    field_name=cr.field_name,
-                    declared_value=cr.declared_value,
-                    extracted_value=cr.extracted_value,
-                    status=cr.status,
-                    confidence=cr.confidence,
-                    match_strategy=cr.match_strategy,
-                    bounding_box=bbox,
-                    extraction_confidence=cr.extraction_confidence,
-                    confidence_reason=cr.confidence_reason,
-                )
-            )
+            extracted_fields[cr.field_name] = cr.extracted_value
 
-        # 6. Run compliance checks (independent of application data)
+        # 7. Run compliance checks
         is_imported = bool(application_data.country_of_origin or application_data.importer_name)
         compliance_issues = self.compliance_checker.check_compliance(
-            merged_fields,
+            extracted_fields,
             application_data.beverage_type,
             is_imported=is_imported,
             requires_sulfites=application_data.has_sulfites_declaration,
         )
 
         # Merge compliance issues into comparison results
+        enriched_results = list(comparison_results)
         compliance_responses = []
         existing_field_names = {r.field_name for r in enriched_results}
         for issue in compliance_issues:
@@ -399,16 +202,13 @@ class VerificationOrchestrator:
                 severity=issue.severity,
                 message=issue.message,
             ))
-            # Check if there's already a result for this field
             existing = next(
                 (r for r in enriched_results if r.field_name == issue.field_name),
                 None,
             )
             if existing and existing.status == "field_missing":
-                # Enrich existing field_missing result with compliance message
                 existing.confidence_reason = issue.message
             elif issue.field_name not in existing_field_names:
-                # Add new result for fields not in comparison (skipped by app data)
                 status_val = (
                     "extraction_uncertain" if issue.severity == "needs_review"
                     else "field_missing"
@@ -424,7 +224,197 @@ class VerificationOrchestrator:
                 ))
                 existing_field_names.add(issue.field_name)
 
-        # 7. Calculate overall score
+        # 8. Calculate overall score
+        overall_confidence, status = self.scorer.calculate(enriched_results)
+
+        if has_error and not label_text.strip():
+            status = "needs_review"
+            overall_confidence = 0.0
+
+        if has_empty_extraction:
+            status = "needs_review"
+            enriched_results.append(FieldComparisonResult(
+                field_name="_label_image",
+                declared_value=None,
+                extracted_value=None,
+                status="field_missing",
+                confidence=0.0,
+                match_strategy="compliance",
+                confidence_reason="No label content could be extracted. The label image may be missing, blank, or unreadable.",
+            ))
+
+        # 9. Aggregate processing stats
+        total_time_ms = int((time.monotonic() - t_start) * 1000)
+        total_input_tokens = sum(s.input_tokens for s in all_llm_stats)
+        total_output_tokens = sum(s.output_tokens for s in all_llm_stats)
+        estimated_cost = calculate_cost(
+            total_input_tokens,
+            total_output_tokens,
+            model=settings.llm_model,
+        )
+        processing_stats = ProcessingStats(
+            total_llm_calls=len(all_llm_stats),
+            total_input_tokens=total_input_tokens,
+            total_output_tokens=total_output_tokens,
+            extraction_time_ms=sum(s.elapsed_ms for s in all_llm_stats),
+            total_time_ms=total_time_ms,
+            estimated_cost_usd=estimated_cost,
+        )
+
+        # 10. Persist to DB
+        self._persist_session(
+            session_id, application_data, enriched_results,
+            overall_confidence, status, now, batch_id=batch_id,
+            processing_stats=processing_stats,
+        )
+
+        # 11. Compute review summary
+        flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
+        review_summary = ReviewSummary(
+            total_fields=len(enriched_results),
+            fields_needing_review=len(flagged),
+            fields_reviewed=0,
+            flagged_field_names=[f.field_name for f in flagged],
+        )
+
+        return VerificationResult(
+            session_id=session_id,
+            status=status,
+            overall_confidence=overall_confidence,
+            beverage_type=application_data.beverage_type,
+            fields=enriched_results,
+            annotated_images=annotated_images,
+            created_at=now,
+            review_summary=review_summary,
+            compliance_issues=compliance_responses,
+            processing_stats=processing_stats,
+        )
+
+    async def _verify_legacy_pipeline(
+        self,
+        processed_images: list[bytes],
+        panels: list[str],
+        application_data: ApplicationData,
+        session_id: str,
+        now: str,
+        all_llm_stats: list[LLMCallStats],
+        annotated_images: dict,
+        batch_id: str | None,
+        t_start: float,
+    ) -> VerificationResult:
+        """Legacy extraction pipeline for non-Anthropic (Groq) extractor."""
+        # Single extract_fields call per panel
+        all_tasks = {}
+        for i, (img, panel) in enumerate(zip(processed_images, panels)):
+            all_tasks[f"extract_{i}"] = self.extraction_service.extract_fields(img, panel)
+
+        task_keys = list(all_tasks.keys())
+        gathered = await asyncio.gather(*all_tasks.values(), return_exceptions=True)
+        results_map = dict(zip(task_keys, gathered))
+
+        extraction_results: list[ExtractionResult] = []
+        for i in range(len(processed_images)):
+            r = results_map[f"extract_{i}"]
+            if isinstance(r, Exception):
+                extraction_results.append(ExtractionResult(panel_type="unknown", error=str(r)))
+            else:
+                extraction_results.append(r)
+                all_llm_stats.extend(r.llm_stats)
+
+        has_error = any(r.error for r in extraction_results)
+
+        # Detect empty extraction
+        all_fields_empty = True
+        for r in extraction_results:
+            if r.error:
+                continue
+            for field_data in r.fields.values():
+                if isinstance(field_data, dict) and field_data.get("value") is not None:
+                    all_fields_empty = False
+                    break
+            if not all_fields_empty:
+                break
+        has_empty_extraction = all_fields_empty and not has_error
+
+        # Merge panels
+        extraction_confidences = {}
+        if len(extraction_results) == 1:
+            merged_fields = {}
+            result = extraction_results[0]
+            for field_name, field_data in result.fields.items():
+                if isinstance(field_data, dict):
+                    merged_fields[field_name] = field_data.get("value")
+                    ext_conf = field_data.get("extraction_confidence", "high")
+                    extraction_confidences[field_name] = ext_conf
+        else:
+            panel_data = {}
+            for result in extraction_results:
+                panel_fields = {}
+                for field_name, field_data in result.fields.items():
+                    if isinstance(field_data, dict):
+                        panel_fields[field_name] = {
+                            "value": field_data.get("value"),
+                            "confidence": 90.0,
+                            "bounding_box": field_data.get("bounding_box"),
+                            "extraction_confidence": field_data.get("extraction_confidence", "high"),
+                        }
+                panel_data[result.panel_type] = panel_fields
+
+            merged = self.merger.merge_panels(panel_data)
+            merged_fields = {
+                fn: fv.value for fn, fv in merged.fields.items()
+            }
+            extraction_confidences = {
+                fn: fv.extraction_confidence for fn, fv in merged.fields.items()
+            }
+
+        # Compare against application data
+        comparison_results = self.comparison_service.compare_fields(
+            merged_fields, application_data, application_data.beverage_type,
+            extraction_confidences=extraction_confidences,
+        )
+
+        enriched_results = list(comparison_results)
+
+        # Compliance checks
+        is_imported = bool(application_data.country_of_origin or application_data.importer_name)
+        compliance_issues = self.compliance_checker.check_compliance(
+            merged_fields,
+            application_data.beverage_type,
+            is_imported=is_imported,
+            requires_sulfites=application_data.has_sulfites_declaration,
+        )
+
+        compliance_responses = []
+        existing_field_names = {r.field_name for r in enriched_results}
+        for issue in compliance_issues:
+            compliance_responses.append(ComplianceIssueResponse(
+                field_name=issue.field_name,
+                severity=issue.severity,
+                message=issue.message,
+            ))
+            existing = next(
+                (r for r in enriched_results if r.field_name == issue.field_name),
+                None,
+            )
+            if existing and existing.status == "field_missing":
+                existing.confidence_reason = issue.message
+            elif issue.field_name not in existing_field_names:
+                status_val = (
+                    "extraction_uncertain" if issue.severity == "needs_review"
+                    else "field_missing"
+                )
+                enriched_results.append(FieldComparisonResult(
+                    field_name=issue.field_name,
+                    declared_value=None,
+                    extracted_value=None,
+                    status=status_val,
+                    confidence=0.0,
+                    match_strategy="compliance",
+                    confidence_reason=issue.message,
+                ))
+                existing_field_names.add(issue.field_name)
+
         overall_confidence, status = self.scorer.calculate(enriched_results)
 
         if has_error and not merged_fields:
@@ -443,7 +433,6 @@ class VerificationOrchestrator:
                 confidence_reason="No label content could be extracted. The label image may be missing, blank, or unreadable.",
             ))
 
-        # 8. Aggregate processing stats
         total_time_ms = int((time.monotonic() - t_start) * 1000)
         total_input_tokens = sum(s.input_tokens for s in all_llm_stats)
         total_output_tokens = sum(s.output_tokens for s in all_llm_stats)
@@ -461,14 +450,12 @@ class VerificationOrchestrator:
             estimated_cost_usd=estimated_cost,
         )
 
-        # 9. Persist to DB
         self._persist_session(
             session_id, application_data, enriched_results,
             overall_confidence, status, now, batch_id=batch_id,
             processing_stats=processing_stats,
         )
 
-        # 10. Compute review summary
         flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
         review_summary = ReviewSummary(
             total_fields=len(enriched_results),
