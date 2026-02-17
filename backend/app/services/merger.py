@@ -1,12 +1,16 @@
 from dataclasses import dataclass, field
 
 
+CONFIDENCE_TIER_RANK = {"high": 2, "medium": 1, "low": 0}
+
+
 @dataclass
 class MergedField:
     value: str | None
     confidence: float
     source_panel: str
     bounding_box: dict | None = None
+    extraction_confidence: str = "high"
 
 
 @dataclass
@@ -52,6 +56,7 @@ class ImageMerger:
                     confidence=data.get("confidence", 0.0),
                     source_panel=panel,
                     bounding_box=data.get("bounding_box"),
+                    extraction_confidence=data.get("extraction_confidence", "high"),
                 )
             else:
                 # Multiple sources - check for conflicts
@@ -59,20 +64,26 @@ class ImageMerger:
                 unique_values = set(v for v in values.values() if v)
 
                 if len(unique_values) <= 1:
-                    # Same value across panels - use highest confidence
-                    best = max(sources, key=lambda s: s[1].get("confidence", 0.0))
+                    # Same value across panels - prefer non-null, then highest confidence
+                    non_null = [(p, d) for p, d in sources if d.get("value") is not None]
+                    candidates = non_null if non_null else sources
+                    best = max(candidates, key=lambda s: s[1].get("confidence", 0.0))
                     panel, data = best
                     merged.fields[field_name] = MergedField(
                         value=data.get("value"),
                         confidence=data.get("confidence", 0.0),
                         source_panel=panel,
                         bounding_box=data.get("bounding_box"),
+                        extraction_confidence=data.get("extraction_confidence", "high"),
                     )
                 else:
-                    # Conflict - prefer front panel
+                    # Conflict - prefer higher extraction confidence, then panel priority
                     sorted_sources = sorted(
                         sources,
-                        key=lambda s: PANEL_PRIORITY.get(s[0], 99),
+                        key=lambda s: (
+                            -CONFIDENCE_TIER_RANK.get(s[1].get("extraction_confidence", "high"), 0),
+                            PANEL_PRIORITY.get(s[0], 99),
+                        ),
                     )
                     best_panel, best_data = sorted_sources[0]
 
@@ -81,6 +92,7 @@ class ImageMerger:
                         confidence=best_data.get("confidence", 0.0),
                         source_panel=best_panel,
                         bounding_box=best_data.get("bounding_box"),
+                        extraction_confidence=best_data.get("extraction_confidence", "high"),
                     )
 
                     merged.conflicts.append(

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import client from './client';
 import type {
-  ApplicationData,
   VerificationResult,
   HistoryResponse,
   OverrideRequest,
@@ -16,14 +15,14 @@ export function useVerify() {
     mutationFn: async ({
       images,
       panels,
-      applicationData,
+      applicationPdf,
     }: {
       images: File[];
       panels: string[];
-      applicationData: ApplicationData;
+      applicationPdf: File;
     }) => {
       const formData = new FormData();
-      formData.append('application_data', JSON.stringify(applicationData));
+      formData.append('application_pdf', applicationPdf);
       images.forEach((img) => formData.append('images[]', img));
       panels.forEach((p) => formData.append('panels[]', p));
 

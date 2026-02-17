@@ -327,6 +327,11 @@ table {
   margin-bottom: 0.25rem;
 }
 
+.pdf-zone {
+  min-height: 160px;
+  margin-top: 0.75rem;
+}
+
 /* Form */
 .form-card {
   background: var(--slate-50);

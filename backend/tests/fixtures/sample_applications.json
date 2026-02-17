@@ -272,6 +272,1334 @@
         },
         "notes": "Highly stylized/decorative font makes extraction difficult"
       }
+    },
+    {
+      "id": "fixture-9-alpine-lafayette",
+      "description": "Extraction challenge - decorative background pattern obscures text",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Alpine Lafayette whiskey.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00009",
+        "brand_name": "Alpine Lafayette",
+        "class_type": "Spiced Flavored Whiskey",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Alpine Distilling",
+        "producer_address": "7132 N Silver Creek Rd, Park City, UT 84098",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Ornate damask background pattern competes with text; government warning printed vertically in small font on left edge"
+      },
+      "extraction_challenge": "Decorative damask background pattern obscures text; government warning rotated 90 degrees along left margin in very small print"
+    },
+    {
+      "id": "fixture-10-boston-harbor-maple-cream",
+      "description": "Extraction challenge - highly stylized script font and decorative illustration",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Boston Harbor maple cream front.jpg", "panel": "front"},
+        {"filename": "Boston Harbor maple cream back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00010",
+        "brand_name": "Boston Harbor Distillery",
+        "class_type": "Rum with Cream & Vermont Maple Syrup, Natural Flavor & Caramel Color Added",
+        "alcohol_content": "15%",
+        "net_contents": "750 mL",
+        "producer_name": "Boston Harbor Bottling Co.",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Highly stylized hand-drawn script font for brand name; back label uses all-caps Western/serif font on colored background"
+      },
+      "extraction_challenge": "Hand-drawn calligraphic script font for 'Boston Harbor' brand name; building illustration competes with text; back label uses decorative all-caps typewriter-style font on solid red background"
+    },
+    {
+      "id": "fixture-11-ginger-sins",
+      "description": "Extraction challenge - ornate illuminated initial letter and decorative fonts on patterned background",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Ginger Sins whiskey front.jpg", "panel": "front"},
+        {"filename": "Ginger Sins whiskey back.jpg", "panel": "back"},
+        {"filename": "Ginger Sins whiskey other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00011",
+        "brand_name": "Ginger Sins",
+        "class_type": "Bourbon Whiskey with Natural Flavors",
+        "alcohol_content": "35%",
+        "net_contents": "750 mL",
+        "producer_name": "Redline Beverage",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Large ornate illuminated-manuscript initial 'A' dominates front; damask background pattern; multiple decorative font styles across panels"
+      },
+      "extraction_challenge": "Ornate illuminated-manuscript drop cap obscures brand context; decorative damask background pattern; multiple highly stylized font families (script, blackletter, stencil) across three panels"
+    },
+    {
+      "id": "fixture-12-howling-moon",
+      "description": "Extraction challenge - white italic text on dark photographic background",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Howling Moon whiskey front.jpg", "panel": "front"},
+        {"filename": "Howling Moon whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00012",
+        "brand_name": "Howling Moon",
+        "class_type": "Moonshine Whiskey",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Howling Moon",
+        "producer_address": "Asheville, North Carolina",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Front label has white italic script over dark blue night sky photograph with moon and silhouette imagery; back label uses italic serif text on light background"
+      },
+      "extraction_challenge": "White italic script text overlaid on dark photographic background (night sky with moon); silhouette artwork competes with text; low contrast between text and background in some areas"
+    },
+    {
+      "id": "fixture-13-original-spice",
+      "description": "Extraction challenge - flame artwork obscures text with multiple decorative font styles",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Original Spice whiskey front.jpg", "panel": "front"},
+        {"filename": "Original Spice whiskey back.jpg", "panel": "back"},
+        {"filename": "Original Spice whiskey other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00013",
+        "brand_name": "Original Spice",
+        "class_type": "Spice Flavored Whiskey",
+        "alcohol_content": "35%",
+        "net_contents": "750 mL",
+        "producer_name": "Redline Beverage",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Flame artwork on front label directly overlaps and obscures brand/class text; multiple decorative font styles (blackletter, script, stencil)"
+      },
+      "extraction_challenge": "Bold flame illustration directly overlays text on front panel; highly stylized mixed fonts (blackletter, ornamental script, stencil) with red/white text on black/flame background; low contrast in flame regions"
+    },
+    {
+      "id": "fixture-14-rocky-mount",
+      "description": "Extraction challenge - cursive/italic script font throughout with decorative layout",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Rocky Mount whiskey front.jpg", "panel": "front"},
+        {"filename": "Rocky Mount whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00014",
+        "brand_name": "Rocky Mount",
+        "class_type": "Rye Whiskey",
+        "alcohol_content": "50%",
+        "net_contents": "750 mL",
+        "producer_name": "Franklin County Distilleries",
+        "producer_address": "120 Easy Street at Boones Mill, Franklin County, Virginia 24176",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "extraction_uncertain",
+          "government_warning": "match"
+        },
+        "notes": "Entire label uses italic cursive script font throughout; decorative tildes and ornamental dividers; small text size on tall narrow label format"
+      },
+      "extraction_challenge": "Pervasive italic cursive script font used for nearly all text including producer info; decorative tildes (~) and ornamental elements between sections; tall narrow label format with small text"
+    },
+    {
+      "id": "fixture-15-sailor-jerry",
+      "description": "Extraction challenge - vintage tattoo-style artwork with very small text on miniature label",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Sailor Jerry rum.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00015",
+        "brand_name": "Sailor Jerry",
+        "class_type": "Caribbean Rum with Spice, Caramel and Other Natural Flavors",
+        "alcohol_content": "46%",
+        "net_contents": "50 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": "Edison, NJ",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "extraction_uncertain"
+        },
+        "notes": "Miniature 50mL label with vintage pin-up tattoo artwork; highly stylized hand-drawn brand lettering; government warning in extremely small print; die-cut registration marks visible"
+      },
+      "extraction_challenge": "Vintage tattoo-style pin-up illustration dominates label; highly stylized hand-drawn script for brand name; extremely small fine print for government warning and regulatory text on miniature 50mL label; die-cut proof sheet format with crop marks"
+    },
+    {
+      "id": "fixture-16-salted-caramel",
+      "description": "Extraction challenge - dripping caramel graphic obscures text with mixed decorative fonts",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Salted Caramel whiskey front.jpg", "panel": "front"},
+        {"filename": "Salted Caramel whiskey back.jpg", "panel": "back"},
+        {"filename": "Salted Caramel whiskey other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00016",
+        "brand_name": "Salted Caramel",
+        "class_type": "Bourbon Whiskey with Natural Flavors and Caramel Color",
+        "alcohol_content": "35%",
+        "net_contents": "750 mL",
+        "producer_name": "Redline Beverage",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "extraction_uncertain",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Dripping caramel graphic covers top portion of front label and partially obscures brand text; mixed font styles (stencil caps, flowing script); wood-grain texture background"
+      },
+      "extraction_challenge": "Dripping caramel illustration overlaps and partially obscures brand name text; mixed decorative fonts (distressed stencil caps for 'SALTED', flowing script for 'Caramel'); wood-grain texture background reduces text contrast"
+    },
+    {
+      "id": "fixture-17-sortilege",
+      "description": "Extraction challenge - imported product with ornate botanical pattern and elegant thin fonts",
+      "category": "bad spirits photo",
+      "images": [
+        {"filename": "Sortilege liqueur front.jpg", "panel": "front"},
+        {"filename": "Sortilege liqueur back.jpg", "panel": "back"},
+        {"filename": "Sortilege liqueur other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00017",
+        "brand_name": "Sortilege",
+        "class_type": "Maple Cream Liqueur",
+        "alcohol_content": "17%",
+        "net_contents": "750 mL",
+        "producer_name": "La Maison des Futailles Montreal",
+        "producer_address": "Quebec, Canada",
+        "country_of_origin": "Canada",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "needs_review",
+        "field_expectations": {
+          "brand_name": "extraction_uncertain",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Front label has subtle watermark-style maple leaf and thin elegant font on cream background; brand name panel uses ornate botanical vine pattern with white text on gold; bilingual French/English text"
+      },
+      "extraction_challenge": "Subtle watermark-style maple leaf illustration competes with thin elegant font on cream background; ornate botanical vine pattern on brand name strip with white text on gold; bilingual French/English text may confuse extraction"
+    },
+    {
+      "id": "fixture-18-black-maple-hill",
+      "description": "Good spirits label - Oregon straight rye whiskey",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Black Maple Hill whiskey front.jpg", "panel": "front"},
+        {"filename": "Black Maple Hill whiskey back.jpg", "panel": "back"},
+        {"filename": "Black Maple Hill whiskey other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00018",
+        "brand_name": "Black Maple Hill",
+        "class_type": "Oregon Straight Rye Whiskey",
+        "alcohol_content": "47.5%",
+        "net_contents": "750 mL",
+        "producer_name": "Stein Distillery",
+        "producer_address": "Joseph, Oregon",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-19-fuel-moonshine",
+      "description": "Good spirits label - domestic grain spirits with natural flavor",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Fuel moonshine.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00019",
+        "brand_name": "Fuel",
+        "class_type": "Grain Neutral Spirits with Natural Flavor Added",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Redline Beverage",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-20-market-alley",
+      "description": "Good spirits label - barrel rested gin",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Market Alley gin (front).jpg", "panel": "front"},
+        {"filename": "Market Alley gin (back).jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00020",
+        "brand_name": "Market Alley",
+        "class_type": "Barrel Rested Gin",
+        "alcohol_content": "45%",
+        "net_contents": "750 mL",
+        "producer_name": "Thistle Finch Distilling LLC",
+        "producer_address": "Lancaster, PA",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-21-mckenzie-brew-house",
+      "description": "Good spirits label - locally crafted vodka",
+      "category": "good spirits",
+      "images": [
+        {"filename": "McKenzie Brew House vodka.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00021",
+        "brand_name": "McKenzie Brew House",
+        "class_type": "Locally Crafted Vodka",
+        "alcohol_content": "40%",
+        "net_contents": "1 Liter",
+        "producer_name": "Kiki Vodka Company LLC",
+        "producer_address": "Hatfield, PA",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-22-misunderstood",
+      "description": "Good spirits label - ginger spiced whiskey",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Misunderstood ginger whiskey front.jpg", "panel": "front"},
+        {"filename": "Misunderstood ginger whiskey other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00022",
+        "brand_name": "Misunderstood",
+        "class_type": "Ginger Spiced Whiskey",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Misunderstood Whiskey",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-23-nicks-bruce",
+      "description": "Good spirits label - aged rum",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Nicks & Bruce aged rum front.jpg", "panel": "front"},
+        {"filename": "Nicks & Bruce aged rum back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00023",
+        "brand_name": "Gordian Knot",
+        "class_type": "Aged Rum",
+        "alcohol_content": "42%",
+        "net_contents": "750 mL",
+        "producer_name": "Nicks and Bruce",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-24-twelv-31",
+      "description": "Good spirits label - velvet berry liqueur",
+      "category": "good spirits",
+      "images": [
+        {"filename": "Twelv 31 liqeur front.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00024",
+        "brand_name": "Twelv 31",
+        "class_type": "Velvet Berry Liqueur",
+        "alcohol_content": "20%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-25-cascade-val",
+      "description": "Good wine label - domestic red wine with sulfites",
+      "category": "good wine+beer",
+      "images": [
+        {"filename": "Cascade Val wine.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00025",
+        "brand_name": "Cascade",
+        "class_type": "Red Wine",
+        "alcohol_content": "11.5%",
+        "net_contents": "750 mL",
+        "producer_name": "Cascade Winery",
+        "producer_address": "Grand Rapids, MI",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "wine",
+        "has_sulfites_declaration": true
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "sulfites_declaration": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-26-lenz-moser",
+      "description": "Good wine label - imported Austrian white wine",
+      "category": "good wine+beer",
+      "images": [
+        {"filename": "Lenz Moser wine front.jpg", "panel": "front"},
+        {"filename": "Lenz Moser wine back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00026",
+        "brand_name": "Lenz Moser",
+        "class_type": "Dry White Wine",
+        "alcohol_content": "12%",
+        "net_contents": "1.0 L",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": "Austria",
+        "importer_name": "Niche Import Co.",
+        "importer_address": "Cedar Knolls, NJ",
+        "beverage_type": "wine",
+        "has_sulfites_declaration": true
+      },
+      "expected_outcome": {
+        "overall_status": "pass",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "sulfites_declaration": "match",
+          "government_warning": "match"
+        }
+      }
+    },
+    {
+      "id": "fixture-27-barenjager-bourbon",
+      "description": "Bad spirits label - imported honey liqueur with bourbon, partial English labeling",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Barenjager burbon front.jpg", "panel": "front"},
+        {"filename": "Barenjager burbon back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00027",
+        "brand_name": "Barenjager",
+        "class_type": "Honey Liqueur and Bourbon",
+        "alcohol_content": "35%",
+        "net_contents": "1 L",
+        "producer_name": "Schwarze und Schlichte GmbH",
+        "producer_address": "Oelde, Germany",
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Front label has German text mixed with English; class/type description may not match exactly due to German labeling"
+      }
+    },
+    {
+      "id": "fixture-28-collaboration",
+      "description": "Bad spirits label - single image, ampersand in brand name, brandy barrel finish",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Collabor&tion whiskey.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00028",
+        "brand_name": "Collabor&tion",
+        "class_type": "Straight Bourbon Whiskey Finished in Brandy Barrels",
+        "alcohol_content": "60%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "content_mismatch",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "field_missing"
+        },
+        "notes": "Single front-only image; ampersand substitution in brand name may cause extraction mismatch; no back label so government warning likely missing"
+      }
+    },
+    {
+      "id": "fixture-29-cotton-hollow",
+      "description": "Bad spirits label - straight bourbon distilled in Indiana",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Cotton Hollow burbon front.jpg", "panel": "front"},
+        {"filename": "Cotton Hollow burbon other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00029",
+        "brand_name": "Cotton Hollow",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "46.5%",
+        "net_contents": "750 mL",
+        "producer_name": "Cotton Hollow Distillery",
+        "producer_address": "Indiana",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "field_missing"
+        },
+        "notes": "Label says 'Distilled in Indiana' but no specific producer address; second image is 'other' panel not back; government warning may be missing"
+      }
+    },
+    {
+      "id": "fixture-30-gordian-knot-rum",
+      "description": "Bad spirits label - reserve rum with vague Caribbean origin",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Gordian Knot rum front.jpg", "panel": "front"},
+        {"filename": "Gordian Knot rum back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00030",
+        "brand_name": "Gordian Knot",
+        "class_type": "Reserve Rum",
+        "alcohol_content": "42%",
+        "net_contents": "750 mL",
+        "producer_name": "Nicks and Bruce",
+        "producer_address": "Bardstown, KY",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Label references Caribbean origin but no specific country; class/type on label may differ from application (e.g. 'Caribbean Rum' vs 'Reserve Rum')"
+      }
+    },
+    {
+      "id": "fixture-31-monkey-47",
+      "description": "Bad spirits label - imported German gin with extensive non-English text",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Monkey 47 gin front.jpg", "panel": "front"},
+        {"filename": "Monkey 47 gin back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00031",
+        "brand_name": "Monkey 47",
+        "class_type": "Schwarzwald Dry Gin",
+        "alcohol_content": "47%",
+        "net_contents": "375 mL",
+        "producer_name": "Black Forest Distillers",
+        "producer_address": "Lossburg, Germany",
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Class/type uses German 'Schwarzwald' instead of English 'Black Forest'; extensive German text on front label"
+      }
+    },
+    {
+      "id": "fixture-32-resilient",
+      "description": "Bad spirits label - 'Whisky' spelling instead of 'Whiskey'",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Resilient burbon front.jpg", "panel": "front"},
+        {"filename": "Resilient burbon other.jpg", "panel": "other"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00032",
+        "brand_name": "Resilient",
+        "class_type": "Straight Bourbon Whiskey",
+        "alcohol_content": "53.5%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "field_missing"
+        },
+        "notes": "Label uses 'Whisky' (Scottish spelling) instead of 'Whiskey'; second image is 'other' panel, government warning may be missing"
+      }
+    },
+    {
+      "id": "fixture-33-sortilege-label",
+      "description": "Bad spirits label - imported Canadian maple whisky liqueur with French text",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Sortilege liqueur front.jpg", "panel": "front"},
+        {"filename": "Sortilege liqueur back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00033",
+        "brand_name": "Sortilege",
+        "class_type": "Liqueur with Canadian Whisky and Maple Syrup",
+        "alcohol_content": "30%",
+        "net_contents": "375 mL",
+        "producer_name": "La Maison des Futailles",
+        "producer_address": "Montreal, Quebec, Canada",
+        "country_of_origin": "Canada",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Bilingual French/English label; class/type may differ between application and label text; same images shared with bad spirits photo category fixture-17"
+      }
+    },
+    {
+      "id": "fixture-34-uncle-nearest",
+      "description": "Bad spirits label - premium whiskey with non-standard class/type",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Uncle Nearest whiskey front.jpg", "panel": "front"},
+        {"filename": "Uncle Nearest whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00034",
+        "brand_name": "Uncle Nearest",
+        "class_type": "Premium Whiskey",
+        "alcohol_content": "50%",
+        "net_contents": "750 mL",
+        "producer_name": "Uncle Nearest, Inc.",
+        "producer_address": "Shelbyville, TN",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Label says 'Premium Whiskey' which is not a standard TTB class/type designation; may extract different class/type than applied for"
+      }
+    },
+    {
+      "id": "fixture-35-warm",
+      "description": "Bad spirits label - bourbon with government warning in tiny rotated text",
+      "category": "bad spirits label",
+      "images": [
+        {"filename": "Warm whiskey.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00035",
+        "brand_name": "Warm",
+        "class_type": "Bourbon Whiskey",
+        "alcohol_content": "48%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "field_missing"
+        },
+        "notes": "Single front-only image; government warning in extremely tiny rotated text that may not be extractable"
+      }
+    },
+    {
+      "id": "fixture-36-barenjager-warning",
+      "description": "Bad warning label - honey liqueur with COMSUMPTION typo in warning",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Barenjager front.jpg", "panel": "front"},
+        {"filename": "Barenjager back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00036",
+        "brand_name": "Barenjager",
+        "class_type": "Honey Liqueur",
+        "alcohol_content": "35%",
+        "net_contents": "50 mL",
+        "producer_name": "Schwarze und Schlichte GmbH",
+        "producer_address": "Oelde, Germany",
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, NY",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Warning text has COMSUMPTION typo (missing N in CONSUMPTION)"
+      }
+    },
+    {
+      "id": "fixture-37-dutch-courage",
+      "description": "Bad warning label - dry gin with spacing issues in government warning",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Dutch Courage gin front.jpg", "panel": "front"},
+        {"filename": "Dutch Courage gin back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00037",
+        "brand_name": "Dutch Courage",
+        "class_type": "Dry Gin",
+        "alcohol_content": "44.5%",
+        "net_contents": "750 mL",
+        "producer_name": "Zuidam Distillers BV",
+        "producer_address": "Baarle-Nassau, Netherlands",
+        "country_of_origin": "Netherlands",
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Government warning has spacing/formatting issues that prevent exact match"
+      }
+    },
+    {
+      "id": "fixture-38-howling-moon-moonshine",
+      "description": "Bad warning label - moonshine with italic formatted warning text",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Howling Moon moonshine front.jpg", "panel": "front"},
+        {"filename": "Howling Moon moonshine back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00038",
+        "brand_name": "Howling Moon",
+        "class_type": "Spirits Distilled From Grain",
+        "alcohol_content": "50%",
+        "net_contents": "750 mL",
+        "producer_name": "Howling Moon Distillery",
+        "producer_address": "Asheville, NC",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Government warning printed in italic formatting which may cause extraction/comparison issues"
+      }
+    },
+    {
+      "id": "fixture-39-jacques-cardin",
+      "description": "Bad warning label - Apple VSOP cognac with barcode overlapping warning",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Jacques Cardin cognac front.jpg", "panel": "front"},
+        {"filename": "Jacques Cardin cognac back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00039",
+        "brand_name": "Jacques Cardin",
+        "class_type": "Apple VSOP Cognac",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": "France",
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Barcode overlaps with government warning text, causing partial obstruction"
+      }
+    },
+    {
+      "id": "fixture-40-presidential-dram",
+      "description": "Bad warning label - straight rye whiskey with subtle warning text issues",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Presidential Dram whiskey front.jpg", "panel": "front"},
+        {"filename": "Presidential Dram whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00040",
+        "brand_name": "Presidential Dram",
+        "class_type": "Straight Rye Whiskey",
+        "alcohol_content": "60%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Government warning has subtle text issues that prevent exact match"
+      }
+    },
+    {
+      "id": "fixture-41-sailor-jerry-warning",
+      "description": "Bad warning label - spiced rum miniature with extremely small warning text",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Sailor Jerry rum.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00041",
+        "brand_name": "Sailor Jerry",
+        "class_type": "Spiced Rum",
+        "alcohol_content": "46%",
+        "net_contents": "50 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": "Edison, NJ",
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "50mL miniature bottle; warning text extremely small and may be truncated or have OCR errors; same image used by bad spirits photo fixture-15"
+      }
+    },
+    {
+      "id": "fixture-42-seven-fathoms",
+      "description": "Bad warning label - Cayman Islands rum with extra space before colon in warning",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Seven Fathoms rum front.jpg", "panel": "front"},
+        {"filename": "Seven Fathoms rum back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00042",
+        "brand_name": "Seven Fathoms",
+        "class_type": "Cayman Islands Premium Rum",
+        "alcohol_content": "40%",
+        "net_contents": "750 mL",
+        "producer_name": "Cayman Spirits Co.",
+        "producer_address": "Grand Cayman, Cayman Islands",
+        "country_of_origin": "Cayman Islands",
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Government warning has extra space before colon ('GOVERNMENT WARNING :' instead of 'GOVERNMENT WARNING:')"
+      }
+    },
+    {
+      "id": "fixture-43-stoll-wolfe",
+      "description": "Bad warning label - American whiskey blend with compressed spacing in warning",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "Stoll & Wolfe whiskey front.jpg", "panel": "front"},
+        {"filename": "Stoll & Wolfe whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00043",
+        "brand_name": "Stoll & Wolfe",
+        "class_type": "Blend of American Straight Whiskeys",
+        "alcohol_content": "43%",
+        "net_contents": "750 mL",
+        "producer_name": "Stoll and Wolfe Distillery",
+        "producer_address": "Lititz, PA",
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "producer_name": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Government warning has compressed spacing issues that prevent exact match"
+      }
+    },
+    {
+      "id": "fixture-44-white-label",
+      "description": "Bad warning label - corn whiskey with COMSUMPTION typo in warning",
+      "category": "bad spirits warning",
+      "images": [
+        {"filename": "White Label whiskey front.jpg", "panel": "front"},
+        {"filename": "White Label whiskey back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00044",
+        "brand_name": "White Label",
+        "class_type": "Corn Whiskey",
+        "alcohol_content": "50%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": null,
+        "importer_name": null,
+        "importer_address": null,
+        "beverage_type": "distilled_spirits",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "government_warning": "content_mismatch"
+        },
+        "notes": "Government warning has COMSUMPTION typo (missing N in CONSUMPTION)"
+      }
+    },
+    {
+      "id": "fixture-45-cerveza-barrilito",
+      "description": "Bad wine+beer - imported Mexican beer with Spanish-only class/type",
+      "category": "bad wine+beer",
+      "images": [
+        {"filename": "Cerveza Barrilito.jpg", "panel": "front"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00045",
+        "brand_name": "Barrilito",
+        "class_type": "Beer",
+        "alcohol_content": "3.6%",
+        "net_contents": "1 QT 8 FL.OZ.",
+        "producer_name": "Cerveceria Moctezuma",
+        "producer_address": "Monterrey, Mexico",
+        "country_of_origin": "Mexico",
+        "importer_name": "Labatt USA Operating Co. LLC",
+        "importer_address": "Norwalk, CT",
+        "beverage_type": "beer",
+        "has_sulfites_declaration": false
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "content_mismatch",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "match",
+          "government_warning": "match"
+        },
+        "notes": "Class/type on label is 'Cerveza' (Spanish) rather than English 'Beer'"
+      }
+    },
+    {
+      "id": "fixture-46-forte-masso",
+      "description": "Bad wine+beer - imported Italian red wine with incomplete importer address",
+      "category": "bad wine+beer",
+      "images": [
+        {"filename": "Forte Masso beer front.jpg", "panel": "front"},
+        {"filename": "Forte Masso beer back.jpg", "panel": "back"}
+      ],
+      "application_data": {
+        "application_id": "APP-2026-00046",
+        "brand_name": "Forte Masso",
+        "class_type": "Red Wine",
+        "alcohol_content": "13.5%",
+        "net_contents": "750 mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": "Italy",
+        "importer_name": "Pacific Highway Wines",
+        "importer_address": "San Rafael, CA",
+        "beverage_type": "wine",
+        "has_sulfites_declaration": true
+      },
+      "expected_outcome": {
+        "overall_status": "fail",
+        "field_expectations": {
+          "brand_name": "match",
+          "class_type": "match",
+          "alcohol_content": "match",
+          "net_contents": "match",
+          "country_of_origin": "match",
+          "importer_name": "content_mismatch",
+          "sulfites_declaration": "match",
+          "government_warning": "match"
+        },
+        "notes": "Importer address on label may be incomplete or differ from application data"
+      }
     }
   ]
 }

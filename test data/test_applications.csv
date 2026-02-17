@@ -1,0 +1,47 @@
+application_id,brand_name,class_type,alcohol_content,net_contents,producer_name,producer_address,country_of_origin,importer_name,importer_address,beverage_type,has_sulfites_declaration,images
+APP-2026-00001,Angel's Envy,Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels,43.3%,750 mL,Louisville Distilling Company,"Louisville, Kentucky",,,,distilled_spirits,False,"Angels Envy burbon front.jpg;Angels Envy burbon back.jpg"
+APP-2026-00002,Den of Thieves,Chocolate Flavored Whiskey,40%,750 mL,Strong Spirits,"Bardstown, KY",,,,distilled_spirits,False,"Den of Thieves chocolate whiskey front.jpg;Den of Thieves chocolate whiskey back.jpg"
+APP-2026-00003,Hanami,Dry Gin,43%,750 mL,P. Melchers Distilleries BV,"Lelystad, The Netherlands",Holland,The Red Sea Import Company,"Princeton, MN",distilled_spirits,False,"Hanami gin front.jpg;Hanami gin back.jpg"
+APP-2026-00004,Rosso Veneto,Red Wine,14.5%,750 mL,,,Italy,Marcato Direct,"Addison, IL 60108",wine,True,"Rosso Veneto wine front.jpg;Rosso Veneto wine back.jpg"
+APP-2026-00005,Woodford Reserve,Kentucky Straight Bourbon Whiskey,45.2%,750 mL,The Woodford Reserve Distillery,"Versailles, KY",,,,distilled_spirits,False,"Woodford Reserve burbon front.jpg;Woodford Reserve burbon front2.jpg;Woodford Reserve burbon back.jpg"
+APP-2026-00006,Casamigos,Blanco Tequila,40%,750 mL,Productos Finos de Agave,"Jalisco, Mexico",Mexico,Casamigos Spirits Company,"New York, NY",distilled_spirits,False,"Casamigos tequila front.jpg;Casamigos tequila back.jpg"
+APP-2026-00007,Fete,Rose Wine,12.5%,750 mL,,,France,,,wine,True,"Fete Rose wine.jpg;Fete Rose wine back.jpg"
+APP-2026-00008,Mokka,Whiskey with Natural Flavors,35%,750 mL,,,,,,distilled_spirits,False,"Mokka whiskey front.jpg;Mokka whiskey back.jpg;Mokka whiskey other.jpg"
+APP-2026-00009,Alpine Lafayette,Spiced Flavored Whiskey,40%,750 mL,Alpine Distilling,"7132 N Silver Creek Rd, Park City, UT 84098",,,,distilled_spirits,False,Alpine Lafayette whiskey.jpg
+APP-2026-00010,Boston Harbor Distillery,"Rum with Cream & Vermont Maple Syrup, Natural Flavor & Caramel Color Added",15%,750 mL,Boston Harbor Bottling Co.,"Bardstown, KY",,,,distilled_spirits,False,"Boston Harbor maple cream front.jpg;Boston Harbor maple cream back.jpg"
+APP-2026-00011,Ginger Sins,Bourbon Whiskey with Natural Flavors,35%,750 mL,Redline Beverage,"Bardstown, KY",,,,distilled_spirits,False,"Ginger Sins whiskey front.jpg;Ginger Sins whiskey back.jpg;Ginger Sins whiskey other.jpg"
+APP-2026-00012,Howling Moon,Moonshine Whiskey,40%,750 mL,Howling Moon,"Asheville, North Carolina",,,,distilled_spirits,False,"Howling Moon whiskey front.jpg;Howling Moon whiskey back.jpg"
+APP-2026-00013,Original Spice,Spice Flavored Whiskey,35%,750 mL,Redline Beverage,"Bardstown, KY",,,,distilled_spirits,False,"Original Spice whiskey front.jpg;Original Spice whiskey back.jpg;Original Spice whiskey other.jpg"
+APP-2026-00014,Rocky Mount,Rye Whiskey,50%,750 mL,Franklin County Distilleries,"120 Easy Street at Boones Mill, Franklin County, Virginia 24176",,,,distilled_spirits,False,"Rocky Mount whiskey front.jpg;Rocky Mount whiskey back.jpg"
+APP-2026-00015,Sailor Jerry,"Caribbean Rum with Spice, Caramel and Other Natural Flavors",46%,50 mL,,,,,"Edison, NJ",distilled_spirits,False,Sailor Jerry rum.jpg
+APP-2026-00016,Salted Caramel,Bourbon Whiskey with Natural Flavors and Caramel Color,35%,750 mL,Redline Beverage,"Bardstown, KY",,,,distilled_spirits,False,"Salted Caramel whiskey front.jpg;Salted Caramel whiskey back.jpg;Salted Caramel whiskey other.jpg"
+APP-2026-00017,Sortilege,Maple Cream Liqueur,17%,750 mL,La Maison des Futailles Montreal,"Quebec, Canada",Canada,"Sidney Frank Importing Co., Inc.","New Rochelle, NY",distilled_spirits,False,"Sortilege liqueur front.jpg;Sortilege liqueur back.jpg;Sortilege liqueur other.jpg"
+APP-2026-00018,Black Maple Hill,Oregon Straight Rye Whiskey,47.5%,750 mL,Stein Distillery,"Joseph, Oregon",,,,distilled_spirits,False,"Black Maple Hill whiskey front.jpg;Black Maple Hill whiskey back.jpg;Black Maple Hill whiskey other.jpg"
+APP-2026-00019,Fuel,Grain Neutral Spirits with Natural Flavor Added,40%,750 mL,Redline Beverage,"Bardstown, KY",,,,distilled_spirits,False,Fuel moonshine.jpg
+APP-2026-00020,Market Alley,Barrel Rested Gin,45%,750 mL,Thistle Finch Distilling LLC,"Lancaster, PA",,,,distilled_spirits,False,"Market Alley gin (front).jpg;Market Alley gin (back).jpg"
+APP-2026-00021,McKenzie Brew House,Locally Crafted Vodka,40%,1 Liter,Kiki Vodka Company LLC,"Hatfield, PA",,,,distilled_spirits,False,McKenzie Brew House vodka.jpg
+APP-2026-00022,Misunderstood,Ginger Spiced Whiskey,40%,750 mL,Misunderstood Whiskey,"Bardstown, KY",,,,distilled_spirits,False,"Misunderstood ginger whiskey front.jpg;Misunderstood ginger whiskey other.jpg"
+APP-2026-00023,Gordian Knot,Aged Rum,42%,750 mL,Nicks and Bruce,"Bardstown, KY",,,,distilled_spirits,False,"Nicks & Bruce aged rum front.jpg;Nicks & Bruce aged rum back.jpg"
+APP-2026-00024,Twelv 31,Velvet Berry Liqueur,20%,750 mL,,,,,,distilled_spirits,False,Twelv 31 liqeur front.jpg
+APP-2026-00025,Cascade,Red Wine,11.5%,750 mL,Cascade Winery,"Grand Rapids, MI",,,,wine,True,Cascade Val wine.jpg
+APP-2026-00026,Lenz Moser,Dry White Wine,12%,1.0 L,,,Austria,Niche Import Co.,"Cedar Knolls, NJ",wine,True,"Lenz Moser wine front.jpg;Lenz Moser wine back.jpg"
+APP-2026-00027,Barenjager,Honey Liqueur and Bourbon,35%,1 L,Schwarze und Schlichte GmbH,"Oelde, Germany",Germany,"Sidney Frank Importing Co., Inc.","New Rochelle, NY",distilled_spirits,False,"Barenjager burbon front.jpg;Barenjager burbon back.jpg"
+APP-2026-00028,Collabor&tion,Straight Bourbon Whiskey Finished in Brandy Barrels,60%,750 mL,,,,,,distilled_spirits,False,Collabor&tion whiskey.jpg
+APP-2026-00029,Cotton Hollow,Straight Bourbon Whiskey,46.5%,750 mL,Cotton Hollow Distillery,Indiana,,,,distilled_spirits,False,"Cotton Hollow burbon front.jpg;Cotton Hollow burbon other.jpg"
+APP-2026-00030,Gordian Knot,Reserve Rum,42%,750 mL,Nicks and Bruce,"Bardstown, KY",,,,distilled_spirits,False,"Gordian Knot rum front.jpg;Gordian Knot rum back.jpg"
+APP-2026-00031,Monkey 47,Schwarzwald Dry Gin,47%,375 mL,Black Forest Distillers,"Lossburg, Germany",Germany,"Sidney Frank Importing Co., Inc.","New Rochelle, NY",distilled_spirits,False,"Monkey 47 gin front.jpg;Monkey 47 gin back.jpg"
+APP-2026-00032,Resilient,Straight Bourbon Whiskey,53.5%,750 mL,,,,,,distilled_spirits,False,"Resilient burbon front.jpg;Resilient burbon other.jpg"
+APP-2026-00033,Sortilege,Liqueur with Canadian Whisky and Maple Syrup,30%,375 mL,La Maison des Futailles,"Montreal, Quebec, Canada",Canada,"Sidney Frank Importing Co., Inc.","New Rochelle, NY",distilled_spirits,False,"Sortilege liqueur front.jpg;Sortilege liqueur back.jpg"
+APP-2026-00034,Uncle Nearest,Premium Whiskey,50%,750 mL,"Uncle Nearest, Inc.","Shelbyville, TN",,,,distilled_spirits,False,"Uncle Nearest whiskey front.jpg;Uncle Nearest whiskey back.jpg"
+APP-2026-00035,Warm,Bourbon Whiskey,48%,750 mL,,,,,,distilled_spirits,False,Warm whiskey.jpg
+APP-2026-00036,Barenjager,Honey Liqueur,35%,50 mL,Schwarze und Schlichte GmbH,"Oelde, Germany",Germany,"Sidney Frank Importing Co., Inc.","New Rochelle, NY",distilled_spirits,False,"Barenjager front.jpg;Barenjager back.jpg"
+APP-2026-00037,Dutch Courage,Dry Gin,44.5%,750 mL,Zuidam Distillers BV,"Baarle-Nassau, Netherlands",Netherlands,,,distilled_spirits,False,"Dutch Courage gin front.jpg;Dutch Courage gin back.jpg"
+APP-2026-00038,Howling Moon,Spirits Distilled From Grain,50%,750 mL,Howling Moon Distillery,"Asheville, NC",,,,distilled_spirits,False,"Howling Moon moonshine front.jpg;Howling Moon moonshine back.jpg"
+APP-2026-00039,Jacques Cardin,Apple VSOP Cognac,40%,750 mL,,,France,,,distilled_spirits,False,"Jacques Cardin cognac front.jpg;Jacques Cardin cognac back.jpg"
+APP-2026-00040,Presidential Dram,Straight Rye Whiskey,60%,750 mL,,,,,,distilled_spirits,False,"Presidential Dram whiskey front.jpg;Presidential Dram whiskey back.jpg"
+APP-2026-00041,Sailor Jerry,Spiced Rum,46%,50 mL,,,,,"Edison, NJ",distilled_spirits,False,Sailor Jerry rum.jpg
+APP-2026-00042,Seven Fathoms,Cayman Islands Premium Rum,40%,750 mL,Cayman Spirits Co.,"Grand Cayman, Cayman Islands",Cayman Islands,,,distilled_spirits,False,"Seven Fathoms rum front.jpg;Seven Fathoms rum back.jpg"
+APP-2026-00043,Stoll & Wolfe,Blend of American Straight Whiskeys,43%,750 mL,Stoll and Wolfe Distillery,"Lititz, PA",,,,distilled_spirits,False,"Stoll & Wolfe whiskey front.jpg;Stoll & Wolfe whiskey back.jpg"
+APP-2026-00044,White Label,Corn Whiskey,50%,750 mL,,,,,,distilled_spirits,False,"White Label whiskey front.jpg;White Label whiskey back.jpg"
+APP-2026-00045,Barrilito,Beer,3.6%,1 QT 8 FL.OZ.,Cerveceria Moctezuma,"Monterrey, Mexico",Mexico,Labatt USA Operating Co. LLC,"Norwalk, CT",beer,False,Cerveza Barrilito.jpg
+APP-2026-00046,Forte Masso,Red Wine,13.5%,750 mL,,,Italy,Pacific Highway Wines,"San Rafael, CA",wine,True,"Forte Masso beer front.jpg;Forte Masso beer back.jpg"
