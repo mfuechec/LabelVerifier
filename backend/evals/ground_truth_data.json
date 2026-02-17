@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "labels": [
+    {
+      "id": "example-001",
+      "image_path": "test data/0. Spirits Complete/Jagermeister front.jpg",
+      "panel_type": "front",
+      "beverage_type": "spirits",
+      "expected_fields": {
+        "brand_name": "Jägermeister",
+        "fanciful_name": null,
+        "class_type": "Liqueur",
+        "alcohol_content": "35% Alc./Vol.",
+        "alcohol_proof": "70 Proof",
+        "net_contents": "750mL",
+        "producer_name": null,
+        "producer_address": null,
+        "country_of_origin": "Germany",
+        "importer_name": "Sidney Frank Importing Co., Inc.",
+        "importer_address": "New Rochelle, N.Y.",
+        "government_warning": "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+        "sulfites_declaration": null
+      },
+      "notes": "Example entry - verify and adjust expected values based on actual label content"
+    }
+  ],
+  "_instructions": "Add more labels with verified ground truth values. Run: python -m evals.run_eval --update-template to generate entries from test images."
+}

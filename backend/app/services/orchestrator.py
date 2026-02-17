@@ -26,6 +26,7 @@ from app.services.comparison import ComparisonService, ConfidenceScorer
 from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
 from app.services.image_preprocessor import preprocess_image
+from app.services.cost import calculate_cost
 
 import logging
 
@@ -444,12 +445,20 @@ class VerificationOrchestrator:
 
         # 8. Aggregate processing stats
         total_time_ms = int((time.monotonic() - t_start) * 1000)
+        total_input_tokens = sum(s.input_tokens for s in all_llm_stats)
+        total_output_tokens = sum(s.output_tokens for s in all_llm_stats)
+        estimated_cost = calculate_cost(
+            total_input_tokens,
+            total_output_tokens,
+            model=settings.llm_model,
+        )
         processing_stats = ProcessingStats(
             total_llm_calls=len(all_llm_stats),
-            total_input_tokens=sum(s.input_tokens for s in all_llm_stats),
-            total_output_tokens=sum(s.output_tokens for s in all_llm_stats),
+            total_input_tokens=total_input_tokens,
+            total_output_tokens=total_output_tokens,
             extraction_time_ms=sum(s.elapsed_ms for s in all_llm_stats),
             total_time_ms=total_time_ms,
+            estimated_cost_usd=estimated_cost,
         )
 
         # 9. Persist to DB
@@ -502,13 +511,13 @@ class VerificationOrchestrator:
                         overall_confidence, batch_id,
                         total_input_tokens, total_output_tokens,
                         total_llm_calls, processing_time_ms, extraction_time_ms,
-                        created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        estimated_cost_usd, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (session_id, app_data.application_id,
                      app_data.beverage_type, status, confidence, batch_id,
                      ps.total_input_tokens, ps.total_output_tokens,
                      ps.total_llm_calls, ps.total_time_ms, ps.extraction_time_ms,
-                     now, now),
+                     ps.estimated_cost_usd, now, now),
                 )
 
                 app_id = str(uuid.uuid4())
