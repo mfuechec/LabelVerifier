@@ -1,3 +1,4 @@
+import abc
 import asyncio
 import base64
 import json
@@ -5,6 +6,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from anthropic import AsyncAnthropic
 from groq import AsyncGroq, RateLimitError
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ Rules:
 - Replace null with the extracted string value, or keep null if not found
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
+- For class_type, extract the beverage classification designation (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation.
 - For alcohol_content, include the format (e.g. "45% Alc./Vol.")
 - For alcohol_proof, extract proof if separately stated (e.g. "90 Proof")
 - GOVERNMENT WARNING is critical: always include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim -- do NOT summarize, paraphrase, or omit the prefix.
@@ -85,7 +88,18 @@ def _repair_json(text: str) -> dict | None:
     return None
 
 
-class ExtractionService:
+class BaseExtractor(abc.ABC):
+    @abc.abstractmethod
+    async def extract_fields(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        mime_type: str = "image/jpeg",
+    ) -> ExtractionResult:
+        """Extract all fields from a label image."""
+
+
+class GroqExtractor(BaseExtractor):
     def __init__(self, api_key: str, model: str = "meta-llama/llama-4-maverick-17b-128e-instruct"):
         self.client = AsyncGroq(api_key=api_key)
         self.model = model
@@ -197,3 +211,86 @@ class ExtractionService:
         except Exception as e:
             logger.exception("Extraction API call failed (%s): %s", panel_type, e)
             raise
+
+
+def _convert_parsed_to_fields(parsed: dict) -> dict:
+    """Convert parsed JSON to the expected format with value/bounding_box/extraction_confidence."""
+    fields = {}
+    for key, value in parsed.items():
+        if key in ("fields", "extraction_notes"):
+            continue
+        if isinstance(value, dict) and "value" in value:
+            fields[key] = {
+                "value": value["value"],
+                "bounding_box": None,
+                "extraction_confidence": value.get("conf", "high"),
+            }
+        else:
+            fields[key] = {
+                "value": value,
+                "bounding_box": None,
+                "extraction_confidence": "high",
+            }
+    return fields
+
+
+class AnthropicExtractor(BaseExtractor):
+    def __init__(self, api_key: str, model: str = "claude-haiku-4-5-20251001"):
+        self.client = AsyncAnthropic(api_key=api_key)
+        self.model = model
+
+    async def extract_fields(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        mime_type: str = "image/jpeg",
+    ) -> ExtractionResult:
+        """Extract all fields from a label image using Anthropic's vision API."""
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=2048,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": EXTRACTION_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            response_text = response.content[0].text
+            logger.info("Anthropic response (%s): %s", panel_type, response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
+                return ExtractionResult(fields={}, panel_type=panel_type)
+
+            fields = _convert_parsed_to_fields(parsed)
+            return ExtractionResult(fields=fields, panel_type=panel_type)
+
+        except Exception as e:
+            logger.exception("Anthropic extraction failed (%s): %s", panel_type, e)
+            return ExtractionResult(
+                panel_type=panel_type,
+                error=f"Extraction failed: {e}",
+            )
+
+
+# Backward compatibility alias
+ExtractionService = GroqExtractor

@@ -8,6 +8,7 @@ from app.models.schemas import (
     OverrideRequest,
     DecisionRequest,
     FeedbackRequest,
+    ReviewSummary,
 )
 
 
@@ -126,6 +127,105 @@ class TestVerificationResult:
                 annotated_images={},
                 created_at="2026-02-14T10:00:00Z",
             )
+
+
+class TestFieldComparisonResultNewFields:
+    def test_defaults_for_new_fields(self):
+        result = FieldComparisonResult(
+            field_name="brand_name",
+            declared_value="Test",
+            extracted_value="Test",
+            status="match",
+            confidence=95.0,
+            match_strategy="fuzzy",
+        )
+        assert result.extraction_confidence is None
+        assert result.confidence_reason is None
+        assert result.reviewed is False
+
+    def test_with_extraction_confidence(self):
+        result = FieldComparisonResult(
+            field_name="brand_name",
+            declared_value="Test",
+            extracted_value="Test",
+            status="extraction_uncertain",
+            confidence=50.0,
+            match_strategy="fuzzy",
+            extraction_confidence="low",
+            confidence_reason="Fuzzy match: 62% -- below 85% threshold | Extraction quality: low -- confidence capped at 50",
+            reviewed=True,
+        )
+        assert result.extraction_confidence == "low"
+        assert "Extraction quality: low" in result.confidence_reason
+        assert result.reviewed is True
+
+    def test_invalid_extraction_confidence(self):
+        with pytest.raises(ValidationError):
+            FieldComparisonResult(
+                field_name="brand_name",
+                declared_value="Test",
+                extracted_value="Test",
+                status="match",
+                confidence=95.0,
+                match_strategy="fuzzy",
+                extraction_confidence="invalid",
+            )
+
+
+class TestReviewSummary:
+    def test_valid_summary(self):
+        summary = ReviewSummary(
+            total_fields=10,
+            fields_needing_review=3,
+            fields_reviewed=1,
+            flagged_field_names=["brand_name", "alcohol_content", "government_warning"],
+        )
+        assert summary.total_fields == 10
+        assert summary.fields_needing_review == 3
+        assert summary.fields_reviewed == 1
+        assert len(summary.flagged_field_names) == 3
+
+    def test_empty_flagged(self):
+        summary = ReviewSummary(
+            total_fields=8,
+            fields_needing_review=0,
+            fields_reviewed=0,
+            flagged_field_names=[],
+        )
+        assert summary.flagged_field_names == []
+
+
+class TestVerificationResultWithReviewSummary:
+    def test_review_summary_default_none(self):
+        result = VerificationResult(
+            session_id="uuid-1",
+            status="pass",
+            overall_confidence=95.0,
+            beverage_type="distilled_spirits",
+            fields=[],
+            annotated_images={},
+            created_at="2026-02-14T10:00:00Z",
+        )
+        assert result.review_summary is None
+
+    def test_with_review_summary(self):
+        summary = ReviewSummary(
+            total_fields=10,
+            fields_needing_review=2,
+            fields_reviewed=1,
+            flagged_field_names=["brand_name", "alcohol_content"],
+        )
+        result = VerificationResult(
+            session_id="uuid-1",
+            status="needs_review",
+            overall_confidence=75.0,
+            beverage_type="distilled_spirits",
+            fields=[],
+            annotated_images={},
+            created_at="2026-02-14T10:00:00Z",
+            review_summary=summary,
+        )
+        assert result.review_summary.fields_needing_review == 2
 
 
 class TestOverrideRequest:

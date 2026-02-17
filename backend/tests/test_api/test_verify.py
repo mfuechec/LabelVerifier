@@ -202,3 +202,161 @@ class TestVerifyEndpoint:
             mock_path.return_value = client._transport.app.state.db_path
             response = await client.get("/api/v1/verify/nonexistent-id")
         assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_get_verification_includes_new_fields(self, client, tmp_db):
+        """GET /verify/{id} should include extraction_confidence, confidence_reason, reviewed, review_summary."""
+        from app.db.setup import get_db
+        conn = get_db(tmp_db)
+        conn.execute(
+            """INSERT INTO verification_sessions
+               (id, beverage_type, status, overall_confidence, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            ("test-uuid-2", "distilled_spirits", "needs_review", 75.0,
+             "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
+        )
+        conn.execute(
+            """INSERT INTO comparison_results
+               (id, session_id, field_name, declared_value, extracted_value,
+                match_strategy, status, confidence, reviewed, extraction_confidence, confidence_reason)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("cr-1", "test-uuid-2", "brand_name", "Test", "Test",
+             "fuzzy", "extraction_uncertain", 50.0, 0, "low",
+             "Fuzzy match: 50% | Extraction quality: low"),
+        )
+        conn.execute(
+            """INSERT INTO comparison_results
+               (id, session_id, field_name, declared_value, extracted_value,
+                match_strategy, status, confidence, reviewed, extraction_confidence, confidence_reason)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("cr-2", "test-uuid-2", "class_type", "Bourbon", "Bourbon",
+             "fuzzy", "match", 95.0, 0, "high",
+             "Fuzzy match: 95% (threshold: 85%)"),
+        )
+        conn.commit()
+        conn.close()
+
+        with patch("app.api.routes.verify.get_db_path") as mock_path:
+            mock_path.return_value = tmp_db
+            response = await client.get("/api/v1/verify/test-uuid-2")
+
+        assert response.status_code == 200
+        data = response.json()["data"]
+        fields = data["fields"]
+        assert len(fields) == 2
+
+        brand = next(f for f in fields if f["field_name"] == "brand_name")
+        assert brand["extraction_confidence"] == "low"
+        assert brand["confidence_reason"] == "Fuzzy match: 50% | Extraction quality: low"
+        assert brand["reviewed"] is False
+
+        assert data["review_summary"] is not None
+        assert data["review_summary"]["total_fields"] == 2
+        assert data["review_summary"]["fields_needing_review"] == 1
+        assert "brand_name" in data["review_summary"]["flagged_field_names"]
+
+
+class TestReviewEndpoint:
+    @pytest.mark.asyncio
+    async def test_review_field(self, client, tmp_db):
+        """POST /verify/{id}/fields/{field}/review marks field as reviewed."""
+        from app.db.setup import get_db
+        conn = get_db(tmp_db)
+        conn.execute(
+            """INSERT INTO verification_sessions
+               (id, beverage_type, status, overall_confidence, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            ("test-uuid-3", "distilled_spirits", "needs_review", 75.0,
+             "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
+        )
+        conn.execute(
+            """INSERT INTO comparison_results
+               (id, session_id, field_name, declared_value, extracted_value,
+                match_strategy, status, confidence, reviewed, extraction_confidence, confidence_reason)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("cr-1", "test-uuid-3", "brand_name", "Test", "Test",
+             "fuzzy", "extraction_uncertain", 50.0, 0, "low", "some reason"),
+        )
+        conn.commit()
+        conn.close()
+
+        with patch("app.api.routes.verify.get_db_path") as mock_path:
+            mock_path.return_value = tmp_db
+            response = await client.post("/api/v1/verify/test-uuid-3/fields/brand_name/review")
+
+        assert response.status_code == 200
+        assert response.json()["reviewed"] is True
+
+        # Verify in DB
+        conn = get_db(tmp_db)
+        row = conn.execute(
+            "SELECT reviewed FROM comparison_results WHERE session_id = ? AND field_name = ?",
+            ("test-uuid-3", "brand_name"),
+        ).fetchone()
+        assert row["reviewed"] == 1
+        conn.close()
+
+    @pytest.mark.asyncio
+    async def test_review_field_not_found(self, client, tmp_db):
+        with patch("app.api.routes.verify.get_db_path") as mock_path:
+            mock_path.return_value = tmp_db
+            response = await client.post("/api/v1/verify/nonexistent/fields/brand_name/review")
+        assert response.status_code == 404
+
+
+class TestImageServingEndpoint:
+    @pytest.mark.asyncio
+    async def test_serve_image(self, client, tmp_db, tmp_path):
+        """GET /images/{session_id}/{panel} serves stored image."""
+        from app.db.setup import get_db
+        conn = get_db(tmp_db)
+        conn.execute(
+            """INSERT INTO verification_sessions
+               (id, beverage_type, status, overall_confidence, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            ("a1b2c3d4-e5f6-7890-abcd-ef1234567890", "distilled_spirits", "pass", 95.0,
+             "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
+        )
+        conn.commit()
+        conn.close()
+
+        # Create a fake image file
+        import os
+        img_dir = tmp_path / "images" / "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        img_dir.mkdir(parents=True)
+        img_file = img_dir / "front.jpg"
+        img_file.write_bytes(b"\xff\xd8\xff\xe0fake-jpeg-data")
+
+        with patch("app.api.routes.verify.get_db_path") as mock_path, \
+             patch("app.api.routes.verify.IMAGES_BASE_DIR", str(tmp_path / "images")):
+            mock_path.return_value = tmp_db
+            response = await client.get("/api/v1/images/a1b2c3d4-e5f6-7890-abcd-ef1234567890/front")
+
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_serve_image_session_not_found(self, client, tmp_db):
+        with patch("app.api.routes.verify.get_db_path") as mock_path:
+            mock_path.return_value = tmp_db
+            response = await client.get("/api/v1/images/00000000-0000-0000-0000-000000000000/front")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_serve_image_path_traversal(self, client, tmp_db):
+        """Reject session IDs with path traversal attempts."""
+        from app.db.setup import get_db
+        conn = get_db(tmp_db)
+        conn.execute(
+            """INSERT INTO verification_sessions
+               (id, beverage_type, status, overall_confidence, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            ("../etc/passwd", "distilled_spirits", "pass", 95.0,
+             "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
+        )
+        conn.commit()
+        conn.close()
+
+        with patch("app.api.routes.verify.get_db_path") as mock_path:
+            mock_path.return_value = tmp_db
+            response = await client.get("/api/v1/images/../etc/passwd/front")
+        assert response.status_code in (400, 404, 422)

@@ -12,6 +12,16 @@ def get_db(db_path: str = "data/labelverify.db") -> sqlite3.Connection:
 def create_tables(conn: sqlite3.Connection) -> None:
     """Create all database tables."""
     conn.executescript("""
+        CREATE TABLE IF NOT EXISTS batches (
+            id TEXT PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'pending',
+            total_items INTEGER NOT NULL,
+            completed_items INTEGER NOT NULL DEFAULT 0,
+            failed_items INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS verification_sessions (
             id TEXT PRIMARY KEY,
             application_id TEXT,
@@ -21,6 +31,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
             agent_decision TEXT,
             agent_notes TEXT,
             ai_correct INTEGER,
+            batch_id TEXT REFERENCES batches(id),
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -75,7 +86,10 @@ def create_tables(conn: sqlite3.Connection) -> None:
             status TEXT NOT NULL,
             confidence REAL,
             override_status TEXT,
-            override_note TEXT
+            override_note TEXT,
+            reviewed INTEGER DEFAULT 0,
+            extraction_confidence TEXT,
+            confidence_reason TEXT
         );
 
         CREATE TABLE IF NOT EXISTS agent_feedback (
@@ -97,4 +111,20 @@ def create_tables(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_comparison_session ON comparison_results(session_id);
         CREATE INDEX IF NOT EXISTS idx_feedback_session ON agent_feedback(session_id);
     """)
+    conn.commit()
+
+    # Migrate existing tables: add batch_id if missing
+    _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Run incremental schema migrations for existing databases."""
+    columns = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(verification_sessions)").fetchall()
+    }
+    if "batch_id" not in columns:
+        conn.execute("ALTER TABLE verification_sessions ADD COLUMN batch_id TEXT REFERENCES batches(id)")
+        conn.commit()
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_batch ON verification_sessions(batch_id)")
     conn.commit()

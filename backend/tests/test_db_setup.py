@@ -69,3 +69,39 @@ def test_indexes_created(tmp_db):
     assert "idx_sessions_beverage" in indexes
     assert "idx_sessions_created" in indexes
     conn.close()
+
+
+def test_comparison_results_has_review_columns(tmp_db):
+    """comparison_results should have reviewed, extraction_confidence, confidence_reason columns."""
+    conn = get_db(tmp_db)
+    create_tables(conn)
+
+    # Insert a session first (FK)
+    conn.execute(
+        """INSERT INTO verification_sessions
+           (id, beverage_type, status, overall_confidence, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        ("test-uuid-1", "distilled_spirits", "pass", 95.0,
+         "2026-02-14T10:00:00Z", "2026-02-14T10:00:00Z"),
+    )
+
+    # Insert a comparison result with the new columns
+    conn.execute(
+        """INSERT INTO comparison_results
+           (id, session_id, field_name, declared_value, extracted_value,
+            match_strategy, status, confidence, reviewed, extraction_confidence, confidence_reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        ("cr-1", "test-uuid-1", "brand_name", "Test", "Test",
+         "fuzzy", "match", 95.0, 0, "high", "Fuzzy match: 95% (threshold: 85%)"),
+    )
+    conn.commit()
+
+    row = conn.execute(
+        "SELECT reviewed, extraction_confidence, confidence_reason FROM comparison_results WHERE id = ?",
+        ("cr-1",)
+    ).fetchone()
+
+    assert row["reviewed"] == 0
+    assert row["extraction_confidence"] == "high"
+    assert "Fuzzy match" in row["confidence_reason"]
+    conn.close()

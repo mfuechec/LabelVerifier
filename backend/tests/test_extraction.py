@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 import groq
-from app.services.extraction import ExtractionService, _repair_json
+from app.services.extraction import ExtractionService, _repair_json, BaseExtractor, GroqExtractor, AnthropicExtractor
 
 
 def _make_groq_response(content: str):
@@ -394,3 +394,99 @@ class TestConfidenceParsing:
             messages = call_kwargs.kwargs.get("messages") or call_kwargs[1].get("messages")
             prompt_text = str(messages)
             assert "conf" in prompt_text
+
+
+class TestBaseExtractor:
+    def test_cannot_instantiate_directly(self):
+        """BaseExtractor is abstract and cannot be instantiated."""
+        with pytest.raises(TypeError):
+            BaseExtractor()
+
+
+class TestGroqExtractorIsBaseExtractor:
+    def test_is_subclass(self):
+        """GroqExtractor should be a subclass of BaseExtractor."""
+        assert issubclass(GroqExtractor, BaseExtractor)
+
+    def test_instance_is_base_extractor(self):
+        """A GroqExtractor instance should be an instance of BaseExtractor."""
+        with patch("app.services.extraction.AsyncGroq"):
+            extractor = GroqExtractor(api_key="test-key")
+            assert isinstance(extractor, BaseExtractor)
+
+
+class TestAnthropicExtractorIsBaseExtractor:
+    def test_is_subclass(self):
+        """AnthropicExtractor should be a subclass of BaseExtractor."""
+        assert issubclass(AnthropicExtractor, BaseExtractor)
+
+    def test_instance_is_base_extractor(self):
+        """An AnthropicExtractor instance should be an instance of BaseExtractor."""
+        with patch("app.services.extraction.AsyncAnthropic"):
+            extractor = AnthropicExtractor(api_key="test-key")
+            assert isinstance(extractor, BaseExtractor)
+
+    @pytest.mark.asyncio
+    async def test_extract_fields_calls_anthropic_api(self):
+        """AnthropicExtractor should call the Anthropic messages API."""
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text=json.dumps({
+            "brand_name": {"value": "Test Brand", "conf": "high"},
+            "class_type": {"value": "Bourbon", "conf": "high"},
+        }))]
+
+        with patch("app.services.extraction.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(return_value=mock_response)
+            mock_cls.return_value = mock_client
+
+            extractor = AnthropicExtractor(api_key="test-key")
+            result = await extractor.extract_fields(b"fake-image-bytes", "front")
+
+            mock_client.messages.create.assert_called_once()
+            assert result.fields["brand_name"]["value"] == "Test Brand"
+            assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_extract_fields_api_error(self):
+        """AnthropicExtractor should return error result on API failure."""
+        with patch("app.services.extraction.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(side_effect=Exception("API error"))
+            mock_cls.return_value = mock_client
+
+            extractor = AnthropicExtractor(api_key="test-key")
+            result = await extractor.extract_fields(b"fake-image-bytes", "front")
+
+            assert result.error is not None
+            assert "API error" in result.error
+
+
+class TestProviderSelection:
+    def test_groq_provider_selected(self):
+        """Orchestrator should use GroqExtractor when provider is 'groq'."""
+        mock_settings = MagicMock()
+        mock_settings.llm_provider = "groq"
+        mock_settings.groq_api_key = "test-groq-key"
+        mock_settings.llm_model = "test-model"
+        mock_settings.anthropic_api_key = ""
+
+        with patch("app.services.orchestrator.settings", mock_settings), \
+             patch("app.services.extraction.AsyncGroq"):
+            from app.services.orchestrator import VerificationOrchestrator
+            orch = VerificationOrchestrator()
+            assert isinstance(orch.extraction_service, GroqExtractor)
+
+    def test_anthropic_provider_selected(self):
+        """Orchestrator should use AnthropicExtractor when provider is 'anthropic'."""
+        mock_settings = MagicMock()
+        mock_settings.llm_provider = "anthropic"
+        mock_settings.anthropic_api_key = "test-anthropic-key"
+        mock_settings.llm_model = "claude-haiku-4-5-20251001"
+        mock_settings.groq_api_key = ""
+
+        with patch("app.services.orchestrator.settings", mock_settings), \
+             patch("app.services.extraction.AsyncAnthropic"):
+            from app.services.orchestrator import VerificationOrchestrator
+            orch = VerificationOrchestrator()
+            assert isinstance(orch.extraction_service, AnthropicExtractor)

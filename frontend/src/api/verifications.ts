@@ -6,6 +6,7 @@ import type {
   OverrideRequest,
   DecisionRequest,
   FeedbackRequest,
+  BatchResponse,
 } from './types';
 
 export function useVerify() {
@@ -99,6 +100,68 @@ export function useSubmitDecision() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['verification', vars.sessionId] });
       queryClient.invalidateQueries({ queryKey: ['verifications'] });
+    },
+  });
+}
+
+export function useReviewField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      sessionId,
+      fieldName,
+    }: {
+      sessionId: string;
+      fieldName: string;
+    }) => {
+      await client.post(`/verify/${sessionId}/fields/${fieldName}/review`);
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['verification', vars.sessionId] });
+    },
+  });
+}
+
+export function useBatchUpload() {
+  return useMutation({
+    mutationFn: async ({
+      pdfs,
+      images,
+      imageAssignments,
+    }: {
+      pdfs: File[];
+      images: File[];
+      imageAssignments: number[][];
+    }) => {
+      const formData = new FormData();
+      pdfs.forEach((pdf) => formData.append('application_pdfs[]', pdf));
+      images.forEach((img) => formData.append('images[]', img));
+      imageAssignments.forEach((indices) =>
+        formData.append('image_assignments[]', JSON.stringify(indices))
+      );
+
+      const res = await client.post<{ data: { batch_id: string; total_items: number } }>(
+        '/batch',
+        formData
+      );
+      return res.data.data;
+    },
+  });
+}
+
+export function useBatchStatus(batchId: string | undefined) {
+  return useQuery({
+    queryKey: ['batch', batchId],
+    queryFn: async () => {
+      const res = await client.get<{ data: BatchResponse }>(`/batch/${batchId}`);
+      return res.data.data;
+    },
+    enabled: !!batchId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.batch?.status;
+      if (status === 'completed' || status === 'failed') return false;
+      return 3000;
     },
   });
 }

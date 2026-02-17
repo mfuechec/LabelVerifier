@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate test data packages: label images + application PDFs organized by pass/fail."""
+"""Generate test data packages: label images + application PDFs organized by scenario category."""
 
 import json
 import os
@@ -14,9 +14,9 @@ from reportlab.pdfgen import canvas
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 FIXTURES_PATH = os.path.join(PROJECT_ROOT, "backend", "tests", "fixtures", "sample_applications.json")
 TEST_DATA_ROOT = os.path.join(PROJECT_ROOT, "test data")
-PACKAGES_ROOT = os.path.join(TEST_DATA_ROOT, "packages")
+SCENARIOS_ROOT = os.path.join(TEST_DATA_ROOT, "scenarios")
 
-# Map fixture category to test data folder
+# Map fixture category to source image folder
 CATEGORY_TO_FOLDER = {
     "good spirits": "good spirits",
     "good wine+beer": "good wine+beer",
@@ -25,6 +25,15 @@ CATEGORY_TO_FOLDER = {
     "bad spirits warning": "bad spirits warning",
     "bad wine+beer": "bad wine+beer",
 }
+
+# Scenario categories that map to output subdirectories
+SCENARIO_CATEGORIES = [
+    "pass",
+    "fail_mismatch",
+    "fail_missing",
+    "needs_review",
+    "edge_cases",
+]
 
 
 def slugify(name: str) -> str:
@@ -105,15 +114,15 @@ def _format_beverage_type(btype: str | None) -> str:
     }.get(btype, btype)
 
 
-def _category_suffix(category: str) -> str:
-    """Short suffix to disambiguate same brand across categories."""
-    suffixes = {
-        "bad spirits label": "label",
-        "bad spirits photo": "photo",
-        "bad spirits warning": "warning",
-        "bad wine+beer": "winebeer",
-    }
-    return suffixes.get(category, "")
+def _fixture_slug(fixture: dict) -> str:
+    """Generate a unique slug for a fixture from its ID."""
+    # Use the fixture ID (minus the category prefix) as the slug
+    fixture_id = fixture["id"]
+    # Remove category prefix like "pass-", "mismatch-", "missing-", "review-", "edge-"
+    for prefix in ["pass-", "mismatch-", "missing-", "review-", "edge-"]:
+        if fixture_id.startswith(prefix):
+            return fixture_id[len(prefix):]
+    return slugify(fixture["application_data"]["brand_name"])
 
 
 def main():
@@ -122,45 +131,26 @@ def main():
 
     fixtures = data["fixtures"]
 
-    # Pre-scan for duplicate brand slugs within each bucket
-    slug_counts: dict[str, dict[str, int]] = {"pass": {}, "fail": {}}
-    for fixture in fixtures:
-        status = fixture["expected_outcome"]["overall_status"]
-        bucket = "pass" if status == "pass" else "fail"
-        slug = slugify(fixture["application_data"]["brand_name"])
-        slug_counts[bucket][slug] = slug_counts[bucket].get(slug, 0) + 1
-
     # Clean and create output dirs
-    if os.path.exists(PACKAGES_ROOT):
-        shutil.rmtree(PACKAGES_ROOT)
-    os.makedirs(os.path.join(PACKAGES_ROOT, "pass"), exist_ok=True)
-    os.makedirs(os.path.join(PACKAGES_ROOT, "fail"), exist_ok=True)
+    if os.path.exists(SCENARIOS_ROOT):
+        shutil.rmtree(SCENARIOS_ROOT)
+    for cat in SCENARIO_CATEGORIES:
+        os.makedirs(os.path.join(SCENARIOS_ROOT, cat), exist_ok=True)
 
-    pass_count = 0
-    fail_count = 0
+    counts = {cat: 0 for cat in SCENARIO_CATEGORIES}
     errors = []
 
     for fixture in fixtures:
         category = fixture["category"]
-        status = fixture["expected_outcome"]["overall_status"]
+        scenario = fixture["scenario_category"]
         app_data = fixture["application_data"]
-        brand = app_data["brand_name"]
-        slug = slugify(brand)
+        slug = _fixture_slug(fixture)
 
-        # Determine bucket
-        bucket = "pass" if status == "pass" else "fail"
-
-        # Disambiguate duplicates by appending category suffix
-        if slug_counts[bucket][slug] > 1:
-            suffix = _category_suffix(category)
-            if suffix:
-                slug = f"{slug}-{suffix}"
-
-        # Create subfolder
-        pkg_dir = os.path.join(PACKAGES_ROOT, bucket, slug)
+        # Create subfolder under scenario category
+        pkg_dir = os.path.join(SCENARIOS_ROOT, scenario, slug)
         os.makedirs(pkg_dir, exist_ok=True)
 
-        # Copy images
+        # Copy images from source folder
         source_folder = os.path.join(TEST_DATA_ROOT, CATEGORY_TO_FOLDER[category])
         for img_info in fixture["images"]:
             src = os.path.join(source_folder, img_info["filename"])
@@ -174,15 +164,13 @@ def main():
         pdf_path = os.path.join(pkg_dir, "application.pdf")
         generate_pdf(pdf_path, app_data)
 
-        if bucket == "pass":
-            pass_count += 1
-        else:
-            fail_count += 1
+        counts[scenario] = counts.get(scenario, 0) + 1
 
     # Summary
-    print(f"Generated {pass_count + fail_count} test data packages:")
-    print(f"  pass/: {pass_count} packages")
-    print(f"  fail/: {fail_count} packages")
+    total = sum(counts.values())
+    print(f"Generated {total} test data packages in test data/scenarios/:")
+    for cat in SCENARIO_CATEGORIES:
+        print(f"  {cat}/: {counts[cat]} packages")
 
     if errors:
         print(f"\nWarnings ({len(errors)}):")

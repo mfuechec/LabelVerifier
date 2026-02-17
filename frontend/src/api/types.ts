@@ -29,6 +29,16 @@ export interface FieldComparisonResult {
   confidence: number;
   match_strategy: string;
   bounding_box: BoundingBox | null;
+  extraction_confidence: 'high' | 'medium' | 'low' | null;
+  confidence_reason: string | null;
+  reviewed: boolean;
+}
+
+export interface ReviewSummary {
+  total_fields: number;
+  fields_needing_review: number;
+  fields_reviewed: number;
+  flagged_field_names: string[];
 }
 
 export interface VerificationResult {
@@ -39,6 +49,7 @@ export interface VerificationResult {
   fields: FieldComparisonResult[];
   annotated_images: Record<string, string>;
   created_at: string;
+  review_summary: ReviewSummary | null;
 }
 
 export interface HistoryItem {
@@ -57,6 +68,29 @@ export interface HistoryResponse {
   total: number;
   page: number;
   per_page: number;
+}
+
+export interface BatchStatus {
+  batch_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  total_items: number;
+  completed_items: number;
+  failed_items: number;
+  created_at: string;
+}
+
+export interface BatchSessionItem {
+  session_id: string;
+  brand_name: string | null;
+  beverage_type: string;
+  status: string;
+  overall_confidence: number | null;
+  created_at: string;
+}
+
+export interface BatchResponse {
+  batch: BatchStatus;
+  items: BatchSessionItem[];
 }
 
 export interface OverrideRequest {

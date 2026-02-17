@@ -6,9 +6,10 @@ interface ComparisonTableProps {
   highlightedField: string | null;
   onFieldHover: (fieldName: string | null) => void;
   onOverride: (fieldName: string) => void;
+  onConfirmReview?: (fieldName: string) => void;
 }
 
-export default function ComparisonTable({ fields, highlightedField, onFieldHover, onOverride }: ComparisonTableProps) {
+export default function ComparisonTable({ fields, highlightedField, onFieldHover, onOverride, onConfirmReview }: ComparisonTableProps) {
   return (
     <div className="comparison-table-wrap">
       <table className="comparison-table">
@@ -30,6 +31,7 @@ export default function ComparisonTable({ fields, highlightedField, onFieldHover
               isHighlighted={highlightedField === field.field_name}
               onHover={onFieldHover}
               onOverride={onOverride}
+              onConfirmReview={onConfirmReview}
             />
           ))}
         </tbody>

@@ -191,6 +191,27 @@ table {
   box-shadow: 0 0 6px rgba(5, 150, 105, 0.5);
 }
 
+.app-header .header-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-header .nav-link {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--slate-400);
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.app-header .nav-link:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* Main layout */
 .app-main {
   max-width: var(--container-max);
@@ -513,6 +534,23 @@ table {
 .history-header h2 {
   font-size: 1.7rem;
   font-weight: 600;
+}
+
+.view-all-link {
+  font-size: 0.85rem;
+  color: var(--blue-600, #2563eb);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--blue-600, #2563eb);
+  border-radius: var(--radius-sm, 6px);
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.view-all-link:hover {
+  background: var(--blue-600, #2563eb);
+  color: var(--white, #fff);
+  text-decoration: none;
 }
 
 .history-filters {
@@ -1112,4 +1150,23 @@ table {
 
 .label-viewer-overlay.highlighted {
   background-color: rgba(59, 130, 246, 0.15);
+}
+
+/* Error banner */
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  background: var(--red-50);
+  border: 1px solid var(--red-100);
+  border-radius: var(--radius-md);
+  color: var(--red-600);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.error-banner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }

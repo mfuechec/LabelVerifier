@@ -121,11 +121,26 @@ Rules: "GOVERNMENT WARNING:" must be ALL CAPS. Full statement must be word-for-w
 ## Deployment
 
 - Frontend: `npm run build` -> deploy to Vercel
-- Backend: Dockerized FastAPI -> deploy to Railway/Render/Fly.io
-- Environment variables: `ANTHROPIC_API_KEY`, `DATABASE_URL`, `ALLOWED_ORIGINS`
+- Backend: Dockerized FastAPI -> deploy to Railway
+- Environment variables: `LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `LLM_MODEL`, `DATABASE_URL`, `ALLOWED_ORIGINS`
 - HTTPS everywhere, CORS configured for frontend domain
 
+### Railway Deployment (Backend)
+- **Project:** `labelverify-backend`
+- **Service:** `labelverify-backend`
+- **Public URL:** `https://labelverify-backend-production.up.railway.app`
+- **Root directory:** `backend` (Railway builds from this subdirectory)
+- **Dockerfile:** `backend/Dockerfile`
+- Use `railway` CLI (installed) for all deployment operations
+- `railway status` -- check project/service/environment
+- `railway variables` -- list env vars
+- `railway variables --set "KEY=value"` -- set env vars (auto-triggers redeploy)
+- `railway logs` -- view deployment logs
+- `railway up` -- manual deploy
+- **LLM Provider:** Currently `anthropic` with `claude-haiku-4-5-20251001`. To switch back to Groq, set `LLM_PROVIDER=groq` and `LLM_MODEL=meta-llama/llama-4-maverick-17b-128e-instruct`
+
 ### Vercel Deployment (Frontend)
+- **Frontend URL:** `https://label-verifier-eta.vercel.app`
 - **Use the Vercel MCP tools** for all deployment operations. Do NOT use the Vercel CLI or manual dashboard.
 - `deploy_to_vercel` -- deploy the frontend
 - `list_projects` / `get_project` -- check project config and domains
