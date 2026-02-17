@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+anthropic
+pillow
+rapidfuzz
+pydantic
+pydantic-settings
+python-multipart
+aiofiles
+pytest
+httpx
+pytest-asyncio
