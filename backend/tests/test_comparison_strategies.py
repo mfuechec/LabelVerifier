@@ -308,3 +308,14 @@ class TestSpecialtyClassMatch:
             declared_fanciful_name="BIZAN SWEET POTATO",
         )
         assert status == "match"
+
+    def test_declared_fanciful_stem_match_in_composition(self):
+        """COLA declares 'SPICED RUM', label has 'SAILOR JERRY' +
+        composition 'Caribbean Rum with spice...' — 'spiced' should stem-match 'spice'."""
+        status, score, reason = specialty_class_match(
+            "SAILOR JERRY",
+            "Caribbean Rum with spice, caramel and other natural flavors",
+            "rum",
+            declared_fanciful_name="SPICED RUM",
+        )
+        assert status == "match"

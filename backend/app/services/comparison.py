@@ -3,14 +3,12 @@ from app.services.normalizer import (
     normalize_whitespace,
     normalize_warning_text,
     normalize_for_fuzzy,
-    normalize_company_name,
-    normalize_country,
     extract_abv,
     extract_proof,
     normalize_net_contents,
 )
-from app.services.ttb_classes import normalize_class_type, is_administrative_class_type
-from app.models.schemas import ApplicationData, FieldComparisonResult
+from app.services.ttb_classes import normalize_class_type
+from app.models.schemas import FieldComparisonResult
 
 
 CANONICAL_WARNING = (
@@ -274,6 +272,7 @@ def specialty_class_match(
             # Fallback 3: Declared fanciful words are a subset of extracted
             # fanciful + composition (e.g. COLA "BIZAN BARLEY", label "GEKKEIKAN BIZAN" +
             # composition "BARLEY SHOCHU...")
+            # Also handles stem variations (e.g. "spiced" matches "spice")
             if fn_status == "content_mismatch":
                 decl_words = set(normalize_for_fuzzy(declared_fanciful_name).split())
                 ext_words = set(normalize_for_fuzzy(fanciful_name).split())
@@ -281,6 +280,27 @@ def specialty_class_match(
                     ext_words |= set(normalize_for_fuzzy(composition_statement).split())
                 if decl_words and decl_words.issubset(ext_words):
                     fn_status = "match"
+
+            # Fallback 3b: Stem/prefix matching — "spiced" matches "spice",
+            # "flavored" matches "flavor", etc.
+            if fn_status == "content_mismatch":
+                decl_words = set(normalize_for_fuzzy(declared_fanciful_name).split())
+                ext_words = set(normalize_for_fuzzy(fanciful_name).split())
+                if has_composition:
+                    ext_words |= set(normalize_for_fuzzy(composition_statement).split())
+                if decl_words:
+                    all_matched = True
+                    for dw in decl_words:
+                        if dw in ext_words:
+                            continue
+                        # Check if any extracted word shares a prefix (min 4 chars)
+                        prefix_len = min(len(dw), 4)
+                        if any(ew[:prefix_len] == dw[:prefix_len] and abs(len(ew) - len(dw)) <= 2 for ew in ext_words):
+                            continue
+                        all_matched = False
+                        break
+                    if all_matched:
+                        fn_status = "match"
 
             if fn_status == "content_mismatch":
                 return (
@@ -411,276 +431,6 @@ def presence_check(extracted: str | None, required: bool) -> tuple[str, float, s
     if extracted:
         return ("match", 100.0, "Sulfites declaration found")
     return ("field_missing", 0.0, "Required sulfites declaration missing")
-
-
-class ComparisonService:
-    """Dispatches each field to the appropriate matching strategy."""
-
-    FIELD_STRATEGIES = {
-        "brand_name": "fuzzy",
-        "class_type": "class_type",
-        "alcohol_content": "numeric_abv",
-        "net_contents": "numeric_net",
-        "producer_name": "company_name",
-        "producer_address": "address",
-        "country_of_origin": "fuzzy",
-        "importer_name": "company_name",
-        "importer_address": "address",
-        "government_warning": "exact",
-        "sulfites_declaration": "presence",
-    }
-
-    def compare_fields(
-        self,
-        extracted: dict[str, str | None],
-        declared: ApplicationData,
-        beverage_type: str,
-        extraction_confidences: dict[str, str] | None = None,
-    ) -> list[FieldComparisonResult]:
-        results = []
-
-        # Map declared fields
-        declared_map = {
-            "brand_name": declared.brand_name,
-            "class_type": declared.class_type,
-            "alcohol_content": declared.alcohol_content,
-            "net_contents": declared.net_contents,
-            "producer_name": declared.producer_name,
-            "producer_address": declared.producer_address,
-            "country_of_origin": declared.country_of_origin,
-            "importer_name": declared.importer_name,
-            "importer_address": declared.importer_address,
-        }
-
-        for field_name, strategy in self.FIELD_STRATEGIES.items():
-            ext_value = extracted.get(field_name)
-
-            if strategy == "exact":
-                if ext_value:
-                    status, score, reason = exact_match(ext_value, CANONICAL_WARNING)
-                else:
-                    status, score, reason = "field_missing", 0.0, "Government warning not found on label"
-                results.append(
-                    FieldComparisonResult(
-                        field_name=field_name,
-                        declared_value=None,
-                        extracted_value=ext_value,
-                        status=status,
-                        confidence=score,
-                        match_strategy="exact",
-                        confidence_reason=reason,
-                    )
-                )
-
-            elif strategy == "presence":
-                required = declared.has_sulfites_declaration
-                status, score, reason = presence_check(ext_value, required)
-                if not required and not ext_value:
-                    continue  # Skip sulfites if not required
-                results.append(
-                    FieldComparisonResult(
-                        field_name=field_name,
-                        declared_value="Required" if required else "N/A",
-                        extracted_value=ext_value,
-                        status=status,
-                        confidence=score,
-                        match_strategy="presence",
-                        confidence_reason=reason,
-                    )
-                )
-
-            elif strategy == "numeric_abv":
-                dec_value = declared_map.get(field_name)
-                if dec_value:
-                    status, score, _notes, reason = numeric_match_abv(ext_value, dec_value)
-                    results.append(
-                        FieldComparisonResult(
-                            field_name=field_name,
-                            declared_value=dec_value,
-                            extracted_value=ext_value,
-                            status=status,
-                            confidence=score,
-                            match_strategy="numeric",
-                            confidence_reason=reason,
-                        )
-                    )
-
-            elif strategy == "numeric_net":
-                dec_value = declared_map.get(field_name)
-                if dec_value:
-                    status, score, reason = numeric_match_net_contents(ext_value, dec_value)
-                    results.append(
-                        FieldComparisonResult(
-                            field_name=field_name,
-                            declared_value=dec_value,
-                            extracted_value=ext_value,
-                            status=status,
-                            confidence=score,
-                            match_strategy="numeric",
-                            confidence_reason=reason,
-                        )
-                    )
-
-            elif strategy == "class_type":
-                dec_value = declared_map.get(field_name)
-                if dec_value:
-                    is_admin, base_spirit = is_administrative_class_type(dec_value)
-                    specialty_data = extracted.get("_specialty_class_data")
-                    if is_admin and specialty_data:
-                        fn = specialty_data.get("fanciful_name")
-                        cs = specialty_data.get("composition_statement")
-                        status, score, reason = specialty_class_match(
-                            fn, cs, base_spirit,
-                            declared_fanciful_name=declared.fanciful_name,
-                        )
-                        # Build display value for extracted
-                        parts = [p for p in [fn, cs] if p]
-                        ext_display = " — ".join(parts) if parts else None
-                        results.append(
-                            FieldComparisonResult(
-                                field_name=field_name,
-                                declared_value=dec_value,
-                                extracted_value=ext_display,
-                                status=status,
-                                confidence=score,
-                                match_strategy="specialty_class",
-                                confidence_reason=reason,
-                            )
-                        )
-                    else:
-                        status, score, reason = class_type_match(
-                            ext_value, dec_value, beverage_type
-                        )
-                        results.append(
-                            FieldComparisonResult(
-                                field_name=field_name,
-                                declared_value=dec_value,
-                                extracted_value=ext_value,
-                                status=status,
-                                confidence=score,
-                                match_strategy="class_type",
-                                confidence_reason=reason,
-                            )
-                        )
-
-            elif strategy == "company_name":
-                dec_value = declared_map.get(field_name)
-                if dec_value:
-                    norm_ext = normalize_company_name(ext_value) if ext_value else None
-                    norm_dec = normalize_company_name(dec_value)
-                    # Single-word containment: if extracted is one meaningful word
-                    # contained in the declared name, accept it
-                    if (norm_ext and len(norm_ext.split()) == 1
-                            and len(norm_ext) >= 3 and norm_ext in norm_dec):
-                        status, score, reason = (
-                            "match", 95.0,
-                            f"Company name '{norm_ext}' found in declared name",
-                        )
-                    else:
-                        status, score, reason = fuzzy_match(norm_ext, norm_dec)
-                    results.append(
-                        FieldComparisonResult(
-                            field_name=field_name,
-                            declared_value=dec_value,
-                            extracted_value=ext_value,
-                            status=status,
-                            confidence=score,
-                            match_strategy="fuzzy",
-                            confidence_reason=reason,
-                        )
-                    )
-
-            elif strategy == "address":
-                dec_value = declared_map.get(field_name)
-                if dec_value:
-                    status, score, reason = address_match(ext_value, dec_value)
-                    results.append(
-                        FieldComparisonResult(
-                            field_name=field_name,
-                            declared_value=dec_value,
-                            extracted_value=ext_value,
-                            status=status,
-                            confidence=score,
-                            match_strategy="fuzzy",
-                            confidence_reason=reason,
-                        )
-                    )
-
-            elif strategy == "fuzzy":
-                dec_value = declared_map.get(field_name)
-                if dec_value:  # Only compare if declared
-                    ext_cmp = ext_value
-                    dec_cmp = dec_value
-                    if field_name == "country_of_origin" and ext_cmp:
-                        ext_cmp = normalize_country(ext_cmp)
-                        dec_cmp = normalize_country(dec_cmp)
-                    status, score, reason = fuzzy_match(ext_cmp, dec_cmp)
-                    # Brand-specific fallback: use partial_ratio when standard
-                    # fuzzy fails — handles declared brand embedded in longer
-                    # extracted text and COLA typos (e.g. "VIJO TONEL" vs
-                    # "Pisco Viejo Tonel")
-                    if (field_name == "brand_name"
-                            and status == "content_mismatch" and ext_cmp):
-                        pr = fuzz.partial_ratio(
-                            normalize_for_fuzzy(ext_cmp),
-                            normalize_for_fuzzy(dec_cmp),
-                        )
-                        if pr >= 85:
-                            status, score, reason = (
-                                "match", pr,
-                                f"Fuzzy match: {pr:.0f}% (brand partial match)",
-                            )
-                    results.append(
-                        FieldComparisonResult(
-                            field_name=field_name,
-                            declared_value=dec_value,
-                            extracted_value=ext_value,
-                            status=status,
-                            confidence=score,
-                            match_strategy="fuzzy",
-                            confidence_reason=reason,
-                        )
-                    )
-
-        # Apply extraction confidence adjustments
-        if extraction_confidences:
-            adjusted = []
-            for r in results:
-                ext_conf = extraction_confidences.get(r.field_name, "high")
-                status = r.status
-                score = r.confidence
-                reason = r.confidence_reason or ""
-
-                if ext_conf == "low":
-                    status = "extraction_uncertain"
-                    score = min(score, 50.0)
-                    reason += f" | Extraction quality: low -- confidence capped at {score:.0f}"
-                elif ext_conf == "medium":
-                    if status == "content_mismatch":
-                        status = "extraction_uncertain"
-                        score = min(score, 60.0)
-                        reason += f" | Extraction quality: medium -- confidence capped at {score:.0f}"
-                    elif status == "match" and score < 92.0:
-                        status = "extraction_uncertain"
-                        score = min(score, 75.0)
-                        reason += f" | Extraction quality: medium -- confidence capped at {score:.0f}"
-
-                adjusted.append(
-                    FieldComparisonResult(
-                        field_name=r.field_name,
-                        declared_value=r.declared_value,
-                        extracted_value=r.extracted_value,
-                        status=status,
-                        confidence=score,
-                        match_strategy=r.match_strategy,
-                        bounding_box=r.bounding_box,
-                        extraction_confidence=ext_conf,
-                        confidence_reason=reason,
-                    )
-                )
-            results = adjusted
-
-        return results
 
 
 class ConfidenceScorer:

@@ -1,35 +1,31 @@
 import asyncio
-import json
-import os
+import logging
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from app.config import settings
-from app.db.setup import get_db
+from app.db.repository import VerificationRepository
 from app.models.schemas import (
     ApplicationData,
     ComplianceIssueResponse,
     FieldComparisonResult,
     ProcessingStats,
     VerificationResult,
-    BoundingBox,
     ReviewSummary,
 )
-from app.services.extraction import BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult, LLMCallStats
+from app.services.extraction import AnthropicExtractor, LLMCallStats
 from app.services.ttb_classes import is_administrative_class_type
 from app.services.pdf_parser import COLAParseResult
-
-IMAGES_BASE_DIR = "data/images"
-from app.services.comparison import ComparisonService, ConfidenceScorer
+from app.services.comparison import ConfidenceScorer
 from app.services.compliance import ComplianceChecker
-from app.services.merger import ImageMerger
 from app.services.image_preprocessor import preprocess_image
 from app.services.cost import calculate_cost
 from app.services.text_matcher import TextMatcher
 
-import logging
+IMAGES_BASE_DIR = "data/images"
 
 logger = logging.getLogger(__name__)
 
@@ -37,25 +33,15 @@ logger = logging.getLogger(__name__)
 class VerificationOrchestrator:
     def __init__(self, db_path: str = "data/labelverify.db"):
         self.db_path = db_path
-        self.extraction_service: BaseExtractor = self._create_extractor()
-        self.comparison_service = ComparisonService()
+        self.repo = VerificationRepository(db_path)
+        self.extraction_service = AnthropicExtractor(
+            api_key=settings.anthropic_api_key,
+            model=settings.llm_model,
+            reextract_model=settings.reextract_model,
+        )
         self.compliance_checker = ComplianceChecker()
-        self.merger = ImageMerger()
         self.scorer = ConfidenceScorer()
         self.text_matcher = TextMatcher()
-
-    @staticmethod
-    def _create_extractor() -> BaseExtractor:
-        if settings.llm_provider == "anthropic":
-            return AnthropicExtractor(
-                api_key=settings.anthropic_api_key,
-                model=settings.llm_model,
-                reextract_model=settings.reextract_model,
-            )
-        return GroqExtractor(
-            api_key=settings.groq_api_key,
-            model=settings.llm_model,
-        )
 
     async def verify_from_cola(
         self,
@@ -94,39 +80,71 @@ class VerificationOrchestrator:
         processed_images = [preprocess_image(img) for img in images]
 
         is_admin, _ = is_administrative_class_type(application_data.class_type)
-        is_anthropic = isinstance(self.extraction_service, AnthropicExtractor)
 
-        if is_anthropic:
-            return await self._verify_transcription_pipeline(
-                processed_images, panels, application_data,
-                session_id, now, all_llm_stats, annotated_images,
-                is_admin, batch_id, t_start,
+        # 2. Transcribe images and extract specialty data
+        label_text, specialty_class_data, has_error, has_empty = (
+            await self._transcribe_images(
+                processed_images, panels, is_admin, all_llm_stats,
             )
-        else:
-            # Groq / legacy: use old extraction pipeline
-            return await self._verify_legacy_pipeline(
-                processed_images, panels, application_data,
-                session_id, now, all_llm_stats, annotated_images,
-                batch_id, t_start,
-            )
+        )
 
-    async def _verify_transcription_pipeline(
+        # 3. Match fields and run re-extractions
+        comparison_results = await self._match_and_reextract(
+            label_text, application_data, specialty_class_data,
+            processed_images, panels, all_llm_stats,
+        )
+
+        # 4. Run compliance checks and merge into results
+        enriched_results, compliance_responses = self._check_compliance(
+            comparison_results, application_data,
+        )
+
+        # 5. Calculate overall score
+        overall_confidence, status = self._compute_score(
+            enriched_results, has_error, has_empty, label_text,
+        )
+
+        # 6. Aggregate processing stats
+        processing_stats = self._aggregate_stats(all_llm_stats, t_start)
+
+        # 7. Persist to DB
+        self.repo.create_session(
+            session_id, application_data, enriched_results,
+            overall_confidence, status, now, batch_id=batch_id,
+            processing_stats=processing_stats,
+        )
+
+        # 8. Build and return result
+        flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
+        review_summary = ReviewSummary(
+            total_fields=len(enriched_results),
+            fields_needing_review=len(flagged),
+            fields_reviewed=0,
+            flagged_field_names=[f.field_name for f in flagged],
+        )
+
+        return VerificationResult(
+            session_id=session_id,
+            status=status,
+            overall_confidence=overall_confidence,
+            beverage_type=application_data.beverage_type,
+            fields=enriched_results,
+            annotated_images=annotated_images,
+            created_at=now,
+            review_summary=review_summary,
+            compliance_issues=compliance_responses,
+            processing_stats=processing_stats,
+        )
+
+    async def _transcribe_images(
         self,
         processed_images: list[bytes],
         panels: list[str],
-        application_data: ApplicationData,
-        session_id: str,
-        now: str,
-        all_llm_stats: list[LLMCallStats],
-        annotated_images: dict,
         is_admin: bool,
-        batch_id: str | None,
-        t_start: float,
-    ) -> VerificationResult:
-        """New pipeline: transcribe all text, then search for declared values."""
-
-        # 2. Transcribe each image in parallel (+ specialty extraction for admin codes)
-        all_tasks: dict[str, any] = {}
+        all_llm_stats: list[LLMCallStats],
+    ) -> tuple[str, dict | None, bool, bool]:
+        """Transcribe all panels in parallel. Returns (label_text, specialty_data, has_error, has_empty)."""
+        all_tasks: dict[str, Any] = {}
         for i, (img, panel) in enumerate(zip(processed_images, panels)):
             all_tasks[f"transcribe_{i}"] = self.extraction_service.transcribe_label(img, panel)
 
@@ -140,7 +158,7 @@ class VerificationOrchestrator:
         gathered = await asyncio.gather(*all_tasks.values(), return_exceptions=True)
         results_map = dict(zip(task_keys, gathered))
 
-        # 3. Concatenate transcriptions from all panels
+        # Concatenate transcriptions
         transcriptions = []
         has_error = False
         for i in range(len(processed_images)):
@@ -155,15 +173,15 @@ class VerificationOrchestrator:
             transcriptions.append(text)
 
         label_text = "\n".join(transcriptions)
-        has_empty_extraction = not label_text.strip() and not has_error
+        has_empty = not label_text.strip() and not has_error
 
-        if has_empty_extraction:
+        if has_empty:
             logger.warning(
                 "No label content detected across %d panel(s) -- possible missing label image",
                 len(processed_images),
             )
 
-        # 4. For admin class codes: extract specialty class data
+        # Extract specialty class data
         specialty_class_data = None
         if is_admin and "specialty" in results_map and not isinstance(results_map["specialty"], Exception):
             specialty_data, spec_stats = results_map["specialty"]
@@ -171,68 +189,98 @@ class VerificationOrchestrator:
                 all_llm_stats.append(spec_stats)
             specialty_class_data = specialty_data
 
-        # 5. Run TextMatcher against transcribed text
+        return label_text, specialty_class_data, has_error, has_empty
+
+    async def _match_and_reextract(
+        self,
+        label_text: str,
+        application_data: ApplicationData,
+        specialty_class_data: dict | None,
+        processed_images: list[bytes],
+        panels: list[str],
+        all_llm_stats: list[LLMCallStats],
+    ) -> list[FieldComparisonResult]:
+        """Match fields via TextMatcher, then run re-extractions for mismatched fields in parallel."""
         comparison_results = self.text_matcher.match_fields(
             label_text, application_data, application_data.beverage_type,
             specialty_class_data=specialty_class_data,
         )
 
-        # 5b. ABV re-extraction on mismatch (small labels often misread)
+        # Identify fields needing re-extraction
         abv_result = next(
             (r for r in comparison_results if r.field_name == "alcohol_content"), None
         )
-        if (
-            abv_result
-            and abv_result.status in ("content_mismatch", "extraction_uncertain")
-            and isinstance(self.extraction_service, AnthropicExtractor)
-        ):
-            back_idx = next((i for i, p in enumerate(panels) if p == "back"), None)
-            reextract_idx = back_idx if back_idx is not None else 0
-            reextracted_abv, abv_stats = await self.extraction_service.reextract_abv(
-                processed_images[reextract_idx]
-            )
-            if abv_stats:
-                all_llm_stats.append(abv_stats)
-            if reextracted_abv:
-                new_status, new_conf, new_reason, new_found = self.text_matcher.match_abv(
-                    application_data.alcohol_content, f"{reextracted_abv}%"
-                )
-                if new_status == "match":
-                    abv_result.status = new_status
-                    abv_result.confidence = new_conf
-                    abv_result.confidence_reason = f"ABV confirmed via re-extraction: {new_reason}"
-                    abv_result.extracted_value = new_found
-
-        # 5c. Net contents re-extraction on mismatch/missing
         nc_result = next(
             (r for r in comparison_results if r.field_name == "net_contents"), None
         )
-        if (
+
+        needs_abv_reextract = (
+            abv_result
+            and abv_result.status in ("content_mismatch", "extraction_uncertain")
+        )
+        needs_nc_reextract = (
             nc_result
             and nc_result.status in ("content_mismatch", "field_missing")
-            and isinstance(self.extraction_service, AnthropicExtractor)
-        ):
-            # Try front label first (net contents usually on front), fallback to back
+        )
+
+        # Run re-extractions in parallel
+        reextract_tasks = {}
+        if needs_abv_reextract:
+            back_idx = next((i for i, p in enumerate(panels) if p == "back"), None)
+            reextract_idx = back_idx if back_idx is not None else 0
+            reextract_tasks["abv"] = self.extraction_service.reextract_abv(
+                processed_images[reextract_idx]
+            )
+        if needs_nc_reextract:
             front_idx = next((i for i, p in enumerate(panels) if p == "front"), 0)
-            reextracted_nc, nc_stats = await self.extraction_service.reextract_net_contents(
+            reextract_tasks["nc"] = self.extraction_service.reextract_net_contents(
                 processed_images[front_idx]
             )
-            if nc_stats:
-                all_llm_stats.append(nc_stats)
-            if reextracted_nc:
-                new_status, new_conf, new_reason, new_found = self.text_matcher.match_net_contents(
-                    application_data.net_contents, reextracted_nc
-                )
-                if new_status == "match":
-                    nc_result.status = new_status
-                    nc_result.confidence = new_conf
-                    nc_result.confidence_reason = f"Net contents confirmed via re-extraction: {new_reason}"
-                    nc_result.extracted_value = new_found
 
-        # 6. Build extracted_fields dict for compliance checker
-        # (compliance checker expects a dict of field_name -> value)
-        # Use match status to determine field presence -- text-search fields
-        # return None as extracted_value even when matched.
+        if reextract_tasks:
+            keys = list(reextract_tasks.keys())
+            results = await asyncio.gather(*reextract_tasks.values(), return_exceptions=True)
+            reextract_results = dict(zip(keys, results))
+
+            # Apply ABV re-extraction
+            if "abv" in reextract_results and not isinstance(reextract_results["abv"], Exception):
+                reextracted_abv, abv_stats = reextract_results["abv"]
+                if abv_stats:
+                    all_llm_stats.append(abv_stats)
+                if reextracted_abv:
+                    new_status, new_conf, new_reason, new_found = self.text_matcher.match_abv(
+                        application_data.alcohol_content, f"{reextracted_abv}%"
+                    )
+                    if new_status == "match":
+                        abv_result.status = new_status
+                        abv_result.confidence = new_conf
+                        abv_result.confidence_reason = f"ABV confirmed via re-extraction: {new_reason}"
+                        abv_result.extracted_value = new_found
+
+            # Apply net contents re-extraction
+            if "nc" in reextract_results and not isinstance(reextract_results["nc"], Exception):
+                reextracted_nc, nc_stats = reextract_results["nc"]
+                if nc_stats:
+                    all_llm_stats.append(nc_stats)
+                if reextracted_nc:
+                    new_status, new_conf, new_reason, new_found = self.text_matcher.match_net_contents(
+                        application_data.net_contents, reextracted_nc
+                    )
+                    if new_status == "match":
+                        nc_result.status = new_status
+                        nc_result.confidence = new_conf
+                        nc_result.confidence_reason = f"Net contents confirmed via re-extraction: {new_reason}"
+                        nc_result.extracted_value = new_found
+
+        return comparison_results
+
+    def _check_compliance(
+        self,
+        comparison_results: list[FieldComparisonResult],
+        application_data: ApplicationData,
+    ) -> tuple[list[FieldComparisonResult], list[ComplianceIssueResponse]]:
+        """Run compliance checks and merge issues into field results."""
+        # Build extracted_fields dict for compliance checker
         extracted_fields = {}
         for cr in comparison_results:
             if cr.status in ("match", "content_mismatch", "extraction_uncertain"):
@@ -240,7 +288,6 @@ class VerificationOrchestrator:
             else:
                 extracted_fields[cr.field_name] = None
 
-        # 7. Run compliance checks
         is_imported = bool(application_data.country_of_origin or application_data.importer_name)
         compliance_issues = self.compliance_checker.check_compliance(
             extracted_fields,
@@ -249,7 +296,7 @@ class VerificationOrchestrator:
             requires_sulfites=application_data.has_sulfites_declaration,
         )
 
-        # Filter out country_of_origin compliance issue when COLA didn't declare one
+        # Filter out country_of_origin issue when COLA didn't declare one
         if not application_data.country_of_origin:
             compliance_issues = [i for i in compliance_issues if i.field_name != "country_of_origin"]
 
@@ -285,14 +332,23 @@ class VerificationOrchestrator:
                 ))
                 existing_field_names.add(issue.field_name)
 
-        # 8. Calculate overall score
+        return enriched_results, compliance_responses
+
+    def _compute_score(
+        self,
+        enriched_results: list[FieldComparisonResult],
+        has_error: bool,
+        has_empty: bool,
+        label_text: str,
+    ) -> tuple[float, str]:
+        """Calculate overall confidence score and status."""
         overall_confidence, status = self.scorer.calculate(enriched_results)
 
         if has_error and not label_text.strip():
             status = "needs_review"
             overall_confidence = 0.0
 
-        if has_empty_extraction:
+        if has_empty:
             status = "needs_review"
             enriched_results.append(FieldComparisonResult(
                 field_name="_label_image",
@@ -304,196 +360,14 @@ class VerificationOrchestrator:
                 confidence_reason="No label content could be extracted. The label image may be missing, blank, or unreadable.",
             ))
 
-        # 9. Aggregate processing stats
-        total_time_ms = int((time.monotonic() - t_start) * 1000)
-        total_input_tokens = sum(s.input_tokens for s in all_llm_stats)
-        total_output_tokens = sum(s.output_tokens for s in all_llm_stats)
-        estimated_cost = calculate_cost(
-            total_input_tokens,
-            total_output_tokens,
-            model=settings.llm_model,
-        )
-        processing_stats = ProcessingStats(
-            total_llm_calls=len(all_llm_stats),
-            total_input_tokens=total_input_tokens,
-            total_output_tokens=total_output_tokens,
-            extraction_time_ms=sum(s.elapsed_ms for s in all_llm_stats),
-            total_time_ms=total_time_ms,
-            estimated_cost_usd=estimated_cost,
-        )
+        return overall_confidence, status
 
-        # 10. Persist to DB
-        self._persist_session(
-            session_id, application_data, enriched_results,
-            overall_confidence, status, now, batch_id=batch_id,
-            processing_stats=processing_stats,
-        )
-
-        # 11. Compute review summary
-        flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
-        review_summary = ReviewSummary(
-            total_fields=len(enriched_results),
-            fields_needing_review=len(flagged),
-            fields_reviewed=0,
-            flagged_field_names=[f.field_name for f in flagged],
-        )
-
-        return VerificationResult(
-            session_id=session_id,
-            status=status,
-            overall_confidence=overall_confidence,
-            beverage_type=application_data.beverage_type,
-            fields=enriched_results,
-            annotated_images=annotated_images,
-            created_at=now,
-            review_summary=review_summary,
-            compliance_issues=compliance_responses,
-            processing_stats=processing_stats,
-        )
-
-    async def _verify_legacy_pipeline(
+    def _aggregate_stats(
         self,
-        processed_images: list[bytes],
-        panels: list[str],
-        application_data: ApplicationData,
-        session_id: str,
-        now: str,
         all_llm_stats: list[LLMCallStats],
-        annotated_images: dict,
-        batch_id: str | None,
         t_start: float,
-    ) -> VerificationResult:
-        """Legacy extraction pipeline for non-Anthropic (Groq) extractor."""
-        # Single extract_fields call per panel
-        all_tasks = {}
-        for i, (img, panel) in enumerate(zip(processed_images, panels)):
-            all_tasks[f"extract_{i}"] = self.extraction_service.extract_fields(img, panel)
-
-        task_keys = list(all_tasks.keys())
-        gathered = await asyncio.gather(*all_tasks.values(), return_exceptions=True)
-        results_map = dict(zip(task_keys, gathered))
-
-        extraction_results: list[ExtractionResult] = []
-        for i in range(len(processed_images)):
-            r = results_map[f"extract_{i}"]
-            if isinstance(r, Exception):
-                extraction_results.append(ExtractionResult(panel_type="unknown", error=str(r)))
-            else:
-                extraction_results.append(r)
-                all_llm_stats.extend(r.llm_stats)
-
-        has_error = any(r.error for r in extraction_results)
-
-        # Detect empty extraction
-        all_fields_empty = True
-        for r in extraction_results:
-            if r.error:
-                continue
-            for field_data in r.fields.values():
-                if isinstance(field_data, dict) and field_data.get("value") is not None:
-                    all_fields_empty = False
-                    break
-            if not all_fields_empty:
-                break
-        has_empty_extraction = all_fields_empty and not has_error
-
-        # Merge panels
-        extraction_confidences = {}
-        if len(extraction_results) == 1:
-            merged_fields = {}
-            result = extraction_results[0]
-            for field_name, field_data in result.fields.items():
-                if isinstance(field_data, dict):
-                    merged_fields[field_name] = field_data.get("value")
-                    ext_conf = field_data.get("extraction_confidence", "high")
-                    extraction_confidences[field_name] = ext_conf
-        else:
-            panel_data = {}
-            for result in extraction_results:
-                panel_fields = {}
-                for field_name, field_data in result.fields.items():
-                    if isinstance(field_data, dict):
-                        panel_fields[field_name] = {
-                            "value": field_data.get("value"),
-                            "confidence": 90.0,
-                            "bounding_box": field_data.get("bounding_box"),
-                            "extraction_confidence": field_data.get("extraction_confidence", "high"),
-                        }
-                panel_data[result.panel_type] = panel_fields
-
-            merged = self.merger.merge_panels(panel_data)
-            merged_fields = {
-                fn: fv.value for fn, fv in merged.fields.items()
-            }
-            extraction_confidences = {
-                fn: fv.extraction_confidence for fn, fv in merged.fields.items()
-            }
-
-        # Compare against application data
-        comparison_results = self.comparison_service.compare_fields(
-            merged_fields, application_data, application_data.beverage_type,
-            extraction_confidences=extraction_confidences,
-        )
-
-        enriched_results = list(comparison_results)
-
-        # Compliance checks
-        is_imported = bool(application_data.country_of_origin or application_data.importer_name)
-        compliance_issues = self.compliance_checker.check_compliance(
-            merged_fields,
-            application_data.beverage_type,
-            is_imported=is_imported,
-            requires_sulfites=application_data.has_sulfites_declaration,
-        )
-
-        compliance_responses = []
-        existing_field_names = {r.field_name for r in enriched_results}
-        for issue in compliance_issues:
-            compliance_responses.append(ComplianceIssueResponse(
-                field_name=issue.field_name,
-                severity=issue.severity,
-                message=issue.message,
-            ))
-            existing = next(
-                (r for r in enriched_results if r.field_name == issue.field_name),
-                None,
-            )
-            if existing and existing.status == "field_missing":
-                existing.confidence_reason = issue.message
-            elif issue.field_name not in existing_field_names:
-                status_val = (
-                    "extraction_uncertain" if issue.severity == "needs_review"
-                    else "field_missing"
-                )
-                enriched_results.append(FieldComparisonResult(
-                    field_name=issue.field_name,
-                    declared_value=None,
-                    extracted_value=None,
-                    status=status_val,
-                    confidence=0.0,
-                    match_strategy="compliance",
-                    confidence_reason=issue.message,
-                ))
-                existing_field_names.add(issue.field_name)
-
-        overall_confidence, status = self.scorer.calculate(enriched_results)
-
-        if has_error and not merged_fields:
-            status = "needs_review"
-            overall_confidence = 0.0
-
-        if has_empty_extraction:
-            status = "needs_review"
-            enriched_results.append(FieldComparisonResult(
-                field_name="_label_image",
-                declared_value=None,
-                extracted_value=None,
-                status="field_missing",
-                confidence=0.0,
-                match_strategy="compliance",
-                confidence_reason="No label content could be extracted. The label image may be missing, blank, or unreadable.",
-            ))
-
+    ) -> ProcessingStats:
+        """Aggregate LLM call stats into a ProcessingStats summary."""
         total_time_ms = int((time.monotonic() - t_start) * 1000)
         total_input_tokens = sum(s.input_tokens for s in all_llm_stats)
         total_output_tokens = sum(s.output_tokens for s in all_llm_stats)
@@ -502,7 +376,7 @@ class VerificationOrchestrator:
             total_output_tokens,
             model=settings.llm_model,
         )
-        processing_stats = ProcessingStats(
+        return ProcessingStats(
             total_llm_calls=len(all_llm_stats),
             total_input_tokens=total_input_tokens,
             total_output_tokens=total_output_tokens,
@@ -511,95 +385,3 @@ class VerificationOrchestrator:
             estimated_cost_usd=estimated_cost,
         )
 
-        self._persist_session(
-            session_id, application_data, enriched_results,
-            overall_confidence, status, now, batch_id=batch_id,
-            processing_stats=processing_stats,
-        )
-
-        flagged = [f for f in enriched_results if f.status == "extraction_uncertain"]
-        review_summary = ReviewSummary(
-            total_fields=len(enriched_results),
-            fields_needing_review=len(flagged),
-            fields_reviewed=0,
-            flagged_field_names=[f.field_name for f in flagged],
-        )
-
-        return VerificationResult(
-            session_id=session_id,
-            status=status,
-            overall_confidence=overall_confidence,
-            beverage_type=application_data.beverage_type,
-            fields=enriched_results,
-            annotated_images=annotated_images,
-            created_at=now,
-            review_summary=review_summary,
-            compliance_issues=compliance_responses,
-            processing_stats=processing_stats,
-        )
-
-    def _persist_session(
-        self,
-        session_id: str,
-        app_data: ApplicationData,
-        fields: list[FieldComparisonResult],
-        confidence: float,
-        status: str,
-        now: str,
-        batch_id: str | None = None,
-        processing_stats: ProcessingStats | None = None,
-    ):
-        conn = get_db(self.db_path)
-        try:
-            with conn:
-                ps = processing_stats or ProcessingStats()
-                conn.execute(
-                    """INSERT INTO verification_sessions
-                       (id, application_id, beverage_type, status,
-                        overall_confidence, batch_id,
-                        total_input_tokens, total_output_tokens,
-                        total_llm_calls, processing_time_ms, extraction_time_ms,
-                        estimated_cost_usd, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (session_id, app_data.application_id,
-                     app_data.beverage_type, status, confidence, batch_id,
-                     ps.total_input_tokens, ps.total_output_tokens,
-                     ps.total_llm_calls, ps.total_time_ms, ps.extraction_time_ms,
-                     ps.estimated_cost_usd, now, now),
-                )
-
-                app_id = str(uuid.uuid4())
-                conn.execute(
-                    """INSERT INTO applications
-                       (id, session_id, brand_name, class_type, alcohol_content,
-                        net_contents, producer_name, producer_address,
-                        country_of_origin, importer_name, importer_address,
-                        has_sulfites_declaration, raw_json,
-                        fanciful_name, ttb_id, source_of_product)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (app_id, session_id, app_data.brand_name, app_data.class_type,
-                     app_data.alcohol_content, app_data.net_contents,
-                     app_data.producer_name, app_data.producer_address,
-                     app_data.country_of_origin, app_data.importer_name,
-                     app_data.importer_address,
-                     1 if app_data.has_sulfites_declaration else 0,
-                     app_data.model_dump_json(),
-                     app_data.fanciful_name, app_data.ttb_id,
-                     app_data.source_of_product),
-                )
-
-                for field in fields:
-                    cr_id = str(uuid.uuid4())
-                    conn.execute(
-                        """INSERT INTO comparison_results
-                           (id, session_id, field_name, declared_value,
-                            extracted_value, match_strategy, status, confidence,
-                            extraction_confidence, confidence_reason)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (cr_id, session_id, field.field_name,
-                         field.declared_value, field.extracted_value,
-                         field.match_strategy, field.status, field.confidence,
-                         field.extraction_confidence, field.confidence_reason),
-                    )
-        finally:
-            conn.close()

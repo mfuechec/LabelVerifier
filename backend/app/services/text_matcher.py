@@ -272,7 +272,7 @@ class TextMatcher:
 
         # Direct containment: all declared words found in text
         if declared_words.issubset(text_words):
-            return ("match", 100.0, "All declared words found in text", None)
+            return ("match", 100.0, "All declared words found in text", declared_value)
 
         # Prefix matching: declared words that are prefixes of text words (4+ chars)
         # Handles compound words like BLAU -> BLAUFRANKISCH
@@ -287,17 +287,17 @@ class TextMatcher:
                 prefix_matched += 1
         if matched == len(declared_words) and prefix_matched > 0:
             conf = 100.0 - (prefix_matched * 5.0)  # 5% penalty per prefix match
-            return ("match", conf, f"All words found ({prefix_matched} as prefix of longer word)", None)
+            return ("match", conf, f"All words found ({prefix_matched} as prefix of longer word)", declared_value)
 
         # Try token_set_ratio for partial/reordered matches
         tsr = fuzz.token_set_ratio(norm_declared, norm_text)
         if tsr >= FUZZY_THRESHOLD:
-            return ("match", tsr, f"Token set match: {tsr:.0f}%", None)
+            return ("match", tsr, f"Token set match: {tsr:.0f}%", declared_value)
 
         # Try partial_ratio for substring containment
         pr = fuzz.partial_ratio(norm_declared, norm_text)
         if pr >= 90:
-            return ("match", pr, f"Partial match: {pr:.0f}%", None)
+            return ("match", pr, f"Partial match: {pr:.0f}%", declared_value)
 
         # Not found
         best = max(tsr, pr)
@@ -314,8 +314,21 @@ class TextMatcher:
         if dec_abv is None:
             return ("field_missing", 0.0, "Could not parse declared ABV", None)
 
-        # Find all percentage patterns in text
+        # Find all percentage patterns in text (explicit % sign)
         percentages = re.findall(r"(\d+\.?\d*)\s*%", text)
+
+        # Also find ABV patterns without % sign: "ALC 40 BY VOL", "ALC/VOL. 40", etc.
+        alc_patterns = re.findall(
+            r"(?:ALC(?:OHOL)?\.?\s*/?\s*VOL(?:UME)?\.?\s*(\d+\.?\d*)"  # ALC/VOL 40
+            r"|(\d+\.?\d*)\s*ALC(?:OHOL)?\.?\s*/?\s*VOL(?:UME)?\.?"     # 40 ALC/VOL
+            r"|ALC\.?\s+(\d+\.?\d*)\s*(?:BY\s+VOL)?)",                   # ALC 40 BY VOL
+            text, re.IGNORECASE,
+        )
+        for groups in alc_patterns:
+            val = next((g for g in groups if g), None)
+            if val and val not in percentages:
+                percentages.append(val)
+
         if not percentages:
             return ("field_missing", 0.0, "No percentage found in label text", None)
 
@@ -370,6 +383,7 @@ class TextMatcher:
             (r"(\d+\.?\d*)\s*cL\b", "cL"),
             (r"(\d+\.?\d*)\s*(?:Liters?|Litres?|L)\b", "L"),
             (r"(\d+\.?\d*)\s*MILLILITERS?\b", "mL"),
+            (r"(\d+\.?\d*)\s*(?:U\.?S\.?\s*)?(?:Gallons?|GAL\.?)\b", "gal"),
         ]
 
         found_volumes = []
@@ -383,6 +397,8 @@ class TextMatcher:
                     ml_val = raw_val * 10.0
                 elif unit_label == "L":
                     ml_val = raw_val * 1000.0
+                elif unit_label == "gal":
+                    ml_val = raw_val * 3785.41
                 else:
                     ml_val = raw_val
                 found_volumes.append((ml_val, m.group(0).strip()))
@@ -393,6 +409,8 @@ class TextMatcher:
         def to_ml(val, unit):
             if unit == "fl oz":
                 return val * 29.5735
+            if unit == "gal":
+                return val * 3785.41
             return val  # already mL
 
         # Check if any found volume matches any declared size
@@ -478,7 +496,7 @@ class TextMatcher:
         text_words = set(norm_text.split())
 
         if declared_words.issubset(text_words):
-            return ("match", 100.0, "All company name words found in text", None)
+            return ("match", 100.0, "All company name words found in text", declared_value)
 
         # Single-word containment: if declared has one key word found in text
         if len(declared_words) >= 1:
@@ -489,13 +507,13 @@ class TextMatcher:
                     return (
                         "match", min(ratio, 95.0),
                         f"Company name partially matched: {len(found_words)}/{len(declared_words)} words found",
-                        None,
+                        declared_value,
                     )
 
         # Fuzzy fallback on full normalized strings
         tsr = fuzz.token_set_ratio(norm_declared, norm_text)
         if tsr >= FUZZY_THRESHOLD:
-            return ("match", tsr, f"Company fuzzy match: {tsr:.0f}%", None)
+            return ("match", tsr, f"Company fuzzy match: {tsr:.0f}%", declared_value)
 
         return (
             "content_mismatch", tsr,
@@ -516,14 +534,17 @@ class TextMatcher:
             return ("field_missing", 0.0, "Could not parse declared address", None)
 
         # Check if key address tokens appear in the text
+        # Addresses on labels are often abbreviated (city + state only), so a low
+        # threshold (2 tokens or 30%) is enough — street numbers/names are already
+        # stripped by _normalize_address_tokens.
         found_tokens = dec_tokens & text_tokens
-        if found_tokens and len(found_tokens) >= max(1, len(dec_tokens) * 0.4):
+        if found_tokens and len(found_tokens) >= max(2, len(dec_tokens) * 0.3):
             ratio = len(found_tokens) / len(dec_tokens) * 100
-            if ratio >= 50:
+            if ratio >= 30:
                 return (
                     "match", min(ratio, 100.0),
                     f"Address tokens found: {found_tokens}",
-                    None,
+                    declared_value,
                 )
 
         # Fuzzy fallback
@@ -531,7 +552,7 @@ class TextMatcher:
         norm_text = normalize_for_fuzzy(text)
         pr = fuzz.partial_ratio(norm_dec, norm_text)
         if pr >= FUZZY_THRESHOLD:
-            return ("match", pr, f"Address partial match: {pr:.0f}%", None)
+            return ("match", pr, f"Address partial match: {pr:.0f}%", declared_value)
 
         return (
             "content_mismatch", pr,

@@ -45,15 +45,11 @@ def create_app() -> FastAPI:
     conn.close()
 
     # Log config (redacting secrets) for deploy diagnostics
-    if settings.llm_provider == "anthropic":
-        active_key = settings.anthropic_api_key
-    else:
-        active_key = settings.groq_api_key
-    redacted_key = active_key[:4] + "***" if active_key else "<not set>"
+    redacted_key = settings.anthropic_api_key[:4] + "***" if settings.anthropic_api_key else "<not set>"
     logger.info(
-        "LabelVerify starting: provider=%s, model=%s, origins=%s, db=%s, api_key=%s",
-        settings.llm_provider,
+        "LabelVerify starting: model=%s, reextract_model=%s, origins=%s, db=%s, api_key=%s",
         settings.llm_model,
+        settings.reextract_model,
         settings.allowed_origins,
         settings.database_url,
         redacted_key,

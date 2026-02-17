@@ -6,7 +6,6 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 from app.services.extraction import (
     AnthropicExtractor,
-    GroqExtractor,
     ExtractionResult,
     LLMCallStats,
 )
@@ -45,14 +44,6 @@ def _make_anthropic_response(text, input_tokens=100, output_tokens=50):
     resp = MagicMock()
     resp.content = [MagicMock(text=text)]
     resp.usage = MagicMock(input_tokens=input_tokens, output_tokens=output_tokens)
-    return resp
-
-
-def _make_groq_response(text, prompt_tokens=100, completion_tokens=50):
-    """Create a mock Groq response with usage stats."""
-    resp = MagicMock()
-    resp.choices = [MagicMock(message=MagicMock(content=text))]
-    resp.usage = MagicMock(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
     return resp
 
 
@@ -112,28 +103,6 @@ class TestAnthropicExtractorStats:
         assert stats is not None
         assert stats.call_type == "reextract_specialty_class"
         assert stats.input_tokens == 130
-
-
-class TestGroqExtractorStats:
-    @pytest.mark.asyncio
-    async def test_extract_fields_captures_stats(self):
-        extractor = GroqExtractor(api_key="test-key", model="test-model")
-
-        mock_resp = _make_groq_response(VALID_LLM_RESPONSE, 200, 90)
-
-        with patch.object(
-            extractor.client.chat.completions,
-            "create",
-            new_callable=AsyncMock,
-            return_value=mock_resp,
-        ):
-            result = await extractor.extract_fields(b"fake_image", "front")
-
-        assert len(result.llm_stats) == 1
-        assert result.llm_stats[0].call_type == "extract_fields"
-        assert result.llm_stats[0].input_tokens == 200
-        assert result.llm_stats[0].output_tokens == 90
-        assert result.llm_stats[0].elapsed_ms >= 0
 
 
 class TestProcessingStatsModel:

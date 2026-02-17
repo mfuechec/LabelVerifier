@@ -1,8 +1,6 @@
-import uuid
-from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from app.models.schemas import OverrideRequest, DecisionRequest, FeedbackRequest
-from app.api.dependencies import get_db, get_db_path
+from app.api.dependencies import get_repo
 
 router = APIRouter()
 
@@ -14,25 +12,12 @@ def override_field(
     body: OverrideRequest,
     request: Request,
 ):
-    db_path = get_db_path(request)
-    conn = get_db(db_path)
-    try:
-        row = conn.execute(
-            "SELECT id FROM verification_sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Session not found")
+    repo = get_repo(request)
+    if not repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
 
-        conn.execute(
-            """UPDATE comparison_results
-               SET override_status = ?, override_note = ?
-               WHERE session_id = ? AND field_name = ?""",
-            (body.override_status, body.note, session_id, field_name),
-        )
-        conn.commit()
-        return {"data": {"status": "updated"}}
-    finally:
-        conn.close()
+    repo.override_field(session_id, field_name, body.override_status, body.note)
+    return {"data": {"status": "updated"}}
 
 
 @router.post("/verify/{session_id}/decision")
@@ -41,26 +26,12 @@ def submit_decision(
     body: DecisionRequest,
     request: Request,
 ):
-    db_path = get_db_path(request)
-    conn = get_db(db_path)
-    try:
-        row = conn.execute(
-            "SELECT id FROM verification_sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Session not found")
+    repo = get_repo(request)
+    if not repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
 
-        now = datetime.now(timezone.utc).isoformat()
-        conn.execute(
-            """UPDATE verification_sessions
-               SET agent_decision = ?, agent_notes = ?, updated_at = ?
-               WHERE id = ?""",
-            (body.decision, body.notes, now, session_id),
-        )
-        conn.commit()
-        return {"data": {"status": "updated"}}
-    finally:
-        conn.close()
+    repo.update_decision(session_id, body.decision, body.notes)
+    return {"data": {"status": "updated"}}
 
 
 @router.post("/verify/{session_id}/feedback")
@@ -69,32 +40,9 @@ def submit_feedback(
     body: FeedbackRequest,
     request: Request,
 ):
-    db_path = get_db_path(request)
-    conn = get_db(db_path)
-    try:
-        row = conn.execute(
-            "SELECT id FROM verification_sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Session not found")
+    repo = get_repo(request)
+    if not repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
 
-        now = datetime.now(timezone.utc).isoformat()
-        feedback_id = str(uuid.uuid4())
-        conn.execute(
-            """INSERT INTO agent_feedback
-               (id, session_id, ai_correct, field_name, note, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (feedback_id, session_id, 1 if body.ai_correct else 0,
-             body.field_name, body.note, now),
-        )
-
-        conn.execute(
-            """UPDATE verification_sessions
-               SET ai_correct = ?, updated_at = ?
-               WHERE id = ?""",
-            (1 if body.ai_correct else 0, now, session_id),
-        )
-        conn.commit()
-        return {"data": {"status": "recorded"}}
-    finally:
-        conn.close()
+    repo.update_feedback(session_id, body.ai_correct, body.field_name, body.note)
+    return {"data": {"status": "recorded"}}

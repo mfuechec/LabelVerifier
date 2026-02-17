@@ -1,0 +1,75 @@
+{
+  "date": "2026-02-16T21:35:21.393494+00:00",
+  "model": "claude-haiku-4-5-20251001",
+  "elapsed_seconds": 0.0020787715911865234,
+  "total": 1,
+  "correct": 0,
+  "results": [
+    {
+      "fixture_id": "review-rocky-mount",
+      "category": "bad spirits photo",
+      "expected_status": "pass",
+      "actual_status": "fail",
+      "overall_confidence": 90.12159515427489,
+      "correct": false,
+      "field_results": {
+        "brand_name": {
+          "actual_status": "content_mismatch",
+          "expected_status": "match",
+          "correct": false,
+          "confidence": 42.850122850122844,
+          "declared": "Rocky Mount",
+          "extracted": "Franklin County Distillers"
+        },
+        "class_type": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "Rye Whiskey",
+          "extracted": "Rye Whiskey"
+        },
+        "alcohol_content": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "50%",
+          "extracted": "50% Alc/Vol"
+        },
+        "net_contents": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "750 mL",
+          "extracted": "750 mL"
+        },
+        "producer_name": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 96.81917211328975,
+          "declared": "Franklin County Distilleries",
+          "extracted": "Franklin County Distillers"
+        },
+        "producer_address": {
+          "actual_status": "match",
+          "expected_status": null,
+          "correct": true,
+          "confidence": 100.0,
+          "declared": "120 Easy Street at Boones Mill, Franklin County, Virginia 24176",
+          "extracted": "Franklin County, Virginia"
+        },
+        "government_warning": {
+          "actual_status": "match",
+          "expected_status": "match",
+          "correct": true,
+          "confidence": 100.0,
+          "declared": null,
+          "extracted": "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY BECAUSE OF THE RISK OF BIRTH DEFECTS. (2) CONSUMPTION OF ALCOHOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR OPERATE MACHINERY, AND MAY CAUSE HEALTH PROBLEMS."
+        }
+      }
+    }
+  ]
+}

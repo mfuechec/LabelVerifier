@@ -1,5 +1,6 @@
 from fastapi import Request
 
+from app.db.repository import VerificationRepository
 from app.db.setup import get_db
 from app.services.orchestrator import VerificationOrchestrator
 
@@ -11,10 +12,15 @@ def get_db_path(request: Request | None = None) -> str:
     return "data/labelverify.db"
 
 
+def get_repo(request: Request | None = None) -> VerificationRepository:
+    """Get a VerificationRepository with the correct DB path."""
+    return VerificationRepository(get_db_path(request))
+
+
 def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
     """Create a VerificationOrchestrator with the correct DB path."""
     db_path = get_db_path(request)
     return VerificationOrchestrator(db_path=db_path)
 
 
-__all__ = ["get_db", "get_db_path", "get_orchestrator"]
+__all__ = ["get_db", "get_db_path", "get_repo", "get_orchestrator"]

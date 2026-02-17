@@ -39,11 +39,11 @@ class TestCalculateCost:
         cost_default = calculate_cost(1000, 500, model="default")
         assert cost_unknown == cost_default
 
-    def test_groq_pricing_cheaper(self):
-        """Groq models should be much cheaper than Anthropic."""
-        cost_anthropic = calculate_cost(10000, 2000, model="claude-sonnet-4-5-20250929")
-        cost_groq = calculate_cost(10000, 2000, model="meta-llama/llama-4-maverick-17b-128e-instruct")
-        assert cost_groq < cost_anthropic * 0.1  # Groq should be <10% of Anthropic
+    def test_haiku_cheaper_than_sonnet(self):
+        """Haiku should be cheaper than Sonnet."""
+        cost_sonnet = calculate_cost(10000, 2000, model="claude-sonnet-4-5-20250929")
+        cost_haiku = calculate_cost(10000, 2000, model="claude-haiku-4-5-20251001")
+        assert cost_haiku < cost_sonnet
 
 
 class TestFormatCost:

@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from app.models.schemas import VerificationResult
 from app.services.orchestrator import IMAGES_BASE_DIR
 from app.services.pdf_parser import COLAPDFParser
-from app.api.dependencies import get_db, get_db_path, get_orchestrator
+from app.api.dependencies import get_repo, get_orchestrator
 
 router = APIRouter()
 
@@ -56,120 +56,91 @@ async def verify_label(
 
 @router.get("/verify/{session_id}")
 def get_verification(session_id: str, request: Request):
-    db_path = get_db_path(request)
-    conn = get_db(db_path)
+    repo = get_repo(request)
+    row = repo.get_session(session_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Verification session not found")
+
+    fields = repo.get_session_fields(session_id)
+
+    field_results = []
+    flagged_fields = []
+    reviewed_count = 0
+    for f in fields:
+        is_reviewed = bool(f["reviewed"]) or f["override_status"] is not None
+        if is_reviewed:
+            reviewed_count += 1
+        status = f["status"]
+        if status == "extraction_uncertain":
+            flagged_fields.append(f["field_name"])
+        field_results.append({
+            "field_name": f["field_name"],
+            "declared_value": f["declared_value"],
+            "extracted_value": f["extracted_value"],
+            "status": status,
+            "confidence": f["confidence"],
+            "match_strategy": f["match_strategy"],
+            "bounding_box": None,
+            "extraction_confidence": f["extraction_confidence"],
+            "confidence_reason": f["confidence_reason"],
+            "reviewed": is_reviewed,
+        })
+
+    review_summary = {
+        "total_fields": len(field_results),
+        "fields_needing_review": len(flagged_fields),
+        "fields_reviewed": reviewed_count,
+        "flagged_field_names": flagged_fields,
+    }
+
+    # Build annotated_images from stored files
+    annotated_images = {}
+    img_dir = os.path.join(IMAGES_BASE_DIR, session_id)
+    if os.path.isdir(img_dir):
+        for fname in os.listdir(img_dir):
+            panel_name = os.path.splitext(fname)[0]
+            annotated_images[panel_name] = f"/api/v1/images/{session_id}/{panel_name}"
+
+    # Build processing stats if available
+    processing_stats = None
     try:
-        row = conn.execute(
-            "SELECT * FROM verification_sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-
-        if not row:
-            raise HTTPException(status_code=404, detail="Verification session not found")
-
-        # Get comparison results
-        fields = conn.execute(
-            "SELECT * FROM comparison_results WHERE session_id = ?", (session_id,)
-        ).fetchall()
-
-        field_results = []
-        flagged_fields = []
-        reviewed_count = 0
-        for f in fields:
-            is_reviewed = bool(f["reviewed"]) or f["override_status"] is not None
-            if is_reviewed:
-                reviewed_count += 1
-            status = f["status"]
-            if status == "extraction_uncertain":
-                flagged_fields.append(f["field_name"])
-            field_results.append({
-                "field_name": f["field_name"],
-                "declared_value": f["declared_value"],
-                "extracted_value": f["extracted_value"],
-                "status": status,
-                "confidence": f["confidence"],
-                "match_strategy": f["match_strategy"],
-                "bounding_box": None,
-                "extraction_confidence": f["extraction_confidence"],
-                "confidence_reason": f["confidence_reason"],
-                "reviewed": is_reviewed,
-            })
-
-        review_summary = {
-            "total_fields": len(field_results),
-            "fields_needing_review": len(flagged_fields),
-            "fields_reviewed": reviewed_count,
-            "flagged_field_names": flagged_fields,
-        }
-
-        # Build annotated_images from stored files
-        annotated_images = {}
-        img_dir = os.path.join(IMAGES_BASE_DIR, session_id)
-        if os.path.isdir(img_dir):
-            for fname in os.listdir(img_dir):
-                panel_name = os.path.splitext(fname)[0]
-                annotated_images[panel_name] = f"/api/v1/images/{session_id}/{panel_name}"
-
-        # Build processing stats if available
-        processing_stats = None
-        try:
-            if row["total_llm_calls"]:
-                processing_stats = {
-                    "total_llm_calls": row["total_llm_calls"],
-                    "total_input_tokens": row["total_input_tokens"],
-                    "total_output_tokens": row["total_output_tokens"],
-                    "extraction_time_ms": row["extraction_time_ms"] or 0,
-                    "total_time_ms": row["processing_time_ms"],
-                }
-        except (IndexError, KeyError):
-            pass
-
-        return {
-            "data": {
-                "session_id": row["id"],
-                "status": row["status"],
-                "overall_confidence": row["overall_confidence"],
-                "beverage_type": row["beverage_type"],
-                "fields": field_results,
-                "annotated_images": annotated_images,
-                "created_at": row["created_at"],
-                "review_summary": review_summary,
-                "processing_stats": processing_stats,
+        if row["total_llm_calls"]:
+            processing_stats = {
+                "total_llm_calls": row["total_llm_calls"],
+                "total_input_tokens": row["total_input_tokens"],
+                "total_output_tokens": row["total_output_tokens"],
+                "extraction_time_ms": row["extraction_time_ms"] or 0,
+                "total_time_ms": row["processing_time_ms"],
             }
+    except (IndexError, KeyError):
+        pass
+
+    return {
+        "data": {
+            "session_id": row["id"],
+            "status": row["status"],
+            "overall_confidence": row["overall_confidence"],
+            "beverage_type": row["beverage_type"],
+            "fields": field_results,
+            "annotated_images": annotated_images,
+            "created_at": row["created_at"],
+            "review_summary": review_summary,
+            "processing_stats": processing_stats,
         }
-    finally:
-        conn.close()
+    }
 
 
 @router.post("/verify/{session_id}/fields/{field_name}/review")
 def review_field(session_id: str, field_name: str, request: Request):
     """Mark a field as reviewed without changing its status."""
-    db_path = get_db_path(request)
-    conn = get_db(db_path)
-    try:
-        # Verify session exists
-        session = conn.execute(
-            "SELECT id FROM verification_sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        if not session:
-            raise HTTPException(status_code=404, detail="Verification session not found")
+    repo = get_repo(request)
+    if not repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Verification session not found")
 
-        # Verify field exists
-        field = conn.execute(
-            "SELECT id FROM comparison_results WHERE session_id = ? AND field_name = ?",
-            (session_id, field_name),
-        ).fetchone()
-        if not field:
-            raise HTTPException(status_code=404, detail=f"Field '{field_name}' not found")
+    if not repo.review_field(session_id, field_name):
+        raise HTTPException(status_code=404, detail=f"Field '{field_name}' not found")
 
-        conn.execute(
-            "UPDATE comparison_results SET reviewed = 1 WHERE session_id = ? AND field_name = ?",
-            (session_id, field_name),
-        )
-        conn.commit()
-
-        return {"reviewed": True, "field_name": field_name}
-    finally:
-        conn.close()
+    return {"reviewed": True, "field_name": field_name}
 
 
 @router.get("/images/{session_id}/{panel}")
@@ -184,16 +155,9 @@ def serve_image(session_id: str, panel: str, request: Request):
         raise HTTPException(status_code=400, detail=f"Invalid panel: {panel}")
 
     # Verify session exists in DB
-    db_path = get_db_path(request)
-    conn = get_db(db_path)
-    try:
-        session = conn.execute(
-            "SELECT id FROM verification_sessions WHERE id = ?", (session_id,)
-        ).fetchone()
-        if not session:
-            raise HTTPException(status_code=404, detail="Verification session not found")
-    finally:
-        conn.close()
+    repo = get_repo(request)
+    if not repo.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Verification session not found")
 
     # Serve the file
     image_path = os.path.join(IMAGES_BASE_DIR, session_id, f"{panel}.jpg")

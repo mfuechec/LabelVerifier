@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import base64
 import json
@@ -8,41 +7,11 @@ import time
 from dataclasses import dataclass, field
 
 from anthropic import AsyncAnthropic, RateLimitError as AnthropicRateLimitError
-from groq import AsyncGroq, RateLimitError
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 2
-
-# Legacy 13-field prompt kept for GroqExtractor backward compat
-EXTRACTION_PROMPT = """You are an alcohol beverage label analysis system for the US TTB. Extract ALL compliance-relevant fields from this label image.
-
-Return ONLY a JSON object exactly like this (no markdown, no extra text):
-{"brand_name":{"value":null,"conf":"high"},"fanciful_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
-
-Rules:
-- Replace null with the extracted string value, or keep null if not found on the label
-- If a field is NOT clearly visible on the label, set value to null. Do NOT guess or fabricate text.
-- conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
-- Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
-- MANDATORY: Before returning null for ANY field, scan the left edge, right edge, and all four corners of the label for VERTICALLY ROTATED or tiny text. Wine labels almost ALWAYS print class/type vertically along an edge and net contents in small text at the bottom corner. You MUST check these areas
-
-Field-specific guidance:
-- brand_name: The product brand name, usually the most prominent text on the label. Do NOT extract the fanciful/secondary name as the brand. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
-- fanciful_name: A secondary or creative product name, often below or near the brand name in smaller text. NOT the brand name itself. Examples: "HONEY & BOURBON" on a Barenjager label, "MIDNIGHT MOONSHINE" on a Howling Moon label. If no secondary name, set to null
-- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation. MANDATORY: Scan left and right edges for VERTICALLY ROTATED text -- wine labels almost always print class/type sideways (e.g. "DRY RED WINE" rotated 90 degrees along the right edge, "TROCKEN" along the left edge). Do NOT return null without checking edges
-- alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
-- alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
-- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ", "1 LTR.", "1.0L"). Read the number carefully. MANDATORY: Check the bottom-left corner, bottom-right corner, and both vertical edges -- net contents is very often printed in tiny text in a corner or rotated along an edge. Do NOT return null without checking all four corners
-- producer_name: The company that produced/distilled/bottled the product. Look near phrases like "Produced by", "Bottled by", "Distilled by", "Made by". Extract ONLY the company name, not the surrounding phrase
-- producer_address: The physical location (city, state/country) of the producer. Do NOT extract production statements like "Produced and Bottled in Germany" -- look for an actual city name
-- country_of_origin: The country where the product was made. Look for "Product of [country]", "Made in [country]", "Produced in [country]"
-- importer_name: The importing company name. Look for text AFTER "Imported by" -- extract the company name (e.g. "Sidney Frank Importing Co., Inc."), NOT the "Imported by" prefix itself
-- importer_address: The city and state of the importer, usually printed directly after the importer company name (e.g. "New Rochelle, N.Y.")
-- government_warning: CRITICAL -- include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim
-- sulfites_declaration: Look for "Contains Sulfites" or similar declaration
-- Return ONLY the JSON object"""
 
 # --- Focused extraction prompts (Group A/B/C) ---
 
@@ -215,149 +184,6 @@ def _repair_json(text: str) -> dict | None:
     return None
 
 
-class BaseExtractor(abc.ABC):
-    @abc.abstractmethod
-    async def extract_fields(
-        self,
-        image_bytes: bytes,
-        panel_type: str,
-        mime_type: str = "image/jpeg",
-    ) -> ExtractionResult:
-        """Extract all fields from a label image."""
-
-
-class GroqExtractor(BaseExtractor):
-    def __init__(self, api_key: str, model: str = "meta-llama/llama-4-maverick-17b-128e-instruct"):
-        self.client = AsyncGroq(api_key=api_key)
-        self.model = model
-
-    async def extract_fields(
-        self,
-        image_bytes: bytes,
-        panel_type: str,
-        mime_type: str = "image/jpeg",
-    ) -> ExtractionResult:
-        """Extract all fields from a label image using a single LLM call."""
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-        image_url = f"data:{mime_type};base64,{base64_image}"
-        llm_stats: list[LLMCallStats] = []
-
-        try:
-            parsed, stats = await self._call_llm_with_retry(image_url, EXTRACTION_PROMPT, panel_type)
-            if stats:
-                stats.call_type = "extract_fields"
-                llm_stats.append(stats)
-        except Exception as e:
-            return ExtractionResult(
-                panel_type=panel_type,
-                error=f"Extraction failed: {e}",
-            )
-
-        # Convert parsed JSON to the expected format: {"field": {"value": ..., "bounding_box": None, "extraction_confidence": ...}}
-        fields = {}
-        for key, value in parsed.items():
-            if key in ("fields", "extraction_notes"):
-                continue
-            # Handle nested confidence format: {"value": "...", "conf": "high"}
-            if isinstance(value, dict) and "value" in value:
-                fields[key] = {
-                    "value": value["value"],
-                    "bounding_box": None,
-                    "extraction_confidence": value.get("conf", "high"),
-                }
-            else:
-                # Legacy flat format: plain string or null
-                fields[key] = {
-                    "value": value,
-                    "bounding_box": None,
-                    "extraction_confidence": "high",
-                }
-
-        return ExtractionResult(
-            fields=fields,
-            panel_type=panel_type,
-            llm_stats=llm_stats,
-        )
-
-    async def _call_llm_with_retry(
-        self, image_url: str, prompt: str, panel_type: str
-    ) -> tuple[dict, LLMCallStats | None]:
-        """Call LLM with exponential backoff retry on rate limit errors."""
-        last_error = None
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                return await self._call_llm(image_url, prompt, panel_type)
-            except RateLimitError as e:
-                last_error = e
-                if attempt >= MAX_RETRIES:
-                    break
-                # Use retry-after header if available, otherwise exponential backoff
-                retry_after = e.response.headers.get("retry-after")
-                if retry_after:
-                    delay = float(retry_after)
-                else:
-                    delay = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
-                logger.warning(
-                    "Rate limited (attempt %d/%d, %s), retrying in %.1fs...",
-                    attempt + 1, MAX_RETRIES, panel_type, delay,
-                )
-                await asyncio.sleep(delay)
-
-        raise last_error
-
-    async def _call_llm(self, image_url: str, prompt: str, panel_type: str) -> tuple[dict, LLMCallStats | None]:
-        """Make a single LLM call and return parsed JSON dict + stats."""
-        try:
-            t0 = time.monotonic()
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                max_tokens=1024,
-                temperature=0,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": image_url},
-                            },
-                            {
-                                "type": "text",
-                                "text": prompt,
-                            },
-                        ],
-                    }
-                ],
-            )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            response_text = response.choices[0].message.content
-            logger.info("Groq response (%s): %s", panel_type, response_text[:200])
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "prompt_tokens", 0),
-                output_tokens=getattr(usage, "completion_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="",
-            )
-            logger.info(
-                "Groq LLM stats (%s): %d in / %d out tokens, %dms",
-                panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            parsed = _repair_json(response_text)
-            if parsed is None:
-                logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
-                return {}, stats
-
-            return parsed, stats
-
-        except RateLimitError:
-            raise
-        except Exception as e:
-            logger.exception("Extraction API call failed (%s): %s", panel_type, e)
-            raise
 
 
 def _convert_parsed_to_fields(parsed: dict) -> dict:
@@ -381,7 +207,7 @@ def _convert_parsed_to_fields(parsed: dict) -> dict:
     return fields
 
 
-class AnthropicExtractor(BaseExtractor):
+class AnthropicExtractor:
     HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
     def __init__(self, api_key: str, model: str = "claude-sonnet-4-5-20250929", reextract_model: str | None = None):
@@ -409,32 +235,36 @@ class AnthropicExtractor(BaseExtractor):
                 merged.error = r.error
         return merged
 
-    async def _focused_extract(
+    async def _call_llm(
         self,
         image_bytes: bytes,
-        panel_type: str,
-        prompt: str,
-        call_type: str,
+        system_prompt: str,
         user_text: str,
+        call_type: str,
         mime_type: str = "image/jpeg",
         max_tokens: int = 300,
-    ) -> ExtractionResult:
-        """Common implementation for focused extraction calls with retry on rate limits."""
+        model: str | None = None,
+    ) -> tuple[str, LLMCallStats]:
+        """Core LLM call with retry on rate limits.
+
+        Returns (response_text, stats). Raises on exhausted retries or errors.
+        Uses model param if given, otherwise falls back to self.reextract_model.
+        """
+        use_model = model or self.reextract_model
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
-        llm_stats: list[LLMCallStats] = []
 
         last_error = None
         for attempt in range(MAX_RETRIES + 1):
             try:
                 t0 = time.monotonic()
                 response = await self.client.messages.create(
-                    model=self.reextract_model,
+                    model=use_model,
                     max_tokens=max_tokens,
                     temperature=0,
                     system=[
                         {
                             "type": "text",
-                            "text": prompt,
+                            "text": system_prompt,
                             "cache_control": {"type": "ephemeral"},
                         }
                     ],
@@ -467,22 +297,14 @@ class AnthropicExtractor(BaseExtractor):
                     elapsed_ms=elapsed_ms,
                     call_type=call_type,
                 )
-                llm_stats.append(stats)
                 logger.info(
-                    "Anthropic %s (%s): %d in / %d out tokens, %dms",
-                    call_type, panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+                    "Anthropic %s: %d in / %d out tokens, %dms",
+                    call_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
                 )
 
                 response_text = response.content[0].text
-                logger.info("Anthropic %s response (%s): %s", call_type, panel_type, response_text[:200])
-
-                parsed = _repair_json(response_text)
-                if parsed is None:
-                    logger.error("JSON parse error (%s, %s): %s", call_type, panel_type, response_text[:200])
-                    return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=llm_stats)
-
-                fields = _convert_parsed_to_fields(parsed)
-                return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=llm_stats)
+                logger.info("Anthropic %s response: %s", call_type, response_text[:200])
+                return response_text, stats
 
             except AnthropicRateLimitError as e:
                 last_error = e
@@ -490,26 +312,64 @@ class AnthropicExtractor(BaseExtractor):
                     break
                 delay = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
                 logger.warning(
-                    "Anthropic rate limited %s (%s, attempt %d/%d), retrying in %.1fs...",
-                    call_type, panel_type, attempt + 1, MAX_RETRIES, delay,
+                    "Anthropic rate limited %s (attempt %d/%d), retrying in %.1fs...",
+                    call_type, attempt + 1, MAX_RETRIES, delay,
                 )
                 await asyncio.sleep(delay)
 
-            except Exception as e:
-                logger.exception("Anthropic %s failed (%s): %s", call_type, panel_type, e)
-                return ExtractionResult(
-                    panel_type=panel_type,
-                    error=f"Extraction failed: {e}",
-                    llm_stats=llm_stats,
-                )
+        raise last_error
 
-        # All retries exhausted on rate limit
-        logger.error("Anthropic %s rate limit exhausted (%s): %s", call_type, panel_type, last_error)
-        return ExtractionResult(
-            panel_type=panel_type,
-            error=f"Rate limited after {MAX_RETRIES + 1} attempts: {last_error}",
-            llm_stats=llm_stats,
+    async def _call_llm_json(
+        self,
+        image_bytes: bytes,
+        system_prompt: str,
+        user_text: str,
+        call_type: str,
+        mime_type: str = "image/jpeg",
+        max_tokens: int = 300,
+        model: str | None = None,
+    ) -> tuple[dict | None, LLMCallStats]:
+        """Call LLM and parse JSON response. Returns (parsed_dict_or_None, stats)."""
+        text, stats = await self._call_llm(
+            image_bytes, system_prompt, user_text, call_type, mime_type, max_tokens,
+            model=model,
         )
+        parsed = _repair_json(text)
+        if parsed is None:
+            logger.error("JSON parse error (%s): %s", call_type, text[:200])
+        return parsed, stats
+
+    async def _focused_extract(
+        self,
+        image_bytes: bytes,
+        panel_type: str,
+        prompt: str,
+        call_type: str,
+        user_text: str,
+        mime_type: str = "image/jpeg",
+        max_tokens: int = 300,
+    ) -> ExtractionResult:
+        """Focused extraction: calls LLM, parses JSON, returns ExtractionResult."""
+        try:
+            parsed, stats = await self._call_llm_json(
+                image_bytes, prompt, user_text, call_type, mime_type, max_tokens,
+            )
+            if parsed is None:
+                return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=[stats])
+            fields = _convert_parsed_to_fields(parsed)
+            return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=[stats])
+        except AnthropicRateLimitError as e:
+            logger.error("Anthropic %s rate limit exhausted (%s): %s", call_type, panel_type, e)
+            return ExtractionResult(
+                panel_type=panel_type,
+                error=f"Rate limited after {MAX_RETRIES + 1} attempts: {e}",
+            )
+        except Exception as e:
+            logger.exception("Anthropic %s failed (%s): %s", call_type, panel_type, e)
+            return ExtractionResult(
+                panel_type=panel_type,
+                error=f"Extraction failed: {e}",
+            )
 
     async def extract_identity(
         self,
@@ -599,64 +459,13 @@ class AnthropicExtractor(BaseExtractor):
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
     ) -> tuple[dict | None, LLMCallStats | None]:
-        """Re-extract fanciful name and composition statement for specialty products.
-
-        Returns:
-            Tuple of (dict with fanciful_name/composition_statement or None, LLMCallStats or None).
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
+        """Re-extract fanciful name and composition statement for specialty products."""
         try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.reextract_model,
-                max_tokens=512,
-                temperature=0,
-                system=[
-                    {
-                        "type": "text",
-                        "text": SPECIALTY_CLASS_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": "Extract the specialty class information from this label.",
-                            },
-                        ],
-                    }
-                ],
+            parsed, stats = await self._call_llm_json(
+                image_bytes, SPECIALTY_CLASS_PROMPT,
+                "Extract the specialty class information from this label.",
+                "reextract_specialty_class", mime_type, max_tokens=512,
             )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_specialty_class",
-            )
-            logger.info(
-                "Specialty class re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            response_text = response.content[0].text
-            logger.info("Specialty class re-extraction: %s", response_text[:200])
-
-            parsed = _repair_json(response_text)
             if parsed is None:
                 return None, stats
 
@@ -669,7 +478,6 @@ class AnthropicExtractor(BaseExtractor):
                     result[key] = fld
 
             return (result if any(result.values()) else None), stats
-
         except Exception as e:
             logger.exception("Specialty class re-extraction failed: %s", e)
             return None, None
@@ -679,72 +487,19 @@ class AnthropicExtractor(BaseExtractor):
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
     ) -> tuple[str | None, LLMCallStats | None]:
-        """Re-extract ABV with a focused prompt for small/misread labels.
-
-        Returns:
-            Tuple of (abv_string or None, LLMCallStats or None).
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
+        """Re-extract ABV with a focused prompt for small/misread labels."""
         try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.reextract_model,
-                max_tokens=64,
-                temperature=0,
-                system=[
-                    {
-                        "type": "text",
-                        "text": ABV_REEXTRACT_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": "What is the exact ABV percentage on this label?",
-                            },
-                        ],
-                    }
-                ],
+            parsed, stats = await self._call_llm_json(
+                image_bytes, ABV_REEXTRACT_PROMPT,
+                "What is the exact ABV percentage on this label?",
+                "reextract_abv", mime_type, max_tokens=64,
             )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_abv",
-            )
-            logger.info(
-                "ABV re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            response_text = response.content[0].text
-            logger.info("ABV re-extraction: %s", response_text[:200])
-
-            parsed = _repair_json(response_text)
             if parsed is None:
                 return None, stats
-
             abv = parsed.get("abv")
             if abv is not None:
                 abv = str(abv).strip().rstrip("%")
             return (abv if abv else None), stats
-
         except Exception as e:
             logger.exception("ABV re-extraction failed: %s", e)
             return None, None
@@ -754,72 +509,19 @@ class AnthropicExtractor(BaseExtractor):
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
     ) -> tuple[str | None, LLMCallStats | None]:
-        """Re-extract net contents with a focused prompt for misread labels.
-
-        Returns:
-            Tuple of (net_contents_string or None, LLMCallStats or None).
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
+        """Re-extract net contents with a focused prompt for misread labels."""
         try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.reextract_model,
-                max_tokens=64,
-                temperature=0,
-                system=[
-                    {
-                        "type": "text",
-                        "text": NET_CONTENTS_REEXTRACT_PROMPT,
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": "What is the exact net contents (volume) on this label?",
-                            },
-                        ],
-                    }
-                ],
+            parsed, stats = await self._call_llm_json(
+                image_bytes, NET_CONTENTS_REEXTRACT_PROMPT,
+                "What is the exact net contents (volume) on this label?",
+                "reextract_net_contents", mime_type, max_tokens=64,
             )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_net_contents",
-            )
-            logger.info(
-                "Net contents re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            response_text = response.content[0].text
-            logger.info("Net contents re-extraction: %s", response_text[:200])
-
-            parsed = _repair_json(response_text)
             if parsed is None:
                 return None, stats
-
             nc = parsed.get("net_contents")
             if nc is not None:
                 nc = str(nc).strip()
             return (nc if nc else None), stats
-
         except Exception as e:
             logger.exception("Net contents re-extraction failed: %s", e)
             return None, None
@@ -830,68 +532,17 @@ class AnthropicExtractor(BaseExtractor):
         declared_brand: str,
         mime_type: str = "image/jpeg",
     ) -> tuple[dict | None, LLMCallStats | None]:
-        """Re-extract brand name with a focused prompt using declared brand as hint.
-
-        Returns:
-            Tuple of (dict with brand_name/conf/location_description or None, LLMCallStats or None).
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
+        """Re-extract brand name with a focused prompt using declared brand as hint."""
         try:
-            t0 = time.monotonic()
-            response = await self.client.messages.create(
-                model=self.reextract_model,
-                max_tokens=256,
-                temperature=0,
-                system=[
-                    {
-                        "type": "text",
-                        "text": BRAND_CONFIRM_PROMPT.format(declared_brand=declared_brand),
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": mime_type,
-                                    "data": base64_image,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": "Confirm the brand name on this label.",
-                            },
-                        ],
-                    }
-                ],
+            parsed, stats = await self._call_llm_json(
+                image_bytes,
+                BRAND_CONFIRM_PROMPT.format(declared_brand=declared_brand),
+                "Confirm the brand name on this label.",
+                "reextract_brand", mime_type, max_tokens=256,
             )
-            elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-            usage = response.usage
-            stats = LLMCallStats(
-                input_tokens=getattr(usage, "input_tokens", 0),
-                output_tokens=getattr(usage, "output_tokens", 0),
-                elapsed_ms=elapsed_ms,
-                call_type="reextract_brand",
-            )
-            logger.info(
-                "Brand re-extraction LLM stats: %d in / %d out tokens, %dms",
-                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-            )
-
-            response_text = response.content[0].text
-            logger.info("Brand re-extraction: %s", response_text[:200])
-
-            parsed = _repair_json(response_text)
             if parsed is None:
                 return None, stats
 
-            # Extract brand_name value and conf
             bn = parsed.get("brand_name")
             if isinstance(bn, dict) and "value" in bn:
                 brand_value = bn["value"]
@@ -903,9 +554,7 @@ class AnthropicExtractor(BaseExtractor):
                 return None, stats
 
             location = parsed.get("location_description")
-
             return {"brand_name": brand_value, "conf": conf, "location_description": location}, stats
-
         except Exception as e:
             logger.exception("Brand re-extraction failed: %s", e)
             return None, None
@@ -916,82 +565,18 @@ class AnthropicExtractor(BaseExtractor):
         panel_type: str,
         mime_type: str = "image/jpeg",
     ) -> tuple[str, list[LLMCallStats]]:
-        """Single LLM call to transcribe all visible text on a label image.
-
-        Returns:
-            (full_text, stats) where full_text is the transcribed text.
-        """
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-        llm_stats: list[LLMCallStats] = []
-
-        last_error = None
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                t0 = time.monotonic()
-                response = await self.client.messages.create(
-                    model=self.reextract_model,
-                    max_tokens=4000,
-                    temperature=0,
-                    system=[
-                        {
-                            "type": "text",
-                            "text": TRANSCRIPTION_PROMPT,
-                            "cache_control": {"type": "ephemeral"},
-                        }
-                    ],
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": mime_type,
-                                        "data": base64_image,
-                                    },
-                                },
-                                {
-                                    "type": "text",
-                                    "text": "Transcribe all text visible on this label.",
-                                },
-                            ],
-                        }
-                    ],
-                )
-                elapsed_ms = int((time.monotonic() - t0) * 1000)
-
-                usage = response.usage
-                stats = LLMCallStats(
-                    input_tokens=getattr(usage, "input_tokens", 0),
-                    output_tokens=getattr(usage, "output_tokens", 0),
-                    elapsed_ms=elapsed_ms,
-                    call_type="transcribe_label",
-                )
-                llm_stats.append(stats)
-                logger.info(
-                    "Transcription (%s): %d in / %d out tokens, %dms",
-                    panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
-                )
-
-                text = response.content[0].text
-                logger.info("Transcription (%s): %s", panel_type, text[:200])
-                return text, llm_stats
-
-            except AnthropicRateLimitError as e:
-                last_error = e
-                if attempt >= MAX_RETRIES:
-                    break
-                delay = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
-                logger.warning(
-                    "Anthropic rate limited transcribe (%s, attempt %d/%d), retrying in %.1fs...",
-                    panel_type, attempt + 1, MAX_RETRIES, delay,
-                )
-                await asyncio.sleep(delay)
-
-            except Exception as e:
-                logger.exception("Transcription failed (%s): %s", panel_type, e)
-                return "", llm_stats
-
-        logger.error("Transcription rate limit exhausted (%s): %s", panel_type, last_error)
-        return "", llm_stats
+        """Transcribe all visible text on a label image."""
+        try:
+            text, stats = await self._call_llm(
+                image_bytes, TRANSCRIPTION_PROMPT,
+                "Transcribe all text visible on this label.",
+                "transcribe_label", mime_type, max_tokens=4000,
+                model=self.model,
+            )
+            return text, [stats]
+        except AnthropicRateLimitError as e:
+            logger.error("Transcription rate limit exhausted (%s): %s", panel_type, e)
+            return "", []
+        except Exception as e:
+            logger.exception("Transcription failed (%s): %s", panel_type, e)
+            return "", []

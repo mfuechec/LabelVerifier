@@ -1,4 +1,4 @@
-"""Tests for LLM extraction service (Anthropic + Groq) with mocked APIs."""
+"""Tests for LLM extraction service with mocked Anthropic API."""
 
 import json
 import pytest
@@ -6,7 +6,6 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 from app.services.extraction import (
     AnthropicExtractor,
-    GroqExtractor,
     ExtractionResult,
 )
 
@@ -87,41 +86,6 @@ class TestAnthropicExtractor:
 
         assert result.fields["government_warning"]["extraction_confidence"] == "medium"
         assert result.fields["brand_name"]["extraction_confidence"] == "high"
-
-
-class TestGroqExtractor:
-    @pytest.mark.asyncio
-    async def test_extract_fields_returns_result(self):
-        extractor = GroqExtractor(api_key="test-key", model="test-model")
-
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content=VALID_LLM_RESPONSE))
-        ]
-        mock_response.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
-
-        with patch.object(
-            extractor.client.chat.completions,
-            "create",
-            new_callable=AsyncMock,
-            return_value=mock_response,
-        ):
-            result = await extractor.extract_fields(b"fake_image", "front")
-
-        assert isinstance(result, ExtractionResult)
-        assert result.fields["brand_name"]["value"] == "HOWLING MOON"
-
-
-class TestExtractionPrompt:
-    def test_fanciful_name_in_prompt(self):
-        """EXTRACTION_PROMPT must include fanciful_name as an extractable field."""
-        from app.services.extraction import EXTRACTION_PROMPT
-        assert "fanciful_name" in EXTRACTION_PROMPT
-
-    def test_brand_name_guidance_warns_about_fanciful(self):
-        """brand_name guidance should warn against confusing with fanciful name."""
-        from app.services.extraction import EXTRACTION_PROMPT
-        assert "fanciful" in EXTRACTION_PROMPT.lower()
 
 
 class TestAnthropicExtractorSingleCall:

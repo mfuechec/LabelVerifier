@@ -94,6 +94,11 @@ def normalize_net_contents(text: str | None) -> tuple[float | None, str | None]:
     if match:
         return (float(match.group(1)), "mL")
 
+    # Try gallons: "5.16 U.S. Gallons", "1 Gallon", "1 GAL"
+    match = re.search(r"(\d+\.?\d*)\s*(?:U\.?S\.?\s*)?(?:Gallons?|GAL\.?)\b", text, re.IGNORECASE)
+    if match:
+        return (float(match.group(1)) * 3785.41, "mL")
+
     return (None, None)
 
 

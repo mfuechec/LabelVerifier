@@ -40,11 +40,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app.config import Settings
 from app.models.schemas import ApplicationData, FieldComparisonResult
 from app.services.extraction import (
-    BaseExtractor, GroqExtractor, AnthropicExtractor, ExtractionResult, EXTRACTION_PROMPT, _repair_json,
+    AnthropicExtractor, ExtractionResult, _repair_json,
 )
-from app.services.comparison import ComparisonService, ConfidenceScorer
+from app.services.comparison import ConfidenceScorer
 from app.services.compliance import ComplianceChecker
-from app.services.merger import ImageMerger
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURES_PATH = os.path.join(
