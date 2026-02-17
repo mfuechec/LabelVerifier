@@ -138,6 +138,16 @@ company names, addresses, fine print, vertically rotated text along edges, and t
 in corners. Preserve the text as printed (do not correct spelling).
 Separate distinct text blocks with newlines. Return ONLY the transcribed text."""
 
+NET_CONTENTS_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol labels. Your ONLY task is to find the exact net contents (volume) on this label.
+Look carefully at all text on the label, especially fine print, corners, and edges. The net contents is usually printed as a number followed by a unit (e.g. "750 mL", "1 LITER", "12 FL. OZ.", "1.75L").
+Return ONLY a JSON object (no markdown, no extra text): {"net_contents": "<volume with unit>"}
+If you cannot find the net contents, return: {"net_contents": null}"""
+
+ABV_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol labels. Your ONLY task is to find the exact alcohol by volume (ABV) percentage on this label.
+Look carefully at all text on the label, especially fine print, corners, and edges. The ABV is usually printed as a number followed by a percent sign (e.g. "35%", "40% ALC./VOL.").
+Return ONLY a JSON object (no markdown, no extra text): {"abv": "<number>"}
+If you cannot find the ABV, return: {"abv": null}"""
+
 
 @dataclass
 class LLMCallStats:
@@ -664,6 +674,156 @@ class AnthropicExtractor(BaseExtractor):
             logger.exception("Specialty class re-extraction failed: %s", e)
             return None, None
 
+    async def reextract_abv(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[str | None, LLMCallStats | None]:
+        """Re-extract ABV with a focused prompt for small/misread labels.
+
+        Returns:
+            Tuple of (abv_string or None, LLMCallStats or None).
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            t0 = time.monotonic()
+            response = await self.client.messages.create(
+                model=self.reextract_model,
+                max_tokens=64,
+                temperature=0,
+                system=[
+                    {
+                        "type": "text",
+                        "text": ABV_REEXTRACT_PROMPT,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": "What is the exact ABV percentage on this label?",
+                            },
+                        ],
+                    }
+                ],
+            )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_abv",
+            )
+            logger.info(
+                "ABV re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
+            response_text = response.content[0].text
+            logger.info("ABV re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None, stats
+
+            abv = parsed.get("abv")
+            if abv is not None:
+                abv = str(abv).strip().rstrip("%")
+            return (abv if abv else None), stats
+
+        except Exception as e:
+            logger.exception("ABV re-extraction failed: %s", e)
+            return None, None
+
+    async def reextract_net_contents(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[str | None, LLMCallStats | None]:
+        """Re-extract net contents with a focused prompt for misread labels.
+
+        Returns:
+            Tuple of (net_contents_string or None, LLMCallStats or None).
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            t0 = time.monotonic()
+            response = await self.client.messages.create(
+                model=self.reextract_model,
+                max_tokens=64,
+                temperature=0,
+                system=[
+                    {
+                        "type": "text",
+                        "text": NET_CONTENTS_REEXTRACT_PROMPT,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": "What is the exact net contents (volume) on this label?",
+                            },
+                        ],
+                    }
+                ],
+            )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_net_contents",
+            )
+            logger.info(
+                "Net contents re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
+            response_text = response.content[0].text
+            logger.info("Net contents re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None, stats
+
+            nc = parsed.get("net_contents")
+            if nc is not None:
+                nc = str(nc).strip()
+            return (nc if nc else None), stats
+
+        except Exception as e:
+            logger.exception("Net contents re-extraction failed: %s", e)
+            return None, None
+
     async def reextract_brand(
         self,
         image_bytes: bytes,
@@ -770,7 +930,7 @@ class AnthropicExtractor(BaseExtractor):
                 t0 = time.monotonic()
                 response = await self.client.messages.create(
                     model=self.reextract_model,
-                    max_tokens=1500,
+                    max_tokens=4000,
                     temperature=0,
                     system=[
                         {

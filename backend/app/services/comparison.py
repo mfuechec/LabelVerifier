@@ -271,6 +271,17 @@ def specialty_class_match(
                         pass  # Style designator — skip fanciful name check
                         fn_status = "match"
 
+            # Fallback 3: Declared fanciful words are a subset of extracted
+            # fanciful + composition (e.g. COLA "BIZAN BARLEY", label "GEKKEIKAN BIZAN" +
+            # composition "BARLEY SHOCHU...")
+            if fn_status == "content_mismatch":
+                decl_words = set(normalize_for_fuzzy(declared_fanciful_name).split())
+                ext_words = set(normalize_for_fuzzy(fanciful_name).split())
+                if has_composition:
+                    ext_words |= set(normalize_for_fuzzy(composition_statement).split())
+                if decl_words and decl_words.issubset(ext_words):
+                    fn_status = "match"
+
             if fn_status == "content_mismatch":
                 return (
                     "content_mismatch",

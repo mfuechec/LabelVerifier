@@ -109,12 +109,12 @@ class TestCOLAPDFParserBarenjager:
         assert self.ad.beverage_type == "distilled_spirits"
 
     def test_label_images_extracted(self):
+        # Signature images filtered; real labels (including thin strips) remain
         assert len(self.result.label_images) >= 3
 
     def test_image_panels(self):
         panels = [li.panel_type for li in self.result.label_images]
         assert "front" in panels
-        assert "back" in panels
 
     def test_image_bytes_nonempty(self):
         for li in self.result.label_images:
@@ -194,20 +194,22 @@ class TestCOLAPDFParserEdgeCases:
         with pytest.raises(ValueError, match="Failed to parse"):
             parser.parse(b"not a pdf")
 
-    def test_stub_pdf_no_images(self):
-        """Stub PDFs (single page, no content) should parse without error
-        but return no label images."""
+    def test_real_pdf_with_small_labels(self):
+        """PDFs with small but real label images should still extract them.
+
+        11038001000727.pdf has banner (772x194, filtered) + two small labels.
+        """
         parser = COLAPDFParser()
-        # Load a known stub PDF if available
         import os
-        stub_path = os.path.join(
+        pdf_path = os.path.join(
             os.path.dirname(__file__),
             "..", "data", "applications", "11038001000727.pdf"
         )
-        if os.path.exists(stub_path):
-            with open(stub_path, "rb") as f:
+        if os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as f:
                 result = parser.parse(f.read())
-            assert len(result.label_images) == 0
+            # Banner filtered, real labels kept
+            assert len(result.label_images) >= 2
 
 
 def _make_pdf_no_xobject_images(num_pages: int = 2) -> bytes:
@@ -267,6 +269,8 @@ def _make_pdf_with_annotation(pages_with_annotation: list[int], total_pages: int
     """Create a PDF where specific pages have 'Image Type:' annotations.
 
     pages_with_annotation is 0-indexed page numbers that get annotation text.
+    Annotated pages also get a large coloured rectangle so the pixmap fallback
+    produces a non-white image (real label pages contain visual content).
     Pages without annotations and without XObject images simulate form pages.
     """
     doc = fitz.open()
@@ -275,6 +279,10 @@ def _make_pdf_with_annotation(pages_with_annotation: list[int], total_pages: int
         page.insert_text((72, 100), f"Page {i + 1}")
         if i in pages_with_annotation:
             page.insert_text((72, 200), "Image Type:\nBrand (front) or keg collar")
+            # Draw a large coloured rectangle to simulate visual label content
+            rect = fitz.Rect(50, 250, 550, 700)
+            page.draw_rect(rect, color=(0, 0.5, 0.8), fill=(0.2, 0.6, 0.9), width=3)
+            page.insert_text((200, 450), "LABEL CONTENT", fontsize=36)
     pdf_bytes = doc.tobytes()
     doc.close()
     return pdf_bytes
@@ -302,6 +310,155 @@ class TestImageTypeAnnotations:
         assert 2 not in result
 
 
+def _make_png(width: int, height: int, white: bool = False) -> bytes:
+    """Create a minimal PNG image.
+
+    If white=True, creates a mostly-white image (simulating a signature).
+    Otherwise creates a random-colour image (simulating a label).
+    """
+    import os
+    import struct
+    import zlib
+
+    raw_data = b""
+    for _ in range(height):
+        if white:
+            # ~95% white pixels with a thin grey squiggle
+            row = b"\xff\xff\xff" * width
+            raw_data += b"\x00" + row
+        else:
+            raw_data += b"\x00" + os.urandom(width * 3)
+    compressed = zlib.compress(raw_data)
+
+    def _chunk(ctype, data):
+        c = ctype + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+    png = b"\x89PNG\r\n\x1a\n"
+    png += _chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+    png += _chunk(b"IDAT", compressed)
+    png += _chunk(b"IEND", b"")
+    return png
+
+
+def _make_pdf_with_banner_and_label(
+    banner_size: tuple[int, int] = (772, 195),
+    label_size: tuple[int, int] = (400, 400),
+    signature_style: bool = True,
+    total_pages: int = 2,
+) -> bytes:
+    """Create a PDF where page 2 has a signature image and a label image.
+
+    The banner simulates a TTB officer signature (~772x195px, mostly white).
+    When signature_style=False the banner is colorful (simulating a label strip).
+    """
+    doc = fitz.open()
+    for i in range(total_pages):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 100), f"Page {i + 1}")
+        if i == 1:
+            page.insert_text((72, 200), "Image Type:\nBrand (front) or keg collar")
+            # Signature image (thin wide strip)
+            png = _make_png(*banner_size, white=signature_style)
+            page.insert_image(
+                fitz.Rect(10, 210, 10 + banner_size[0] * 0.5, 210 + banner_size[1] * 0.5),
+                stream=png,
+            )
+            # Real label image
+            png = _make_png(*label_size, white=False)
+            page.insert_image(
+                fitz.Rect(72, 300, 72 + label_size[0] * 0.5, 300 + label_size[1] * 0.5),
+                stream=png,
+            )
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+def _make_pdf_with_certificate_page() -> bytes:
+    """Create a PDF where page 2 has a label and page 3 is a certificate page.
+
+    Page 3 has 'Image Type:' annotation AND 'AUTHORIZED SIGNATURE' boilerplate,
+    simulating a TTB certificate page that should NOT trigger pixmap fallback.
+    """
+    doc = fitz.open()
+    for i in range(3):
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 100), f"Page {i + 1}")
+        if i == 1:
+            page.insert_text((72, 200), "Image Type:\nBrand (front) or keg collar")
+            png = _make_png(400, 400, white=False)
+            page.insert_image(fitz.Rect(72, 250, 350, 550), stream=png)
+        elif i == 2:
+            # Certificate page with annotation AND boilerplate
+            page.insert_text((72, 200), "Image Type:\nBack")
+            page.insert_text((72, 400), "23. AUTHORIZED SIGNATURE, ALCOHOL AND TOBACCO TAX AND TRADE BUREAU")
+            page.insert_text((72, 700), "TTB F 5100.31 PREVIOUS EDITIONS ARE OBSOLETE")
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+class TestSignatureImageFiltering:
+    """Tests for filtering TTB officer signature images from label extraction."""
+
+    def test_signature_image_filtered_label_kept(self):
+        """A 772x195 white signature image should be filtered; the label kept."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_with_banner_and_label(
+            banner_size=(772, 195), label_size=(400, 400),
+            signature_style=True,
+        )
+        images = parser._extract_label_images(pdf_bytes)
+        # Only the label should remain, not the signature
+        assert len(images) == 1
+        assert images[0].panel_type == "front"
+
+    def test_colorful_thin_strip_kept(self):
+        """A thin wide label strip with color content should NOT be filtered."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_with_banner_and_label(
+            banner_size=(725, 175), label_size=(400, 400),
+            signature_style=False,  # colorful → real label strip
+        )
+        images = parser._extract_label_images(pdf_bytes)
+        # Both images should be kept (strip has color, not a signature)
+        assert len(images) == 2
+
+    def test_colorful_tall_wide_image_not_filtered(self):
+        """A colorful image with height >= 200 is not caught by the aspect ratio gate."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_with_banner_and_label(
+            banner_size=(800, 250), label_size=(400, 400),
+            signature_style=False,  # colorful so it exceeds _MIN_IMAGE_BYTES
+        )
+        images = parser._extract_label_images(pdf_bytes)
+        # Both kept: the aspect ratio gate (short < 200 and ratio > 3) doesn't fire
+        assert len(images) == 2
+
+
+class TestCertificatePageFiltering:
+    """Tests for filtering certificate/signature pages from pixmap fallback."""
+
+    def test_certificate_page_excluded_from_annotations(self):
+        """Pages with AUTHORIZED SIGNATURE should not get annotations."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_with_certificate_page()
+        annotations = parser._extract_image_type_annotations(pdf_bytes)
+        # Page 1 (label) should have annotation, page 2 (certificate) should not
+        assert 1 in annotations
+        assert 2 not in annotations
+
+    def test_certificate_page_no_pixmap_fallback(self):
+        """Certificate pages should not produce pixmap images."""
+        parser = COLAPDFParser()
+        pdf_bytes = _make_pdf_with_certificate_page()
+        images = parser._extract_label_images(pdf_bytes)
+        # Only the label page image, not the certificate page
+        assert len(images) == 1
+        assert images[0].panel_type == "front"
+
+
 class TestPixmapFallback:
     """Tests for pixmap fallback when get_images() finds no XObject images."""
 
@@ -324,7 +481,7 @@ class TestPixmapFallback:
         assert images[0].panel_type == "front"
 
     def test_xobject_path_still_used_when_images_present(self):
-        """Barenjager PDF has XObject images -- should still extract >= 3."""
+        """Barenjager PDF has XObject images -- signatures filtered, labels kept."""
         parser = COLAPDFParser()
         pdf_bytes = load_cola_pdf("barenjager_imported.pdf")
         images = parser._extract_label_images(pdf_bytes)

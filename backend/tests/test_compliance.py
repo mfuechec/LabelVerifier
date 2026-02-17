@@ -127,6 +127,24 @@ class TestImportedFields:
         field_names = [i.field_name for i in issues]
         assert "country_of_origin" in field_names
 
+    def test_imported_importer_satisfies_producer(self, checker):
+        """Fix 3: For imports, importer_name should satisfy producer_name requirement."""
+        extracted = {
+            "brand_name": "IMPORTED BRAND",
+            "class_type": "Vodka",
+            "alcohol_content": "40%",
+            "net_contents": "750 mL",
+            # producer_name is missing/None
+            "government_warning": "GOVERNMENT WARNING: ...",
+            "importer_name": "Sidney Frank Importing Co.",
+            "country_of_origin": "Germany",
+        }
+        issues = checker.check_compliance(
+            extracted, "distilled_spirits", is_imported=True
+        )
+        field_names = [i.field_name for i in issues]
+        assert "producer_name" not in field_names
+
     def test_imported_country_present(self, checker):
         extracted = {
             "brand_name": "IMPORTED BRAND",

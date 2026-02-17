@@ -290,3 +290,21 @@ class TestSpecialtyClassMatch:
         )
         assert status == "match"
         assert score == 100.0
+
+    def test_declared_fanciful_substring_of_extracted(self):
+        """COLA declares 'BIZAN BARLEY', label has 'GEKKEIKAN BIZAN' — declared words
+        are a subset of the extracted fanciful name, should match."""
+        status, score, reason = specialty_class_match(
+            "GEKKEIKAN BIZAN", "BARLEY SHOCHU SPIRITS DISTILLED FROM BARLEY", None,
+            declared_fanciful_name="BIZAN BARLEY",
+        )
+        assert status == "match"
+
+    def test_declared_fanciful_partial_subset_of_extracted(self):
+        """COLA declares 'BIZAN SWEET POTATO', label has 'GEKKEIKAN BIZAN' +
+        composition mentions sweet potato — declared words partially in extracted."""
+        status, score, reason = specialty_class_match(
+            "GEKKEIKAN BIZAN", "SWEET POTATO SHOCHU SPIRITS DISTILLED FROM SWEET POTATO", None,
+            declared_fanciful_name="BIZAN SWEET POTATO",
+        )
+        assert status == "match"

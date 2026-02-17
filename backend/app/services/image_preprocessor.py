@@ -16,13 +16,15 @@ logger = logging.getLogger(__name__)
 MIN_DIMENSION = 800
 
 # Target longest side after upscaling small images
-TARGET_DIMENSION = 1000
+TARGET_DIMENSION = 1400
 
-# Larger images are downscaled to reduce token count and API latency.
-MAX_DIMENSION = 1000
+# Anthropic Claude vision processes images up to 1568px on the longest side.
+# Images above this are downscaled to avoid wasting tokens on resolution
+# the model cannot use.
+MAX_DIMENSION = 1568
 
-# JPEG quality for output
-JPEG_QUALITY = 75
+# JPEG quality for output -- higher preserves small text better
+JPEG_QUALITY = 85
 
 
 def preprocess_image(image_bytes: bytes) -> bytes:

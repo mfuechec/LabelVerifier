@@ -28,6 +28,7 @@ from app.services.comparison import (
 from app.services.ttb_classes import (
     is_administrative_class_type,
     normalize_class_type,
+    _strip_qualifiers,
 )
 
 logger = logging.getLogger(__name__)
@@ -271,17 +272,32 @@ class TextMatcher:
 
         # Direct containment: all declared words found in text
         if declared_words.issubset(text_words):
-            return ("match", 100.0, "All declared words found in text", declared_value)
+            return ("match", 100.0, "All declared words found in text", None)
+
+        # Prefix matching: declared words that are prefixes of text words (4+ chars)
+        # Handles compound words like BLAU -> BLAUFRANKISCH
+        MIN_PREFIX_LEN = 4
+        matched = 0
+        prefix_matched = 0
+        for dw in declared_words:
+            if dw in text_words:
+                matched += 1
+            elif len(dw) >= MIN_PREFIX_LEN and any(tw.startswith(dw) for tw in text_words):
+                matched += 1
+                prefix_matched += 1
+        if matched == len(declared_words) and prefix_matched > 0:
+            conf = 100.0 - (prefix_matched * 5.0)  # 5% penalty per prefix match
+            return ("match", conf, f"All words found ({prefix_matched} as prefix of longer word)", None)
 
         # Try token_set_ratio for partial/reordered matches
         tsr = fuzz.token_set_ratio(norm_declared, norm_text)
         if tsr >= FUZZY_THRESHOLD:
-            return ("match", tsr, f"Token set match: {tsr:.0f}%", declared_value)
+            return ("match", tsr, f"Token set match: {tsr:.0f}%", None)
 
         # Try partial_ratio for substring containment
         pr = fuzz.partial_ratio(norm_declared, norm_text)
         if pr >= 90:
-            return ("match", pr, f"Partial match: {pr:.0f}%", declared_value)
+            return ("match", pr, f"Partial match: {pr:.0f}%", None)
 
         # Not found
         best = max(tsr, pr)
@@ -315,6 +331,14 @@ class TextMatcher:
 
         # Find closest mismatch
         closest = min(percentages, key=lambda p: abs(float(p) - dec_abv))
+        closest_val = float(closest)
+        diff = abs(closest_val - dec_abv)
+        if diff <= 5.0:
+            return (
+                "extraction_uncertain", 50.0,
+                f"ABV near-miss: {closest}% in text vs {dec_abv}% declared (diff {diff:.1f}%)",
+                f"{closest}%",
+            )
         return (
             "content_mismatch", 0.0,
             f"ABV mismatch: {closest}% in text vs {dec_abv}% declared",
@@ -418,19 +442,21 @@ class TextMatcher:
 
         # Compare extracted section to canonical
         ratio = fuzz.ratio(warning_section, norm_canonical)
-        if ratio >= 90:
-            return ("match", 100.0, f"Government warning found (similarity: {ratio:.0f}%)", CANONICAL_WARNING)
+        tsr = fuzz.token_set_ratio(warning_section, norm_canonical)
+        best = max(ratio, tsr)
+        if best >= 85:
+            return ("match", 100.0, f"Government warning found (similarity: {best:.0f}%)", CANONICAL_WARNING)
 
-        if ratio >= 70:
+        if best >= 70:
             return (
-                "content_mismatch", ratio,
-                f"Government warning partially matched: {ratio:.0f}%",
+                "content_mismatch", best,
+                f"Government warning partially matched: {best:.0f}%",
                 warning_section[:300],
             )
 
         return (
-            "content_mismatch", ratio,
-            f"Government warning present but differs: {ratio:.0f}%",
+            "content_mismatch", best,
+            f"Government warning present but differs: {best:.0f}%",
             warning_section[:300],
         )
 
@@ -452,7 +478,7 @@ class TextMatcher:
         text_words = set(norm_text.split())
 
         if declared_words.issubset(text_words):
-            return ("match", 100.0, "All company name words found in text", declared_value)
+            return ("match", 100.0, "All company name words found in text", None)
 
         # Single-word containment: if declared has one key word found in text
         if len(declared_words) >= 1:
@@ -463,13 +489,13 @@ class TextMatcher:
                     return (
                         "match", min(ratio, 95.0),
                         f"Company name partially matched: {len(found_words)}/{len(declared_words)} words found",
-                        declared_value,
+                        None,
                     )
 
         # Fuzzy fallback on full normalized strings
         tsr = fuzz.token_set_ratio(norm_declared, norm_text)
         if tsr >= FUZZY_THRESHOLD:
-            return ("match", tsr, f"Company fuzzy match: {tsr:.0f}%", declared_value)
+            return ("match", tsr, f"Company fuzzy match: {tsr:.0f}%", None)
 
         return (
             "content_mismatch", tsr,
@@ -497,7 +523,7 @@ class TextMatcher:
                 return (
                     "match", min(ratio, 100.0),
                     f"Address tokens found: {found_tokens}",
-                    declared_value,
+                    None,
                 )
 
         # Fuzzy fallback
@@ -505,7 +531,7 @@ class TextMatcher:
         norm_text = normalize_for_fuzzy(text)
         pr = fuzz.partial_ratio(norm_dec, norm_text)
         if pr >= FUZZY_THRESHOLD:
-            return ("match", pr, f"Address partial match: {pr:.0f}%", declared_value)
+            return ("match", pr, f"Address partial match: {pr:.0f}%", None)
 
         return (
             "content_mismatch", pr,
@@ -543,7 +569,12 @@ class TextMatcher:
 
         # Normalize declared class
         dec_canonical, _ = normalize_class_type(declared_value, app_data.beverage_type)
-        search_term = dec_canonical or declared_value
+        if dec_canonical:
+            search_term = dec_canonical
+        else:
+            # No TTB canonical match -- strip qualifiers for a better text search
+            stripped, _ = _strip_qualifiers(declared_value)
+            search_term = stripped or declared_value
 
         # Search for class words in text
         norm_search = normalize_for_fuzzy(search_term)
@@ -555,6 +586,32 @@ class TextMatcher:
 
         if search_words.issubset(text_words):
             return ("match", 100.0, f"Class '{search_term}' found in text", search_term)
+
+        # Check if any search word's base class is present in the text -- either
+        # directly or via a TTB variant (e.g. "cachaca" in text matches "rum",
+        # "cerveza" in text matches "beer").
+        if len(search_words) >= 1:
+            from app.services.ttb_classes import _match_class
+            for word in search_words:
+                word_canonical = _match_class(word, app_data.beverage_type)
+                if word_canonical is None:
+                    continue
+                # Direct: base class word found in text
+                if word in text_words:
+                    return (
+                        "match", 90.0,
+                        f"Base class '{word}' found in text (from '{search_term}')",
+                        search_term,
+                    )
+                # Indirect: text contains a variant that maps to the same canonical
+                for tw in text_words:
+                    tw_canonical = _match_class(tw, app_data.beverage_type)
+                    if tw_canonical == word_canonical:
+                        return (
+                            "match", 90.0,
+                            f"Class variant '{tw}' in text matches base class '{word_canonical}' (from '{search_term}')",
+                            search_term,
+                        )
 
         # Try fuzzy partial match
         pr = fuzz.partial_ratio(norm_search, norm_text)

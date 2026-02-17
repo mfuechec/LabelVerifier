@@ -526,8 +526,8 @@ class TestTranscribeLabel:
         assert stats[0].call_type == "transcribe_label"
 
     @pytest.mark.asyncio
-    async def test_transcribe_label_uses_1500_max_tokens(self):
-        """transcribe_label should use max_tokens=1500."""
+    async def test_transcribe_label_uses_4000_max_tokens(self):
+        """transcribe_label should use max_tokens=4000 to avoid truncation on dense labels."""
         extractor = AnthropicExtractor(api_key="test-key", model="test-model")
 
         with patch.object(
@@ -538,7 +538,7 @@ class TestTranscribeLabel:
         ) as mock_create:
             await extractor.transcribe_label(b"fake_image", "front")
 
-        assert mock_create.call_args[1]["max_tokens"] == 1500
+        assert mock_create.call_args[1]["max_tokens"] == 4000
 
     @pytest.mark.asyncio
     async def test_transcribe_label_api_error_returns_empty(self):
@@ -596,4 +596,78 @@ class TestBrandReextraction:
             result, stats = await extractor.reextract_brand(b"fake_image", "BARENJAGER")
 
         assert result is None
+        assert stats is None
+
+
+class TestAbvReextraction:
+    @pytest.mark.asyncio
+    async def test_reextract_abv_returns_value(self):
+        """reextract_abv should return ABV string + stats on success."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        llm_response = json.dumps({"abv": "35"})
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            return_value=_make_anthropic_mock(llm_response),
+        ):
+            abv, stats = await extractor.reextract_abv(b"fake_image")
+
+        assert abv == "35"
+        assert stats is not None
+        assert stats.call_type == "reextract_abv"
+
+    @pytest.mark.asyncio
+    async def test_reextract_abv_handles_error(self):
+        """API exception should return (None, None)."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            side_effect=Exception("API unavailable"),
+        ):
+            abv, stats = await extractor.reextract_abv(b"fake_image")
+
+        assert abv is None
+        assert stats is None
+
+
+class TestNetContentsReextraction:
+    @pytest.mark.asyncio
+    async def test_reextract_net_contents_returns_value(self):
+        """reextract_net_contents should return net contents string + stats."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        llm_response = json.dumps({"net_contents": "750 mL"})
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            return_value=_make_anthropic_mock(llm_response),
+        ):
+            nc, stats = await extractor.reextract_net_contents(b"fake_image")
+
+        assert nc == "750 mL"
+        assert stats is not None
+        assert stats.call_type == "reextract_net_contents"
+
+    @pytest.mark.asyncio
+    async def test_reextract_net_contents_handles_error(self):
+        """API exception should return (None, None)."""
+        extractor = AnthropicExtractor(api_key="test-key", model="test-model")
+
+        with patch.object(
+            extractor.client.messages,
+            "create",
+            new_callable=AsyncMock,
+            side_effect=Exception("API unavailable"),
+        ):
+            nc, stats = await extractor.reextract_net_contents(b"fake_image")
+
+        assert nc is None
         assert stats is None

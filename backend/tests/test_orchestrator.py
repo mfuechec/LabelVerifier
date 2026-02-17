@@ -488,6 +488,53 @@ class TestLLMCallReduction:
         assert result.processing_stats.total_llm_calls == 1
 
     @pytest.mark.asyncio
+    async def test_matched_text_search_fields_not_flagged_by_compliance(self, orchestrator):
+        """Fix 1: Matched text-search fields with None extracted_value should not
+        be flagged as missing by compliance checker."""
+        app_data = ApplicationData(
+            brand_name="TEST BRAND",
+            class_type="VODKA",
+            alcohol_content="40",
+            net_contents="750 mL",
+            producer_name="TEST PRODUCER",
+            beverage_type="distilled_spirits",
+        )
+
+        with _patch_transcription(orchestrator):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        # All fields should be match -- no compliance issues for fields that matched
+        compliance_field_names = [i.field_name for i in result.compliance_issues]
+        # brand_name, class_type, producer_name are text_search fields that return
+        # None as extracted_value but should NOT be flagged as missing
+        assert "brand_name" not in compliance_field_names
+        assert "class_type" not in compliance_field_names
+        assert "producer_name" not in compliance_field_names
+
+    @pytest.mark.asyncio
+    async def test_imported_without_country_no_false_fail(self, orchestrator):
+        """Fix 5: When COLA doesn't declare country_of_origin, don't flag it."""
+        app_data = ApplicationData(
+            brand_name="BARENJAGER",
+            class_type="VODKA",
+            alcohol_content="35",
+            net_contents="750 mL",
+            importer_name="SIDNEY FRANK IMPORTING CO.",
+            beverage_type="distilled_spirits",
+        )
+
+        with _patch_transcription(orchestrator, [BARENJAGER_LABEL_TEXT]):
+            result = await orchestrator.verify_single(
+                [b"fake_image"], ["front"], app_data
+            )
+
+        # country_of_origin should NOT appear as a compliance issue
+        compliance_field_names = [i.field_name for i in result.compliance_issues]
+        assert "country_of_origin" not in compliance_field_names
+
+    @pytest.mark.asyncio
     async def test_admin_code_two_llm_calls(self, orchestrator):
         """Admin code with single panel should use 2 LLM calls (transcribe + specialty)."""
         app_data = ApplicationData(
@@ -512,3 +559,117 @@ class TestLLMCallReduction:
             )
 
         assert result.processing_stats.total_llm_calls == 2
+
+
+class TestAbvReextraction:
+    """Test ABV re-extraction on mismatch in orchestrator pipeline."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_abv_reextraction_on_mismatch(self, orchestrator):
+        """When initial transcription has wrong ABV, re-extraction should fix it."""
+        # Label text has 33% (misread), declared is 35%
+        wrong_abv_text = (
+            "BARENJAGER\n"
+            "HONEY & BOURBON\n"
+            "HONEY LIQUEUR\n"
+            "ALC. 33% BY VOL.\n"  # Wrong — misread
+            "50 mL\n"
+            "IMPORTED BY SIDNEY FRANK IMPORTING CO., INC.\n"
+            "NEW ROCHELLE, N.Y.\n"
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability to drive a car or "
+            "operate machinery, and may cause health problems."
+        )
+
+        app_data = ApplicationData(
+            brand_name="BARENJAGER",
+            fanciful_name="HONEY & BOURBON",
+            class_type="HONEY LIQUEUR",
+            alcohol_content="35",
+            net_contents="50 ML",
+            importer_name="SIDNEY FRANK IMPORTING CO., INC.",
+            importer_address="NEW ROCHELLE, N.Y.",
+            beverage_type="distilled_spirits",
+        )
+
+        with _patch_transcription(orchestrator, [wrong_abv_text]), patch.object(
+            orchestrator.extraction_service,
+            "reextract_abv",
+            new_callable=AsyncMock,
+            return_value=("35", LLMCallStats(50, 10, 100, "reextract_abv")),
+        ) as mock_reextract:
+            result = await orchestrator.verify_single(
+                [b"front_img", b"back_img"], ["front", "back"], app_data
+            )
+
+        mock_reextract.assert_called_once()
+        abv_field = next(f for f in result.fields if f.field_name == "alcohol_content")
+        assert abv_field.status == "match"
+        assert "re-extraction" in abv_field.confidence_reason.lower()
+
+
+class TestNetContentsReextraction:
+    """Test net contents re-extraction on mismatch in orchestrator pipeline."""
+
+    @pytest.fixture
+    def orchestrator(self, tmp_db):
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    @pytest.mark.asyncio
+    async def test_net_contents_reextraction_on_mismatch(self, orchestrator):
+        """When initial transcription has wrong net contents, re-extraction should fix it."""
+        # Label text has 75 ML (misread of 750), declared is 750 ML
+        wrong_nc_text = (
+            "HANAMI\n"
+            "GIN\n"
+            "ALC. 43% BY VOL.\n"
+            "75 ML\n"  # Wrong — misread of 750
+            "IMPORTED BY THE RED SEA IMPORT COMPANY\n"
+            "1607 S 12TH ST, PRINCETON MN 55371\n"
+            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+            "women should not drink alcoholic beverages during pregnancy "
+            "because of the risk of birth defects. (2) Consumption of "
+            "alcoholic beverages impairs your ability to drive a car or "
+            "operate machinery, and may cause health problems."
+        )
+
+        app_data = ApplicationData(
+            brand_name="HANAMI",
+            class_type="GIN",
+            alcohol_content="43",
+            net_contents="750 MILLILITERS",
+            importer_name="THE RED SEA IMPORT COMPANY",
+            importer_address="1607 S 12TH ST, PRINCETON MN 55371",
+            beverage_type="distilled_spirits",
+        )
+
+        with _patch_transcription(orchestrator, [wrong_nc_text]), patch.object(
+            orchestrator.extraction_service,
+            "reextract_net_contents",
+            new_callable=AsyncMock,
+            return_value=("750 mL", LLMCallStats(50, 10, 100, "reextract_net_contents")),
+        ) as mock_reextract:
+            result = await orchestrator.verify_single(
+                [b"front_img", b"back_img"], ["front", "back"], app_data
+            )
+
+        mock_reextract.assert_called_once()
+        nc_field = next(f for f in result.fields if f.field_name == "net_contents")
+        assert nc_field.status == "match"
+        assert "re-extraction" in nc_field.confidence_reason.lower()

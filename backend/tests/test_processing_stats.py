@@ -155,12 +155,39 @@ class TestProcessingStatsModel:
 
 
 class TestOrchestratorStats:
+    """Test that the orchestrator aggregates LLM stats from transcription pipeline."""
+
+    LABEL_TEXT = (
+        "TEST BRAND\n"
+        "PREMIUM VODKA\n"
+        "ALC. 40% BY VOL.\n"
+        "750 mL\n"
+        "PRODUCED BY TEST PRODUCER CITY, STATE\n"
+        "GOVERNMENT WARNING: (1) According to the Surgeon General, "
+        "women should not drink alcoholic beverages during pregnancy "
+        "because of the risk of birth defects. (2) Consumption of "
+        "alcoholic beverages impairs your ability to drive a car or "
+        "operate machinery, and may cause health problems."
+    )
+
     @pytest.fixture
     def orchestrator(self, tmp_db):
         conn = get_db(tmp_db)
         create_tables(conn)
         conn.close()
-        return VerificationOrchestrator(db_path=tmp_db)
+        orch = VerificationOrchestrator(db_path=tmp_db)
+        orch.extraction_service = AnthropicExtractor(api_key="test-key", model="test-model")
+        return orch
+
+    def _patch_transcription(self, orchestrator, stats_list):
+        """Mock transcribe_label to return label text with given stats."""
+        async def mock_transcribe(img, panel, mime_type="image/jpeg"):
+            return (self.LABEL_TEXT, stats_list)
+        return patch.object(
+            orchestrator.extraction_service,
+            "transcribe_label",
+            side_effect=mock_transcribe,
+        )
 
     @pytest.mark.asyncio
     async def test_verify_single_returns_processing_stats(self, orchestrator):
@@ -174,46 +201,20 @@ class TestOrchestratorStats:
             beverage_type="distilled_spirits",
         )
 
-        mock_result = ExtractionResult(
-            panel_type="front",
-            fields={
-                "brand_name": {"value": "TEST BRAND", "extraction_confidence": "high"},
-                "class_type": {"value": "Vodka", "extraction_confidence": "high"},
-                "alcohol_content": {"value": "40% ABV", "extraction_confidence": "high"},
-                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
-                "government_warning": {
-                    "value": (
-                        "GOVERNMENT WARNING: (1) According to the Surgeon General, "
-                        "women should not drink alcoholic beverages during pregnancy "
-                        "because of the risk of birth defects. (2) Consumption of "
-                        "alcoholic beverages impairs your ability to drive a car or "
-                        "operate machinery, and may cause health problems."
-                    ),
-                    "extraction_confidence": "high",
-                },
-                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
-            },
-            llm_stats=[
-                LLMCallStats(input_tokens=150, output_tokens=80, elapsed_ms=500, call_type="extract_fields"),
-                LLMCallStats(input_tokens=120, output_tokens=30, elapsed_ms=300, call_type="reextract_warning"),
-            ],
-        )
+        stats = [
+            LLMCallStats(input_tokens=150, output_tokens=80, elapsed_ms=500, call_type="transcribe_label"),
+        ]
 
-        with patch.object(
-            orchestrator.extraction_service,
-            "extract_fields",
-            new_callable=AsyncMock,
-            return_value=mock_result,
-        ):
+        with self._patch_transcription(orchestrator, stats):
             result = await orchestrator.verify_single(
                 [b"fake_image"], ["front"], app_data
             )
 
         assert result.processing_stats is not None
-        assert result.processing_stats.total_llm_calls == 2
-        assert result.processing_stats.total_input_tokens == 270
-        assert result.processing_stats.total_output_tokens == 110
-        assert result.processing_stats.extraction_time_ms == 800
+        assert result.processing_stats.total_llm_calls == 1
+        assert result.processing_stats.total_input_tokens == 150
+        assert result.processing_stats.total_output_tokens == 80
+        assert result.processing_stats.extraction_time_ms == 500
         assert result.processing_stats.total_time_ms >= 0
 
     @pytest.mark.asyncio
@@ -224,39 +225,15 @@ class TestOrchestratorStats:
             class_type="VODKA",
             alcohol_content="40",
             net_contents="750 mL",
+            producer_name="TEST PRODUCER",
             beverage_type="distilled_spirits",
         )
 
-        mock_result = ExtractionResult(
-            panel_type="front",
-            fields={
-                "brand_name": {"value": "TEST BRAND", "extraction_confidence": "high"},
-                "class_type": {"value": "Vodka", "extraction_confidence": "high"},
-                "alcohol_content": {"value": "40% ABV", "extraction_confidence": "high"},
-                "net_contents": {"value": "750 mL", "extraction_confidence": "high"},
-                "government_warning": {
-                    "value": (
-                        "GOVERNMENT WARNING: (1) According to the Surgeon General, "
-                        "women should not drink alcoholic beverages during pregnancy "
-                        "because of the risk of birth defects. (2) Consumption of "
-                        "alcoholic beverages impairs your ability to drive a car or "
-                        "operate machinery, and may cause health problems."
-                    ),
-                    "extraction_confidence": "high",
-                },
-                "producer_name": {"value": "TEST PRODUCER", "extraction_confidence": "high"},
-            },
-            llm_stats=[
-                LLMCallStats(input_tokens=150, output_tokens=80, elapsed_ms=500, call_type="extract_fields"),
-            ],
-        )
+        stats = [
+            LLMCallStats(input_tokens=150, output_tokens=80, elapsed_ms=500, call_type="transcribe_label"),
+        ]
 
-        with patch.object(
-            orchestrator.extraction_service,
-            "extract_fields",
-            new_callable=AsyncMock,
-            return_value=mock_result,
-        ):
+        with self._patch_transcription(orchestrator, stats):
             result = await orchestrator.verify_single(
                 [b"fake_image"], ["front"], app_data
             )

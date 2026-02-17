@@ -76,6 +76,26 @@ class TestNormalizeClassType:
         canonical, _ = normalize_class_type("Beer", "malt_beverages")
         assert canonical == "beer"
 
+    def test_beer_with_beer_beverage_type(self):
+        """Bug 4: beverage_type='beer' (from parser) should also work."""
+        canonical, _ = normalize_class_type("Beer", "beer")
+        assert canonical == "beer"
+
+    def test_ale_with_beer_beverage_type(self):
+        """Ale with beverage_type='beer' should normalize."""
+        canonical, _ = normalize_class_type("Ale", "beer")
+        assert canonical == "ale"
+
+    def test_cerveza_normalizes_to_beer(self):
+        """'Cerveza' on Spanish-language labels should match 'beer' class."""
+        canonical, _ = normalize_class_type("Cerveza", "beer")
+        assert canonical == "beer"
+
+    def test_cerveza_malt_beverages(self):
+        """'Cerveza' should also work with beverage_type='malt_beverages'."""
+        canonical, _ = normalize_class_type("Cerveza", "malt_beverages")
+        assert canonical == "beer"
+
     def test_empty_string(self):
         canonical, _ = normalize_class_type("", "distilled_spirits")
         assert canonical is None

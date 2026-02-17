@@ -75,6 +75,9 @@ class ComplianceChecker:
         mandatory = self.MANDATORY_FIELDS.get(beverage_type, [])
 
         for field in mandatory:
+            # For imports, importer satisfies the producer requirement (27 CFR 5.63)
+            if field == "producer_name" and is_imported and extracted_fields.get("importer_name"):
+                continue
             if field not in extracted_fields or not extracted_fields[field]:
                 label = FIELD_LABELS.get(field, field)
                 citation = self.FIELD_CITATIONS.get(field, "")

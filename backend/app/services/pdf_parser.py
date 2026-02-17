@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 import fitz  # PyMuPDF
 import pdfplumber
+from PIL import Image
 
 from app.models.schemas import ApplicationData
 
@@ -59,6 +60,38 @@ def _infer_beverage_type(class_type: str) -> str:
         if kw in lower:
             return "beer"
     return "distilled_spirits"
+
+
+def _is_signature_image(image_bytes: bytes, white_threshold: float = 0.80) -> bool:
+    """Detect TTB officer signature images (handwriting on white background).
+
+    Signature images are overwhelmingly white (>80%) and nearly fully
+    grayscale (>95%).  Real label strips -- even thin ones like neck bands
+    -- contain colour and much less white space.
+    """
+    try:
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception:
+        return False
+
+    # get_flattened_data() replaces getdata() in Pillow 14+
+    pixels = img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
+    total = len(pixels)
+    if total == 0:
+        return False
+
+    white_count = 0
+    gray_count = 0
+    for r, g, b in pixels:
+        if r > 240 and g > 240 and b > 240:
+            white_count += 1
+        if abs(r - g) < 15 and abs(g - b) < 15:
+            gray_count += 1
+
+    white_pct = white_count / total
+    gray_pct = gray_count / total
+
+    return white_pct >= white_threshold and gray_pct >= 0.95
 
 
 def _classify_panel(image_type_text: str) -> str:
@@ -242,6 +275,7 @@ class COLAPDFParser:
 
         # Strategy: collect candidate lines from the applicant region
         applicant_lines = []
+        tradename = None
         in_applicant = False
         past_serial = False
 
@@ -278,6 +312,18 @@ class COLAPDFParser:
                 continue
 
             if past_serial:
+                # Check for tradename line: "140161 WINE SAILOR JERRY RUM (Used on label)"
+                if "(Used on label)" in cleaned:
+                    # Strip serial/product-type prefix and "(Used on label)" suffix
+                    # Serial formats: "140161", "15STL1", "1606BA", etc.
+                    tn = re.sub(r"\s*\(Used on label\)\s*$", "", cleaned)
+                    tn = re.sub(
+                        r"^[\dA-Z]+\s+(?:WINE|DISTILLED SPIRITS|MALT BEVERAGE)\s+",
+                        "", tn,
+                    ).strip()
+                    if tn:
+                        tradename = tn
+                    continue
                 # Lines after SERIAL NUMBER may have address in right column
                 # "(Required) (Required) 134 N 3300 E" -> extract address part
                 after = re.sub(r"^\(Required\)\s*\(Required\)\s*", "", cleaned)
@@ -304,10 +350,10 @@ class COLAPDFParser:
             return (None, None)
 
         # First line may contain permit number + "Imported"/"Domestic" + applicant name
-        # Permit formats: BW-NJ-68, NY-I-490, DSP-NC-15011, DSP-ID-2
+        # Permit formats: BW-NJ-68, NY-I-490, DSP-NC-15011, DSP-ID-2, BR-AL-GOO-15000
         first = applicant_lines[0]
         name_part = re.sub(
-            r"^[A-Z]{1,4}(?:-[A-Z]{1,2}){1,2}-\d+\s*(?:Imported|Domestic)?\s*",
+            r"^[A-Z]{1,4}(?:-[A-Z]{1,3}){1,3}-\d+\s*(?:Imported|Domestic)?\s*",
             "",
             first,
         ).strip()
@@ -323,11 +369,18 @@ class COLAPDFParser:
 
         name = re.sub(r"\s*\(Used on label\)\s*$", "", name).strip()
 
+        # Prefer tradename (DBA) over legal applicant name — it's what appears on the label
+        if tradename:
+            name = tradename
+
         addr_parts = []
         for line in address_lines:
             if re.match(r"^\d+\.\s", line) or "MAILING ADDRESS" in line:
                 break
-            addr_parts.append(line)
+            # Strip "(Used on label)" COLA form annotations from address lines
+            cleaned_line = re.sub(r"\s*\(Used on label\)\s*", "", line).strip()
+            if cleaned_line:
+                addr_parts.append(cleaned_line)
 
         address = ", ".join(addr_parts) if addr_parts else None
 
@@ -375,7 +428,7 @@ class COLAPDFParser:
         Multiple net contents values may appear on subsequent lines.
         """
         _NC_PATTERN = re.compile(
-            r"(\d+\.?\d*\s*(?:MILLILITERS?|LITERS?|ML|L|FL\.?\s*OZ))",
+            r"(\d+\.?\d*\s*(?:MILLILITERS?|LITERS?|ML|L|FL\.?\s*OZ|QT\.?|QUARTS?|GAL\.?|GALLONS?|PT\.?|PINTS?))",
             re.IGNORECASE,
         )
 
@@ -402,7 +455,18 @@ class COLAPDFParser:
                 # ABV is the number after the net contents on the FIRST line
                 if abv is None:
                     remainder = stripped[nc_match.end():].strip()
-                    abv_match = re.match(r"(\d+\.?\d*%?)\b", remainder)
+                    # Skip additional net contents values in compound expressions
+                    # (e.g. "1 QT. 8 FL. OZ. ..." — "8 FL. OZ." is more net contents)
+                    while True:
+                        more_nc = _NC_PATTERN.match(remainder)
+                        if more_nc:
+                            remainder = remainder[more_nc.end():].strip()
+                        else:
+                            break
+                    # Strip parenthetical annotations like "(SAKE only)"
+                    remainder = re.sub(r"\([^)]*\)", "", remainder).strip()
+                    # Match ABV: single value or range (e.g. "15-16")
+                    abv_match = re.match(r"(\d+\.?\d*)(?:%|\s*-\s*\d+\.?\d*)?\b", remainder)
                     if abv_match:
                         abv = abv_match.group(1)
             elif not nc_values:
@@ -411,9 +475,32 @@ class COLAPDFParser:
                 if nc_search:
                     nc_values.append(nc_search.group(1).strip())
                     remainder = stripped[nc_search.end():].strip()
-                    abv_match = re.match(r"(\d+\.?\d*%?)\b", remainder)
+                    remainder = re.sub(r"\([^)]*\)", "", remainder).strip()
+                    abv_match = re.match(r"(\d+\.?\d*)(?:%|\s*-\s*\d+\.?\d*)?\b", remainder)
                     if abv_match:
                         abv = abv_match.group(1)
+
+        # Fallback: search all collected content lines for ABV with % sign
+        # (handles cases like "3.6% IF ON LABEL" embedded in complex lines)
+        if abv is None and in_contents:
+            for line in lines:
+                pct_match = re.search(r"(\d+\.?\d*)%", line)
+                if pct_match and "NET CONTENTS" not in line:
+                    abv = pct_match.group(1)
+                    break
+
+        # For compound net contents (e.g. "1 QT. 8 FL. OZ. (40 FL. OZ.)"),
+        # prefer the parenthetical total if it contains a recognized unit.
+        # The parenthetical may span lines in pdfplumber output.
+        if nc_values:
+            full_nc_text = " ".join(lines)
+            # Match "(40 FL. OZ.)" even when split across lines with intervening text
+            paren_nc = re.search(
+                r"\((\d+\.?\d*)\s*FL.*?OZ\s*\.?\)",
+                full_nc_text, re.IGNORECASE,
+            )
+            if paren_nc:
+                nc_values = [f"{paren_nc.group(1)} FL. OZ"]
 
         net_contents = "\n".join(nc_values) if nc_values else None
         return (net_contents, abv)
@@ -441,6 +528,7 @@ class COLAPDFParser:
 
             # Collect qualifying XObject images for this page
             page_images: list[bytes] = []
+            had_signature = False
             for img_info in images:
                 xref = img_info[0]
                 try:
@@ -460,17 +548,36 @@ class COLAPDFParser:
                 ):
                     continue
 
+                # Filter TTB officer signature images: thin wide strips that
+                # are mostly white/grayscale (handwriting on white background).
+                # Real label strips (neck bands, back labels) have color content.
+                short_side = min(width, height)
+                long_side = max(width, height)
+                if short_side < 200 and long_side / short_side > 3.0:
+                    if _is_signature_image(img_bytes):
+                        had_signature = True
+                        continue
+
                 page_images.append(img_bytes)
 
             # Pixmap fallback: render full page as PNG when no XObject images
             # but ONLY if the page has Image Type annotations (label page).
             # Pages with no images and no annotations are form/certificate
             # pages -- skip them.
+            # Also skip if we just filtered a signature: the page is a
+            # certificate/approval page, not a label page.
             if not page_images:
                 if page_num not in image_types_by_page:
                     continue
+                if had_signature:
+                    continue
                 pixmap = page.get_pixmap(dpi=150)
-                page_images = [pixmap.tobytes("png")]
+                png_bytes = pixmap.tobytes("png")
+                # Skip mostly-blank pages (metadata-only pages that list
+                # "Image Type:" + "Actual Dimensions:" but have no label)
+                if _is_signature_image(png_bytes, white_threshold=0.90):
+                    continue
+                page_images = [png_bytes]
 
             page_annotations = image_types_by_page.get(page_num, [])
             for ann_idx, img_bytes in enumerate(page_images):
@@ -493,11 +600,21 @@ class COLAPDFParser:
         doc.close()
         return label_images
 
+    # Form/certificate page markers -- pages with these are NOT label pages
+    # even if they contain "Image Type:" annotations.
+    _FORM_BOILERPLATE = (
+        "PREVIOUS EDITIONS ARE OBSOLETE",
+        "AUTHORIZED SIGNATURE",
+    )
+
     def _extract_image_type_annotations(self, pdf_bytes: bytes) -> dict[int, list[str]]:
         """Extract 'Image Type:' text annotations from pages 2+.
 
         Returns a dict mapping page number (0-indexed from doc start) to
         the list of annotation strings found on that page.
+
+        Pages containing form boilerplate (signature/certificate pages) are
+        excluded even if they contain Image Type annotations.
         """
         types_by_page: dict[int, list[str]] = {}
         try:
@@ -507,6 +624,11 @@ class COLAPDFParser:
 
         for page in pdf.pages[1:]:
             text = page.extract_text() or ""
+
+            # Skip form/certificate pages (may have Image Type text but no labels)
+            if any(marker in text for marker in self._FORM_BOILERPLATE):
+                continue
+
             page_types = [
                 match.group(1).strip()
                 for match in re.finditer(r"Image Type:\n(.+?)(?:\n|$)", text)

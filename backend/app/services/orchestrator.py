@@ -177,11 +177,68 @@ class VerificationOrchestrator:
             specialty_class_data=specialty_class_data,
         )
 
+        # 5b. ABV re-extraction on mismatch (small labels often misread)
+        abv_result = next(
+            (r for r in comparison_results if r.field_name == "alcohol_content"), None
+        )
+        if (
+            abv_result
+            and abv_result.status in ("content_mismatch", "extraction_uncertain")
+            and isinstance(self.extraction_service, AnthropicExtractor)
+        ):
+            back_idx = next((i for i, p in enumerate(panels) if p == "back"), None)
+            reextract_idx = back_idx if back_idx is not None else 0
+            reextracted_abv, abv_stats = await self.extraction_service.reextract_abv(
+                processed_images[reextract_idx]
+            )
+            if abv_stats:
+                all_llm_stats.append(abv_stats)
+            if reextracted_abv:
+                new_status, new_conf, new_reason, new_found = self.text_matcher.match_abv(
+                    application_data.alcohol_content, f"{reextracted_abv}%"
+                )
+                if new_status == "match":
+                    abv_result.status = new_status
+                    abv_result.confidence = new_conf
+                    abv_result.confidence_reason = f"ABV confirmed via re-extraction: {new_reason}"
+                    abv_result.extracted_value = new_found
+
+        # 5c. Net contents re-extraction on mismatch/missing
+        nc_result = next(
+            (r for r in comparison_results if r.field_name == "net_contents"), None
+        )
+        if (
+            nc_result
+            and nc_result.status in ("content_mismatch", "field_missing")
+            and isinstance(self.extraction_service, AnthropicExtractor)
+        ):
+            # Try front label first (net contents usually on front), fallback to back
+            front_idx = next((i for i, p in enumerate(panels) if p == "front"), 0)
+            reextracted_nc, nc_stats = await self.extraction_service.reextract_net_contents(
+                processed_images[front_idx]
+            )
+            if nc_stats:
+                all_llm_stats.append(nc_stats)
+            if reextracted_nc:
+                new_status, new_conf, new_reason, new_found = self.text_matcher.match_net_contents(
+                    application_data.net_contents, reextracted_nc
+                )
+                if new_status == "match":
+                    nc_result.status = new_status
+                    nc_result.confidence = new_conf
+                    nc_result.confidence_reason = f"Net contents confirmed via re-extraction: {new_reason}"
+                    nc_result.extracted_value = new_found
+
         # 6. Build extracted_fields dict for compliance checker
         # (compliance checker expects a dict of field_name -> value)
+        # Use match status to determine field presence -- text-search fields
+        # return None as extracted_value even when matched.
         extracted_fields = {}
         for cr in comparison_results:
-            extracted_fields[cr.field_name] = cr.extracted_value
+            if cr.status in ("match", "content_mismatch", "extraction_uncertain"):
+                extracted_fields[cr.field_name] = cr.extracted_value or cr.declared_value or "PRESENT"
+            else:
+                extracted_fields[cr.field_name] = None
 
         # 7. Run compliance checks
         is_imported = bool(application_data.country_of_origin or application_data.importer_name)
@@ -191,6 +248,10 @@ class VerificationOrchestrator:
             is_imported=is_imported,
             requires_sulfites=application_data.has_sulfites_declaration,
         )
+
+        # Filter out country_of_origin compliance issue when COLA didn't declare one
+        if not application_data.country_of_origin:
+            compliance_issues = [i for i in compliance_issues if i.field_name != "country_of_origin"]
 
         # Merge compliance issues into comparison results
         enriched_results = list(comparison_results)

@@ -83,23 +83,23 @@ class TestPostVerify:
         )
         assert resp.status_code == 422
 
-    def test_stub_pdf_no_images(self, client):
-        """A stub PDF with no label images should return 422."""
+    def test_pdf_with_small_labels_processes_ok(self, client):
+        """11038001000727.pdf has small but real labels (banner filtered)."""
         import os
-        stub_path = os.path.join(
+        pdf_path = os.path.join(
             os.path.dirname(__file__),
             "..", "..", "data", "applications", "11038001000727.pdf"
         )
-        if not os.path.exists(stub_path):
-            pytest.skip("Stub PDF fixture not found")
+        if not os.path.exists(pdf_path):
+            pytest.skip("PDF fixture not found")
 
-        with open(stub_path, "rb") as f:
+        with open(pdf_path, "rb") as f:
             resp = client.post(
                 "/api/v1/verify",
-                files={"cola_pdf": ("stub.pdf", f, "application/pdf")},
+                files={"cola_pdf": ("test.pdf", f, "application/pdf")},
             )
-        assert resp.status_code == 422
-        assert "No label images" in resp.json()["detail"]
+        # PDF has real label images after banner filtering
+        assert resp.status_code == 200
 
 
 class TestGetVerification:

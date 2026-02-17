@@ -47,7 +47,7 @@ TTB_SPIRIT_CLASSES: dict[str, list[str]] = {
     "dry gin": ["dry gin"],
     "london dry gin": ["london dry gin"],
     # Rum
-    "rum": ["rum"],
+    "rum": ["rum", "cachaca", "cachaça"],
     "flavored rum": ["flavored rum"],
     # Brandy
     "brandy": ["brandy"],
@@ -81,6 +81,7 @@ TTB_WINE_CLASSES: dict[str, list[str]] = {
     "vermouth": ["vermouth"],
     "sake": ["sake"],
     "fruit wine": ["fruit wine"],
+    "flavored wine": ["flavored wine"],
     "mead": ["mead", "honey wine"],
 }
 
@@ -88,7 +89,7 @@ TTB_WINE_CLASSES: dict[str, list[str]] = {
 # TTB Malt Beverage Classes (27 CFR Part 7)
 # ---------------------------------------------------------------------------
 TTB_BEER_CLASSES: dict[str, list[str]] = {
-    "beer": ["beer"],
+    "beer": ["beer", "cerveza"],
     "ale": ["ale"],
     "lager": ["lager"],
     "stout": ["stout"],
@@ -103,6 +104,7 @@ _CLASS_MAPS: dict[str, dict[str, list[str]]] = {
     "distilled_spirits": TTB_SPIRIT_CLASSES,
     "wine": TTB_WINE_CLASSES,
     "malt_beverages": TTB_BEER_CLASSES,
+    "beer": TTB_BEER_CLASSES,
 }
 
 # ---------------------------------------------------------------------------
@@ -130,6 +132,11 @@ QUALIFIER_PATTERNS: list[re.Pattern] = [
     re.compile(r"^single\s+barrel\s+", re.IGNORECASE),
     # Wine geographic appendages
     re.compile(r"\s+from\s+.+", re.IGNORECASE),
+    # TTB category prefixes/suffixes that don't appear on labels
+    re.compile(r"^table\s+", re.IGNORECASE),  # "TABLE RED WINE" -> "RED WINE"
+    re.compile(r"^other\s+", re.IGNORECASE),  # "OTHER RUM GOLD" -> "RUM GOLD"
+    re.compile(r"\s*\([^)]*\)\s*$"),  # "(UNDER 48 PROOF)" parenthetical qualifiers
+    re.compile(r"\s+USB$", re.IGNORECASE),  # "USB" (U.S. Blend) suffix
 ]
 
 # Pattern for flavored spirits: "<flavor> Flavored <base>"
