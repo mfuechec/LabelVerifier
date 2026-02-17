@@ -1,17 +1,11 @@
 from fastapi import APIRouter, Query, Request
-from app.db.setup import get_db
+from app.api.dependencies import get_db, get_db_path
 
 router = APIRouter()
 
 
-def get_db_path(request: Request | None = None) -> str:
-    if request and hasattr(request.app.state, "db_path"):
-        return request.app.state.db_path
-    return "data/labelverify.db"
-
-
 @router.get("/verifications")
-async def list_verifications(
+def list_verifications(
     request: Request,
     status: str | None = None,
     beverage_type: str | None = None,

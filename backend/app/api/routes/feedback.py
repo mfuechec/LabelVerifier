@@ -2,19 +2,13 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 from app.models.schemas import OverrideRequest, DecisionRequest, FeedbackRequest
-from app.db.setup import get_db
+from app.api.dependencies import get_db, get_db_path
 
 router = APIRouter()
 
 
-def get_db_path(request: Request | None = None) -> str:
-    if request and hasattr(request.app.state, "db_path"):
-        return request.app.state.db_path
-    return "data/labelverify.db"
-
-
 @router.patch("/verify/{session_id}/fields/{field_name}")
-async def override_field(
+def override_field(
     session_id: str,
     field_name: str,
     body: OverrideRequest,
@@ -42,7 +36,7 @@ async def override_field(
 
 
 @router.post("/verify/{session_id}/decision")
-async def submit_decision(
+def submit_decision(
     session_id: str,
     body: DecisionRequest,
     request: Request,
@@ -70,7 +64,7 @@ async def submit_decision(
 
 
 @router.post("/verify/{session_id}/feedback")
-async def submit_feedback(
+def submit_feedback(
     session_id: str,
     body: FeedbackRequest,
     request: Request,

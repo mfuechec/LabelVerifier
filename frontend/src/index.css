@@ -814,3 +814,297 @@ table {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--slate-400);
 }
+
+/* OverallStatus */
+.results-overall {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: var(--slate-50);
+  margin-bottom: 1rem;
+}
+
+.results-overall-info {
+  margin-left: 1rem;
+  color: var(--slate-500);
+  font-size: 0.875rem;
+}
+
+.results-confidence {
+  text-align: right;
+}
+
+.results-confidence-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.results-confidence-label {
+  font-size: 0.75rem;
+  color: var(--slate-400);
+}
+
+/* ComparisonTable */
+.comparison-table-wrap {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.comparison-th {
+  padding: 0.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--slate-500);
+}
+
+.comparison-table thead tr {
+  border-bottom: 2px solid var(--slate-200);
+}
+
+/* ComparisonRow */
+.comparison-row {
+  cursor: pointer;
+}
+
+.comparison-row.highlighted {
+  background-color: #eff6ff;
+}
+
+.comparison-cell {
+  padding: 0.75rem 0.5rem;
+}
+
+.comparison-cell-field {
+  padding: 0.75rem 0.5rem;
+  font-weight: 500;
+}
+
+.comparison-cell-value {
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-override {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border: 1px solid var(--slate-300);
+  border-radius: 4px;
+  background-color: var(--white);
+  cursor: pointer;
+}
+
+/* AgentDecisionBar */
+.agent-decision-bar {
+  padding: 1rem;
+  border-top: 1px solid var(--slate-200);
+  margin-top: 1rem;
+}
+
+.agent-decision-bar p {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.agent-decision-notes {
+  margin-bottom: 0.75rem;
+}
+
+.agent-decision-notes textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--slate-300);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.agent-decision-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-confirm {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: var(--emerald-600);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.btn-override-decision {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background-color: var(--red-600);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+}
+
+/* OverrideModal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-dialog {
+  background-color: var(--white);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 400px;
+  max-width: 90vw;
+}
+
+.modal-dialog h3 {
+  margin-bottom: 1rem;
+}
+
+.modal-field {
+  margin-bottom: 1rem;
+}
+
+.modal-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.modal-field select,
+.modal-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--slate-300);
+  border-radius: 4px;
+}
+
+.modal-field textarea {
+  resize: vertical;
+}
+
+.modal-field-note {
+  margin-bottom: 1.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-modal-cancel {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--slate-300);
+  border-radius: 4px;
+  background-color: var(--white);
+  cursor: pointer;
+}
+
+.btn-modal-save {
+  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  color: var(--white);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* FeedbackWidget */
+.feedback-widget {
+  padding: 0.75rem;
+  background-color: var(--slate-50);
+  border-radius: 4px;
+}
+
+.feedback-widget p {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: var(--slate-500);
+}
+
+.feedback-widget-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.feedback-success {
+  padding: 0.75rem;
+  background-color: var(--emerald-50);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.feedback-success p {
+  color: var(--emerald-600);
+  font-weight: 500;
+}
+
+.btn-feedback-correct {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--emerald-600);
+  border-radius: 4px;
+  background-color: var(--white);
+  color: var(--emerald-600);
+  cursor: pointer;
+  flex: 1;
+}
+
+.btn-feedback-incorrect {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--red-600);
+  border-radius: 4px;
+  background-color: var(--white);
+  color: var(--red-600);
+  cursor: pointer;
+  flex: 1;
+}
+
+/* AnnotatedLabelViewer */
+.label-viewer-empty {
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--slate-100);
+  border-radius: 8px;
+  color: var(--slate-400);
+}
+
+.label-viewer {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.label-viewer img {
+  width: 100%;
+  display: block;
+}
+
+.label-viewer-overlay {
+  position: absolute;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.label-viewer-overlay.highlighted {
+  background-color: rgba(59, 130, 246, 0.15);
+}

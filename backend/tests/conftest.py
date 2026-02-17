@@ -1,4 +1,8 @@
 import os
+
+# Must be set before any app imports so create_app() skips config validation
+os.environ["TESTING"] = "1"
+
 import tempfile
 import pytest
 import sqlite3

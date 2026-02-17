@@ -5,10 +5,10 @@ from app.services.extraction import ExtractionService
 
 
 @pytest.fixture
-def mock_anthropic_response():
-    """Create a mock Anthropic API response."""
-    mock_content = MagicMock()
-    mock_content.text = json.dumps({
+def mock_groq_response():
+    """Create a mock Groq API response."""
+    mock_message = MagicMock()
+    mock_message.content = json.dumps({
         "fields": {
             "brand_name": {
                 "value": "Test Brand",
@@ -30,30 +30,33 @@ def mock_anthropic_response():
         "extraction_notes": "Clear label, good readability"
     })
 
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+
     mock_response = MagicMock()
-    mock_response.content = [mock_content]
+    mock_response.choices = [mock_choice]
     return mock_response
 
 
 class TestExtractionService:
     @pytest.mark.asyncio
-    async def test_extract_fields_calls_api(self, mock_anthropic_response):
-        with patch("app.services.extraction.anthropic") as mock_anthropic:
+    async def test_extract_fields_calls_api(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
             mock_client = AsyncMock()
-            mock_client.messages.create = AsyncMock(return_value=mock_anthropic_response)
-            mock_anthropic.AsyncAnthropic.return_value = mock_client
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
 
             service = ExtractionService(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
 
-            mock_client.messages.create.assert_called_once()
+            mock_client.chat.completions.create.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_extract_fields_parses_response(self, mock_anthropic_response):
-        with patch("app.services.extraction.anthropic") as mock_anthropic:
+    async def test_extract_fields_parses_response(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
             mock_client = AsyncMock()
-            mock_client.messages.create = AsyncMock(return_value=mock_anthropic_response)
-            mock_anthropic.AsyncAnthropic.return_value = mock_client
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
 
             service = ExtractionService(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
@@ -64,16 +67,19 @@ class TestExtractionService:
 
     @pytest.mark.asyncio
     async def test_extract_fields_malformed_json(self):
-        mock_content = MagicMock()
-        mock_content.text = "This is not valid JSON"
+        mock_message = MagicMock()
+        mock_message.content = "This is not valid JSON"
+
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
 
         mock_response = MagicMock()
-        mock_response.content = [mock_content]
+        mock_response.choices = [mock_choice]
 
-        with patch("app.services.extraction.anthropic") as mock_anthropic:
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
             mock_client = AsyncMock()
-            mock_client.messages.create = AsyncMock(return_value=mock_response)
-            mock_anthropic.AsyncAnthropic.return_value = mock_client
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+            mock_groq_cls.return_value = mock_client
 
             service = ExtractionService(api_key="test-key")
             result = await service.extract_fields(b"fake-image-bytes", "front")
@@ -82,16 +88,16 @@ class TestExtractionService:
             assert len(result.fields) == 0
 
     @pytest.mark.asyncio
-    async def test_prompt_includes_required_fields(self, mock_anthropic_response):
-        with patch("app.services.extraction.anthropic") as mock_anthropic:
+    async def test_prompt_includes_required_fields(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
             mock_client = AsyncMock()
-            mock_client.messages.create = AsyncMock(return_value=mock_anthropic_response)
-            mock_anthropic.AsyncAnthropic.return_value = mock_client
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
 
             service = ExtractionService(api_key="test-key")
             await service.extract_fields(b"fake-image-bytes", "front")
 
-            call_kwargs = mock_client.messages.create.call_args
+            call_kwargs = mock_client.chat.completions.create.call_args
             messages = call_kwargs.kwargs.get("messages") or call_kwargs[1].get("messages")
             prompt_text = str(messages)
 
@@ -100,20 +106,46 @@ class TestExtractionService:
             assert "bounding_box" in prompt_text
 
     @pytest.mark.asyncio
-    async def test_image_sent_as_base64(self, mock_anthropic_response):
-        with patch("app.services.extraction.anthropic") as mock_anthropic:
+    async def test_uses_configured_model(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
             mock_client = AsyncMock()
-            mock_client.messages.create = AsyncMock(return_value=mock_anthropic_response)
-            mock_anthropic.AsyncAnthropic.return_value = mock_client
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
+
+            service = ExtractionService(api_key="test-key", model="custom/model-name")
+            await service.extract_fields(b"fake-image-bytes", "front")
+
+            call_kwargs = mock_client.chat.completions.create.call_args
+            assert call_kwargs.kwargs.get("model") == "custom/model-name"
+
+    @pytest.mark.asyncio
+    async def test_default_model(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
+            mock_client = AsyncMock()
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
 
             service = ExtractionService(api_key="test-key")
             await service.extract_fields(b"fake-image-bytes", "front")
 
-            call_kwargs = mock_client.messages.create.call_args
+            call_kwargs = mock_client.chat.completions.create.call_args
+            assert call_kwargs.kwargs.get("model") == "meta-llama/llama-4-scout-17b-16e-instruct"
+
+    @pytest.mark.asyncio
+    async def test_image_sent_as_base64(self, mock_groq_response):
+        with patch("app.services.extraction.AsyncGroq") as mock_groq_cls:
+            mock_client = AsyncMock()
+            mock_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+            mock_groq_cls.return_value = mock_client
+
+            service = ExtractionService(api_key="test-key")
+            await service.extract_fields(b"fake-image-bytes", "front")
+
+            call_kwargs = mock_client.chat.completions.create.call_args
             messages = call_kwargs.kwargs.get("messages") or call_kwargs[1].get("messages")
             content = messages[0]["content"]
 
-            # First content block should be the image
+            # First content block should be the image URL
             image_block = content[0]
-            assert image_block["type"] == "image"
-            assert image_block["source"]["type"] == "base64"
+            assert image_block["type"] == "image_url"
+            assert "base64" in image_block["image_url"]["url"]

@@ -1,13 +1,19 @@
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-import os
 
 from app.config import settings
 from app.api.routes import verify, history, feedback, health
+from app.db.setup import get_db, create_tables
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
+    settings.validate_required()
+
     app = FastAPI(
         title="LabelVerify AI",
         description="AI-powered alcohol label verification for TTB Compliance",
@@ -30,6 +36,22 @@ def create_app() -> FastAPI:
     # Ensure data directories exist
     os.makedirs("data/uploads", exist_ok=True)
     os.makedirs("data/annotated", exist_ok=True)
+
+    # Create database tables on startup
+    conn = get_db()
+    create_tables(conn)
+    conn.close()
+
+    # Log config (redacting secrets) for deploy diagnostics
+    redacted_key = (
+        settings.groq_api_key[:4] + "***" if settings.groq_api_key else "<not set>"
+    )
+    logger.info(
+        "LabelVerify starting: origins=%s, db=%s, groq_key=%s",
+        settings.allowed_origins,
+        settings.database_url,
+        redacted_key,
+    )
 
     return app
 

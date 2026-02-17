@@ -4,7 +4,7 @@ import pytest
 from app.services.orchestrator import VerificationOrchestrator
 from app.services.extraction import ExtractionResult
 from app.services.comparison import CANONICAL_WARNING
-from app.models.schemas import ApplicationData
+from app.models.schemas import ApplicationData, FieldComparisonResult
 
 
 @pytest.fixture
@@ -169,3 +169,54 @@ class TestVerificationOrchestrator:
         assert row is not None
         assert row["beverage_type"] == "distilled_spirits"
         conn.close()
+
+    def test_persist_session_is_atomic(self, app_data, tmp_db):
+        """Verify _persist_session is atomic: calling with a duplicate session_id
+        should fail, and no partial application row should be left behind."""
+        from app.db.setup import get_db, create_tables
+        conn = get_db(tmp_db)
+        create_tables(conn)
+        conn.close()
+
+        orchestrator = VerificationOrchestrator(db_path=tmp_db)
+
+        fields = [
+            FieldComparisonResult(
+                field_name="brand_name",
+                declared_value="Test",
+                extracted_value="Test",
+                status="match",
+                confidence=95.0,
+                match_strategy="fuzzy",
+            )
+        ]
+
+        # First call succeeds
+        orchestrator._persist_session(
+            "dup-session", app_data, fields, 95.0, "pass",
+            "2026-02-14T10:00:00Z",
+        )
+
+        # Count applications before the failing second call
+        conn = get_db(tmp_db)
+        app_count_before = conn.execute(
+            "SELECT COUNT(*) as cnt FROM applications"
+        ).fetchone()["cnt"]
+        conn.close()
+
+        # Second call with same session_id should fail on PK constraint
+        with pytest.raises(Exception):
+            orchestrator._persist_session(
+                "dup-session", app_data, fields, 95.0, "pass",
+                "2026-02-14T10:00:00Z",
+            )
+
+        # Verify no extra application row was persisted (atomic rollback)
+        conn = get_db(tmp_db)
+        app_count_after = conn.execute(
+            "SELECT COUNT(*) as cnt FROM applications"
+        ).fetchone()["cnt"]
+        conn.close()
+        assert app_count_after == app_count_before, (
+            "No extra application row should exist after failed duplicate insert"
+        )
