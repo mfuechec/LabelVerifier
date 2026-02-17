@@ -19,7 +19,7 @@ python -m evals.run_eval --output results.json
 
 ## Files
 
-- **ground_truth.json** - JSON schema for ground truth data format
+- **ground_truth_schema.json** - JSON schema for ground truth data format
 - **ground_truth_data.json** - Actual ground truth entries (edit this!)
 - **run_eval.py** - Main evaluation script
 

@@ -21,13 +21,11 @@ import asyncio
 import glob
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from rapidfuzz import fuzz
 
@@ -86,8 +84,9 @@ class FieldStats:
     present_extracted: int = 0  # Actually extracted a value
     true_positives: int = 0  # Correctly extracted when expected
     false_positives: int = 0  # Extracted when should be null
-    false_negatives: int = 0  # Missed when should be present
+    false_negatives: int = 0  # Not extracted when should be present
     true_negatives: int = 0  # Correctly null when expected null
+    content_mismatches: int = 0  # Extracted but wrong value
     # Confidence calibration
     high_conf_correct: int = 0
     high_conf_total: int = 0
@@ -139,7 +138,6 @@ def normalize_for_comparison(text: str | None) -> str:
     if text is None:
         return ""
     # Collapse whitespace, lowercase, strip
-    import re
     text = re.sub(r'\s+', ' ', text.strip().lower())
     return text
 
@@ -282,9 +280,11 @@ def aggregate_stats(results: EvalResults) -> None:
             # Confusion matrix
             if fr.expected is not None and fr.extracted is not None and fr.correct:
                 stats.true_positives += 1
+            elif fr.expected is not None and fr.extracted is not None and not fr.correct:
+                stats.content_mismatches += 1
             elif fr.expected is None and fr.extracted is not None:
                 stats.false_positives += 1
-            elif fr.expected is not None and (fr.extracted is None or not fr.correct):
+            elif fr.expected is not None and fr.extracted is None:
                 stats.false_negatives += 1
             elif fr.expected is None and fr.extracted is None:
                 stats.true_negatives += 1
@@ -372,7 +372,7 @@ def print_results(results: EvalResults) -> None:
     
     if problem_fields:
         for name, stats in problem_fields:
-            print(f"  {name}: {stats.accuracy:.1%} accuracy ({stats.false_negatives} missed, {stats.false_positives} hallucinated)")
+            print(f"  {name}: {stats.accuracy:.1%} accuracy ({stats.false_negatives} missed, {stats.false_positives} hallucinated, {stats.content_mismatches} wrong value)")
     else:
         print("  All fields performing above 90% accuracy!")
     
@@ -455,7 +455,8 @@ async def main():
         if not image_paths:
             print(f"No images found matching: {args.generate_template}")
             sys.exit(1)
-        generate_template(image_paths, "evals/ground_truth_template.json")
+        template_path = str(Path(__file__).parent / "ground_truth_template.json")
+        generate_template(image_paths, template_path)
         return
     
     # Load ground truth
@@ -488,20 +489,27 @@ async def main():
         )
     
     print(f"Evaluating {len(labels)} labels with {args.provider}...")
-    
-    # Run evaluation
+
+    # Run evaluation with bounded concurrency
+    MAX_CONCURRENT = 5
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT)
     results = EvalResults(total_labels=len(labels))
-    
-    for label in labels:
-        print(f"  Processing: {label['id']}...", end=" ", flush=True)
-        label_result = await evaluate_label(extractor, label, base_path)
+
+    async def eval_with_semaphore(label: dict) -> LabelResult:
+        async with semaphore:
+            return await evaluate_label(extractor, label, base_path)
+
+    label_results = await asyncio.gather(
+        *(eval_with_semaphore(label) for label in labels)
+    )
+
+    for label, label_result in zip(labels, label_results):
         results.label_results.append(label_result)
-        
         if label_result.extraction_error:
-            print(f"ERROR: {label_result.extraction_error[:50]}")
+            print(f"  {label['id']}: ERROR: {label_result.extraction_error[:50]}")
         else:
             correct = sum(1 for fr in label_result.field_results if fr.correct)
-            print(f"{correct}/{len(EVAL_FIELDS)} fields correct")
+            print(f"  {label['id']}: {correct}/{len(EVAL_FIELDS)} fields correct")
     
     # Aggregate and print results
     aggregate_stats(results)

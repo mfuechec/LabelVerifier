@@ -1,13 +1,18 @@
 """
 Cost calculation for LLM API usage.
 
-Pricing as of February 2025 (update as needed):
+Pricing as of February 2026 (update as needed):
 - Anthropic Claude Sonnet 4.5: $3/MTok input, $15/MTok output
-- Anthropic Claude Opus 4: $15/MTok input, $75/MTok output
+- Anthropic Claude Opus 4.5: $15/MTok input, $75/MTok output
 - Groq Llama models: $0.05/MTok input, $0.08/MTok output (approximate)
+
+Note: Prompt caching pricing is not yet accounted for.
 """
 
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,7 +53,10 @@ def calculate_cost(
     Returns:
         Estimated cost in USD
     """
-    pricing = PRICING.get(model, PRICING["default"])
+    pricing = PRICING.get(model)
+    if pricing is None:
+        logger.warning("No pricing found for model %r, using default (Sonnet) rates", model)
+        pricing = PRICING["default"]
     
     # Convert to millions
     input_mtok = input_tokens / 1_000_000
