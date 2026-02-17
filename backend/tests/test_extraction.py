@@ -443,7 +443,9 @@ class TestAnthropicExtractorIsBaseExtractor:
             extractor = AnthropicExtractor(api_key="test-key")
             result = await extractor.extract_fields(b"fake-image-bytes", "front")
 
-            mock_client.messages.create.assert_called_once()
+            # Called 3 times: initial + warning re-extraction + importer re-extraction
+            # (importer_name is null in fixture, so importer re-extraction triggers)
+            assert mock_client.messages.create.call_count == 3
             assert result.fields["brand_name"]["value"] == "Test Brand"
             assert result.error is None
 
@@ -460,6 +462,102 @@ class TestAnthropicExtractorIsBaseExtractor:
 
             assert result.error is not None
             assert "API error" in result.error
+
+
+class TestAnthropicImporterReextraction:
+    @pytest.mark.asyncio
+    async def test_reextracts_importer_when_missing(self):
+        """When importer_name is null, should do a focused re-extraction."""
+        initial_response = MagicMock()
+        initial_response.content = [MagicMock(text=json.dumps({
+            "brand_name": {"value": "Bärenjäger", "conf": "high"},
+            "importer_name": {"value": None, "conf": "high"},
+            "importer_address": {"value": None, "conf": "high"},
+            "government_warning": {"value": "GOVERNMENT WARNING: test", "conf": "high"},
+        }))]
+
+        warning_response = MagicMock()
+        warning_response.content = [MagicMock(text=json.dumps({
+            "government_warning": {"value": "GOVERNMENT WARNING: test", "conf": "high"},
+        }))]
+
+        importer_response = MagicMock()
+        importer_response.content = [MagicMock(text=json.dumps({
+            "importer_name": {"value": "Sidney Frank Importing Co., Inc.", "conf": "high"},
+            "importer_address": {"value": "New Rochelle, NY", "conf": "high"},
+        }))]
+
+        with patch("app.services.extraction.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(
+                side_effect=[initial_response, warning_response, importer_response]
+            )
+            mock_cls.return_value = mock_client
+
+            extractor = AnthropicExtractor(api_key="test-key")
+            result = await extractor.extract_fields(b"fake-image-bytes", "front")
+
+            assert mock_client.messages.create.call_count == 3
+            assert result.fields["importer_name"]["value"] == "Sidney Frank Importing Co., Inc."
+            assert result.fields["importer_address"]["value"] == "New Rochelle, NY"
+
+    @pytest.mark.asyncio
+    async def test_skips_importer_reextraction_when_present(self):
+        """When importer_name is already extracted, should NOT re-extract."""
+        initial_response = MagicMock()
+        initial_response.content = [MagicMock(text=json.dumps({
+            "brand_name": {"value": "Test", "conf": "high"},
+            "importer_name": {"value": "Already Found Inc.", "conf": "high"},
+            "importer_address": {"value": "Boston, MA", "conf": "high"},
+            "government_warning": {"value": "GOVERNMENT WARNING: test", "conf": "high"},
+        }))]
+
+        warning_response = MagicMock()
+        warning_response.content = [MagicMock(text=json.dumps({
+            "government_warning": {"value": "GOVERNMENT WARNING: test", "conf": "high"},
+        }))]
+
+        with patch("app.services.extraction.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(
+                side_effect=[initial_response, warning_response]
+            )
+            mock_cls.return_value = mock_client
+
+            extractor = AnthropicExtractor(api_key="test-key")
+            result = await extractor.extract_fields(b"fake-image-bytes", "front")
+
+            # Only 2 calls: initial + warning re-extraction (no importer re-extraction)
+            assert mock_client.messages.create.call_count == 2
+            assert result.fields["importer_name"]["value"] == "Already Found Inc."
+
+    @pytest.mark.asyncio
+    async def test_importer_reextraction_failure_keeps_null(self):
+        """If importer re-extraction fails, fields stay null."""
+        initial_response = MagicMock()
+        initial_response.content = [MagicMock(text=json.dumps({
+            "brand_name": {"value": "Test", "conf": "high"},
+            "importer_name": {"value": None, "conf": "high"},
+            "importer_address": {"value": None, "conf": "high"},
+            "government_warning": {"value": "GOVERNMENT WARNING: test", "conf": "high"},
+        }))]
+
+        warning_response = MagicMock()
+        warning_response.content = [MagicMock(text=json.dumps({
+            "government_warning": {"value": "GOVERNMENT WARNING: test", "conf": "high"},
+        }))]
+
+        with patch("app.services.extraction.AsyncAnthropic") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(
+                side_effect=[initial_response, warning_response, Exception("API error")]
+            )
+            mock_cls.return_value = mock_client
+
+            extractor = AnthropicExtractor(api_key="test-key")
+            result = await extractor.extract_fields(b"fake-image-bytes", "front")
+
+            assert result.fields["importer_name"]["value"] is None
 
 
 class TestProviderSelection:

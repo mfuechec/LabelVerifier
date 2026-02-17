@@ -136,7 +136,7 @@ Rules: "GOVERNMENT WARNING:" must be ALL CAPS. Full statement must be word-for-w
 - `railway variables` -- list env vars
 - `railway variables --set "KEY=value"` -- set env vars (auto-triggers redeploy)
 - `railway logs` -- view deployment logs
-- `railway up` -- manual deploy
+- `railway up` -- manual deploy. **CRITICAL: Run from the project root (`LabelVerifier/`), NOT from `backend/`.** Railway applies `RAILWAY_ROOT_DIRECTORY=backend` itself, so running from `backend/` causes it to look for `backend/backend/` which doesn't exist.
 - **LLM Provider:** Currently `anthropic` with `claude-haiku-4-5-20251001`. To switch back to Groq, set `LLM_PROVIDER=groq` and `LLM_MODEL=meta-llama/llama-4-maverick-17b-128e-instruct`
 
 ### Vercel Deployment (Frontend)

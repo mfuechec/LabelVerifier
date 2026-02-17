@@ -41,6 +41,12 @@ export interface ReviewSummary {
   flagged_field_names: string[];
 }
 
+export interface ComplianceIssueResponse {
+  field_name: string;
+  severity: string;
+  message: string;
+}
+
 export interface VerificationResult {
   session_id: string;
   status: 'pending' | 'pass' | 'needs_review' | 'fail';
@@ -50,6 +56,7 @@ export interface VerificationResult {
   annotated_images: Record<string, string>;
   created_at: string;
   review_summary: ReviewSummary | null;
+  compliance_issues: ComplianceIssueResponse[];
 }
 
 export interface HistoryItem {

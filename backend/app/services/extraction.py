@@ -21,14 +21,70 @@ Return ONLY a JSON object exactly like this (no markdown, no extra text):
 {"brand_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
 
 Rules:
-- Replace null with the extracted string value, or keep null if not found
+- Replace null with the extracted string value, or keep null if not found on the label
+- If a field is NOT clearly visible on the label, set value to null. Do NOT guess or fabricate text.
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
-- For class_type, extract the beverage classification designation (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation.
-- For alcohol_content, include the format (e.g. "45% Alc./Vol.")
-- For alcohol_proof, extract proof if separately stated (e.g. "90 Proof")
-- GOVERNMENT WARNING is critical: always include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim -- do NOT summarize, paraphrase, or omit the prefix.
+
+Field-specific guidance:
+- brand_name: The product brand name, usually the most prominent text on the label. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
+- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation
+- alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
+- alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
+- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ"). Read the number carefully
+- producer_name: The company that produced/distilled/bottled the product. Look near phrases like "Produced by", "Bottled by", "Distilled by", "Made by". Extract ONLY the company name, not the surrounding phrase
+- producer_address: The physical location (city, state/country) of the producer. Do NOT extract production statements like "Produced and Bottled in Germany" -- look for an actual city name
+- country_of_origin: The country where the product was made. Look for "Product of [country]", "Made in [country]", "Produced in [country]"
+- importer_name: The importing company name. Look for text AFTER "Imported by" -- extract the company name (e.g. "Sidney Frank Importing Co., Inc."), NOT the "Imported by" prefix itself
+- importer_address: The city and state of the importer, usually printed directly after the importer company name (e.g. "New Rochelle, N.Y.")
+- government_warning: CRITICAL -- include the "GOVERNMENT WARNING:" prefix, then the full text with both numbered points about (1) pregnancy and (2) driving/machinery. Extract every word verbatim
+- sulfites_declaration: Look for "Contains Sulfites" or similar declaration
 - Return ONLY the JSON object"""
+
+# Focused prompt for government warning re-extraction (fix #2)
+WARNING_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to extract the GOVERNMENT WARNING text from this label image.
+
+Focus on finding the block of text that starts with "GOVERNMENT WARNING:" -- it is a legally required statement on all US alcohol labels. It contains two numbered points:
+(1) About women not drinking during pregnancy / risk of birth defects
+(2) About consumption impairing ability to drive / operate machinery / health problems
+
+Read EVERY SINGLE WORD carefully, character by character. Pay special attention to:
+- The exact wording in point (2): it should say "CONSUMPTION OF ALCOHOLIC BEVERAGES" (not just "ALCOHOL")
+- Every word matters for compliance -- do NOT skip, summarize, or paraphrase
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"government_warning": {"value": null, "conf": "high"}}
+
+Rules:
+- Replace null with the full verbatim text starting from "GOVERNMENT WARNING:" through the end of the statement
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- If no government warning is visible on this label, return null
+- Extract EXACTLY as printed -- do NOT correct errors"""
+
+# Focused prompt for importer re-extraction when initial pass returns null
+IMPORTER_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find and extract the IMPORTER information from this label image.
+
+Look carefully for text containing "IMPORTED BY" or "IMPORTER" -- this is usually printed in small text near the bottom of the label or on the back panel, often near the government warning or barcode.
+
+The importer line typically follows this pattern:
+IMPORTED BY [Company Name], [City], [State]
+
+Examples:
+- "IMPORTED BY SIDNEY FRANK IMPORTING CO. INC. NEW ROCHELLE, N.Y."
+- "IMPORTED BY NICHE W. & S., CEDAR KNOLLS, NJ"
+- "IMPORTED BY KOBRAND CORPORATION, NEW YORK, N.Y."
+
+Read every word carefully, especially small text at the bottom of the label.
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"importer_name": {"value": null, "conf": "high"}, "importer_address": {"value": null, "conf": "high"}}
+
+Rules:
+- importer_name: The company name AFTER "IMPORTED BY". Do NOT include the "IMPORTED BY" prefix.
+- importer_address: The city and state that follow the company name.
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- If no importer information is visible, return null for both fields
+- Extract EXACTLY as printed -- do NOT correct errors"""
 
 
 @dataclass
@@ -282,6 +338,39 @@ class AnthropicExtractor(BaseExtractor):
                 return ExtractionResult(fields={}, panel_type=panel_type)
 
             fields = _convert_parsed_to_fields(parsed)
+
+            # Second pass: re-extract government warning with focused prompt.
+            # Always attempt re-extraction — the focused prompt is more accurate
+            # for reading warnings that are rotated, small, or partially obscured.
+            gw_field = fields.get("government_warning", {})
+            reextracted = await self.reextract_warning(image_bytes, mime_type)
+            if reextracted:
+                old_val = gw_field.get("value") if isinstance(gw_field, dict) else gw_field
+                if old_val != reextracted:
+                    logger.info("Warning re-extraction updated value for %s", panel_type)
+                fields["government_warning"] = {
+                    "value": reextracted,
+                    "bounding_box": None,
+                    "extraction_confidence": gw_field.get("extraction_confidence", "high") if isinstance(gw_field, dict) else "high",
+                }
+
+            # Third pass: re-extract importer info if missing.
+            # Small importer text is often missed on the first pass.
+            imp_field = fields.get("importer_name", {})
+            imp_val = imp_field.get("value") if isinstance(imp_field, dict) else imp_field
+            if not imp_val:
+                reextracted_imp = await self.reextract_importer(image_bytes, mime_type)
+                if reextracted_imp:
+                    for key in ("importer_name", "importer_address"):
+                        val = reextracted_imp.get(key)
+                        if val:
+                            fields[key] = {
+                                "value": val,
+                                "bounding_box": None,
+                                "extraction_confidence": "medium",
+                            }
+                            logger.info("Importer re-extraction found %s for %s", key, panel_type)
+
             return ExtractionResult(fields=fields, panel_type=panel_type)
 
         except Exception as e:
@@ -290,6 +379,125 @@ class AnthropicExtractor(BaseExtractor):
                 panel_type=panel_type,
                 error=f"Extraction failed: {e}",
             )
+
+    async def reextract_warning(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        model_override: str | None = None,
+    ) -> str | None:
+        """Re-extract just the government warning with a focused prompt.
+
+        Args:
+            image_bytes: The label image.
+            mime_type: Image MIME type.
+            model_override: Use a different model (e.g. Sonnet) for this call.
+
+        Returns:
+            The extracted warning text, or None on failure.
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        model = model_override or self.model
+
+        try:
+            response = await self.client.messages.create(
+                model=model,
+                max_tokens=1024,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": WARNING_REEXTRACT_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            response_text = response.content[0].text
+            logger.info("Warning re-extraction (%s): %s", model, response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None
+
+            gw = parsed.get("government_warning")
+            if isinstance(gw, dict) and "value" in gw:
+                return gw["value"]
+            return gw
+
+        except Exception as e:
+            logger.exception("Warning re-extraction failed: %s", e)
+            return None
+
+
+    async def reextract_importer(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> dict | None:
+        """Re-extract importer name and address with a focused prompt.
+
+        Returns:
+            Dict with importer_name and importer_address values, or None on failure.
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": IMPORTER_REEXTRACT_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+
+            response_text = response.content[0].text
+            logger.info("Importer re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None
+
+            result = {}
+            for key in ("importer_name", "importer_address"):
+                field = parsed.get(key)
+                if isinstance(field, dict) and "value" in field:
+                    result[key] = field["value"]
+                elif isinstance(field, str):
+                    result[key] = field
+
+            return result if any(result.values()) else None
+
+        except Exception as e:
+            logger.exception("Importer re-extraction failed: %s", e)
+            return None
 
 
 # Backward compatibility alias

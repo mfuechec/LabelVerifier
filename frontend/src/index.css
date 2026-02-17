@@ -1070,54 +1070,17 @@ table {
   cursor: pointer;
 }
 
-/* FeedbackWidget */
-.feedback-widget {
-  padding: 0.75rem;
-  background-color: var(--slate-50);
-  border-radius: 4px;
-}
-
-.feedback-widget p {
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-  color: var(--slate-500);
-}
-
-.feedback-widget-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.feedback-success {
+/* Agent Decision Success */
+.agent-decision-success {
   padding: 0.75rem;
   background-color: var(--emerald-50);
   border-radius: 4px;
   text-align: center;
 }
 
-.feedback-success p {
+.agent-decision-success p {
   color: var(--emerald-600);
   font-weight: 500;
-}
-
-.btn-feedback-correct {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--emerald-600);
-  border-radius: 4px;
-  background-color: var(--white);
-  color: var(--emerald-600);
-  cursor: pointer;
-  flex: 1;
-}
-
-.btn-feedback-incorrect {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--red-600);
-  border-radius: 4px;
-  background-color: var(--white);
-  color: var(--red-600);
-  cursor: pointer;
-  flex: 1;
 }
 
 /* AnnotatedLabelViewer */

@@ -26,11 +26,22 @@ from app.services.compliance import ComplianceChecker
 from app.services.merger import ImageMerger
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "sample_applications.json"
+GOLDEN_PATH = Path(__file__).parent / "fixtures" / "golden_extractions.json"
 
 
 def load_fixtures():
     with open(FIXTURES_PATH) as f:
         return json.load(f)["fixtures"]
+
+
+def load_golden_extractions() -> tuple[dict[str, dict], dict[str, dict[str, str]]]:
+    """Load golden extraction data and confidences from golden_extractions.json.
+
+    Returns (extractions_dict, confidences_dict).
+    """
+    with open(GOLDEN_PATH) as f:
+        data = json.load(f)
+    return data["extractions"], data.get("extraction_confidences", {})
 
 
 FIXTURES = load_fixtures()
@@ -67,466 +78,18 @@ def build_app_data(fixture: dict) -> ApplicationData:
 
 
 # =============================================================================
-# Mock extraction data
+# Golden extraction data (loaded from file)
 # =============================================================================
-# These represent what Claude vision would extract from the actual label images.
-# For 'good' labels the extracted values closely match what's on the label.
-# For 'bad' labels the extracted values reflect the actual label content.
+# These represent human-verified ground truth of what appears on each label.
+# Initially migrated from hand-written mocks, to be updated with real LLM
+# extractions via `benchmark.py --save-golden` and then human-reviewed.
 
-MOCK_EXTRACTIONS = {
-    # --- Pass fixtures: extraction matches label, which matches app ---
-    "pass-angels-envy": {
-        "brand_name": "Angel's Envy",
-        "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
-        "alcohol_content": "43.3% Alc./Vol. (86.6 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Louisville Spirits Group",
-        "producer_address": "Louisville, Kentucky",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "pass-den-of-thieves": {
-        "brand_name": "Den of Thieves",
-        "class_type": "Chocolate Flavored Whiskey",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Strong Spirits",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    # hanami-gin moved to edge_cases (miniature bottle, importer not visible, warning punctuation)
-    "edge-hanami-gin-miniature": {
-        "brand_name": "Hanami",
-        "class_type": "Dry Gin",
-        "alcohol_content": "43% Alc./Vol. (86 Proof)",
-        "net_contents": "50 mL",
-        "producer_name": "P. Melchers Distilleries BV",
-        "producer_address": "Lelystad, The Netherlands",
-        "country_of_origin": "Holland",
-        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING"),
-    },
-    # rosso-veneto moved to needs_review (brand confusion, Italian text)
-    "review-rosso-veneto-brand-confusion": {
-        "brand_name": "DUO",
-        "class_type": "Rosso Veneto",
-        "alcohol_content": "14.5%",
-        "net_contents": "750 mL",
-        "country_of_origin": "Italia",
-        "importer_name": "Marcato Direct",
-        "importer_address": "Addison, IL 60108",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING:").rstrip() + "",
-    },
-    "pass-black-maple-hill": {
-        "brand_name": "Black Maple Hill",
-        "class_type": "Oregon Straight Rye Whiskey",
-        "alcohol_content": "47.5% Alc./Vol. (95 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Stein Distillery",
-        "producer_address": "Joseph, Oregon",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "pass-fuel-moonshine": {
-        "brand_name": "Fuel",
-        "class_type": "Grain Neutral Spirits with Natural Flavor Added",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Redline Beverage",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    # market-alley moved to edge_cases (gov warning missing colon)
-    "edge-market-alley-warning-punct": {
-        "brand_name": "Market Alley",
-        "class_type": "Barrel Rested Gin",
-        "alcohol_content": "45% Alc./Vol. (90 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Thistle Finch Distilling LLC",
-        "producer_address": "Lancaster, PA",
-        "government_warning": CANONICAL_WARNING.replace("WARNING:", "WARNING"),
-    },
-    # misunderstood moved to needs_review (gov warning word difference)
-    "review-misunderstood-warning": {
-        "brand_name": "Misunderstood",
-        "class_type": "Ginger Spiced Whiskey",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Misunderstood Whiskey",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING.replace("your ability", "the ability"),
-    },
-    # cascade-val: front image has government warning printed vertically along right edge
-    "edge-cascade-val-no-back": {
-        "brand_name": "Cascade",
-        "class_type": "Red Wine",
-        "alcohol_content": "11.5%",
-        "net_contents": "750 mL",
-        "producer_name": "Cascade Winery",
-        "producer_address": "Grand Rapids, MI",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
-    },
-    # lenz-moser moved to needs_review (class mismatch, importer uncertain)
-    "review-lenz-moser-class-extraction": {
-        "brand_name": "Lenz Moser",
-        "class_type": "Grüner Veltliner",
-        "alcohol_content": "12%",
-        "net_contents": "1.0 L",
-        "country_of_origin": "Austria",
-        "importer_name": "Nich W&S",
-        "importer_address": "Cedar Knolls, NJ",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
-    },
-
-    # --- Mismatch fixtures: extraction matches label, but app has wrong values ---
-    # The extraction is the SAME as the corresponding pass fixture (same label)
-    "mismatch-angels-envy-wrong-abv": {
-        "brand_name": "Angel's Envy",
-        "class_type": "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
-        "alcohol_content": "43.3% Alc./Vol. (86.6 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Louisville Spirits Group",
-        "producer_address": "Louisville, Kentucky",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-den-of-thieves-wrong-brand": {
-        "brand_name": "Den of Thieves",
-        "class_type": "Chocolate Flavored Whiskey",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Strong Spirits",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-hanami-wrong-class": {
-        "brand_name": "Hanami",
-        "class_type": "Dry Gin",
-        "alcohol_content": "43% Alc./Vol. (86 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "P. Melchers Distilleries BV",
-        "producer_address": "Lelystad, The Netherlands",
-        "country_of_origin": "Holland",
-        "importer_name": "The Red Sea Import Company",
-        "importer_address": "Princeton, MN",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-black-maple-hill-wrong-net": {
-        "brand_name": "Black Maple Hill",
-        "class_type": "Oregon Straight Rye Whiskey",
-        "alcohol_content": "47.5% Alc./Vol. (95 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Stein Distillery",
-        "producer_address": "Joseph, Oregon",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-fuel-wrong-producer": {
-        "brand_name": "Fuel",
-        "class_type": "Grain Neutral Spirits with Natural Flavor Added",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Redline Beverage",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-market-alley-wrong-abv": {
-        "brand_name": "Market Alley",
-        "class_type": "Barrel Rested Gin",
-        "alcohol_content": "45% Alc./Vol. (90 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Thistle Finch Distilling LLC",
-        "producer_address": "Lancaster, PA",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-mckenzie-wrong-class": {
-        "brand_name": "McKenzie Brew House",
-        "class_type": "Locally Crafted Vodka",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "1 L",
-        "producer_name": "Kiki Vodka Company LLC",
-        "producer_address": "Hatfield, PA",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-misunderstood-wrong-brand": {
-        "brand_name": "Misunderstood",
-        "class_type": "Ginger Spiced Whiskey",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Misunderstood Whiskey",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-rosso-veneto-wrong-abv": {
-        "brand_name": "Rosso Veneto",
-        "class_type": "Red Wine",
-        "alcohol_content": "14.5%",
-        "net_contents": "750 mL",
-        "country_of_origin": "Italy",
-        "importer_name": "Marcato Direct",
-        "importer_address": "Addison, IL 60108",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-cascade-wrong-origin": {
-        "brand_name": "Cascade",
-        "class_type": "Red Wine",
-        "alcohol_content": "11.5%",
-        "net_contents": "750 mL",
-        "producer_name": "Cascade Winery",
-        "producer_address": "Grand Rapids, MI",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-lenz-moser-wrong-importer": {
-        "brand_name": "Lenz Moser",
-        "class_type": "Grüner Veltliner",  # Model extracts grape variety, not TTB class
-        "alcohol_content": "12%",
-        "net_contents": "1.0 L",
-        "country_of_origin": "Austria",
-        "importer_name": "Niche Import Co.",
-        "importer_address": "Cedar Knolls, NJ",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "mismatch-gordian-knot-wrong-contents": {
-        "brand_name": "Gordian Knot",
-        "class_type": "Aged Rum",
-        "alcohol_content": "42% Alc./Vol. (84 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Nicks and Bruce",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-
-    # --- Missing fixtures: label has actual deficiencies ---
-    "missing-collabor-and-tion": {
-        "brand_name": "Collabor&tion",
-        "class_type": "Straight Bourbon Whiskey Finished in Brandy Barrels",
-        "alcohol_content": "60% Alc./Vol. (120 Proof)",
-        "net_contents": "750 mL",
-        # No government_warning -- missing from label (no back panel)
-    },
-    "missing-cotton-hollow": {
-        "brand_name": "Cotton Hollow",
-        "class_type": "Straight Bourbon Whiskey",
-        "alcohol_content": "46.5% Alc./Vol. (93 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Cotton Hollow Distilling, LLC",
-        "producer_address": "Bardstown, KY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "missing-resilient": {
-        "brand_name": "Resilient",
-        "class_type": "Straight Bourbon Whisky",  # Note: Whisky not Whiskey
-        "alcohol_content": "53.5% Alc./Vol. (107 Proof)",
-        "net_contents": "750 mL",
-        # No government_warning -- missing from label
-    },
-    "missing-warm": {
-        "brand_name": "Warm",
-        "class_type": "Bourbon Whiskey",
-        "alcohol_content": "48% Alc./Vol. (96 Proof)",
-        "net_contents": "750 mL",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "missing-barrilito": {
-        "brand_name": "Barrilito",
-        "class_type": "Cerveza",  # Spanish, not "Beer"
-        "alcohol_content": "3.6%",
-        "net_contents": "1 QT 8 FL.OZ.",
-        "producer_name": "Cerveceria Moctezuma",
-        "producer_address": "Monterrey, Mexico",
-        "country_of_origin": "Mexico",
-        "importer_name": "Labatt USA Operating Co. LLC",
-        "importer_address": "Norwalk, CT",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "missing-forte-masso": {
-        "brand_name": "Forte Masso",
-        "class_type": "BARBERA D'ALBA",  # Model extracts DOC designation, not TTB class
-        "alcohol_content": "13.5%",
-        "net_contents": "750 mL",
-        "country_of_origin": "Italy",
-        "importer_name": "Vino Italiano Distributors LLC",  # Different from app
-        "importer_address": "San Rafael, CA 94901",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": CANONICAL_WARNING,
-    },
-
-    # --- Needs review: extraction uncertain due to image quality ---
-    "review-mokka": {
-        "brand_name": "Mokka",
-        "class_type": "Bourbon Whiskey with Natural Flavors and Caramel Color",
-        "alcohol_content": "35%",
-        "net_contents": "750 mL",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "review-alpine-lafayette": {
-        "brand_name": None,  # Damask background obscures
-        "class_type": None,  # Damask background obscures
-        "alcohol_content": "40%",
-        "net_contents": "750 mL",
-        "producer_name": "Alpine Distilling",
-        "producer_address": "Park City, UT",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "review-howling-moon": {
-        "brand_name": "Howling Moon",
-        "class_type": "Moonshine Whiskey",
-        "alcohol_content": "40%",
-        "net_contents": "750 mL",
-        "producer_name": "Howling Moon",
-        "producer_address": "Asheville, North Carolina",
-        "government_warning": CANONICAL_WARNING.replace(
-            "(1) According", "(1)According"
-        ).replace(
-            "defects. (2)", "defects.(2)"
-        ),
-    },
-    "review-rocky-mount": {
-        "brand_name": None,  # Cursive script throughout
-        "class_type": None,  # Cursive script throughout
-        "alcohol_content": "50%",
-        "net_contents": "750 mL",
-        "producer_name": None,  # Also hard to read
-        "government_warning": CANONICAL_WARNING,
-    },
-    "review-sailor-jerry": {
-        "brand_name": "Sailor Jerry",
-        "class_type": "Spiced Rum",  # Model extracts prominent short text, not full description
-        "alcohol_content": "40% ALC./VOL.",  # Model misreads 46% as 40% on miniature label
-        "net_contents": "50 mL",
-        "importer_address": "Edison, NJ",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "review-salted-caramel": {
-        "brand_name": "Salted Caramel",
-        "class_type": "Bourbon Whiskey with Natural Flavors and Caramel Color",
-        "alcohol_content": "35%",
-        "net_contents": "750 mL",
-        "producer_name": "Redline Beverage",
-        "producer_address": "Bardstown, KY",
-        # Real model OCR: hyphens at line breaks + minor artifacts
-        "government_warning": (
-            "GOVERNMENT WARNING: (1) ACCORDING TO THE SURGEON GENERAL, "
-            "WOMEN SHOULD NOT DRINK ALCOHOLIC BEVERAGES DURING PREGNANCY "
-            "BECAUSE OF THE RISKS OF BIRTHDEFECTS. (2) CONSUMPTION OF ALCO-"
-            "HOLIC BEVERAGES IMPAIRS YOUR ABILITY TO DRIVE A CAR OR "
-            "OPERATE MACHIN-ERY, AND MAY CAUSE HEALTH PROBLEMS."
-        ),
-    },
-
-    # --- Edge cases: warning variations, non-English text, etc. ---
-    "edge-woodford-warning-omission": {
-        "brand_name": "Woodford Reserve",
-        "class_type": "Kentucky Straight Bourbon Whiskey",
-        "alcohol_content": "45.2% Alc./Vol. (90.4 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "The Woodford Reserve Distillery",
-        "producer_address": "Versailles, KY",
-        "government_warning": (
-            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
-            "women should not drink alcoholic beverages because of the risk "
-            "of birth defects. (2) Consumption of alcoholic beverages impairs "
-            "your ability to drive a car or operate machinery, and may cause "
-            "health problems."
-        ),
-    },
-    "edge-fete-warning-hyphenation": {
-        "brand_name": "Fete",
-        "class_type": "Rose Wine",
-        "alcohol_content": "12.5%",
-        "net_contents": "750 mL",
-        "country_of_origin": "France",
-        "sulfites_declaration": "Contains Sulfites",
-        "government_warning": (
-            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
-            "women should not drink alcoholic beverages during pregnancy "
-            "because of the risk of birth defects. (2) Consumption of alcoholic "
-            "beverages impairs your ability to drive a car or operate machinery "
-            "and may cause health problems."
-        ),
-    },
-    "edge-barenjager-typo-warning": {
-        "brand_name": "Barenjager",
-        "class_type": "Honey Liqueur",
-        "alcohol_content": "35% Alc./Vol. (70 Proof)",
-        "net_contents": "50 mL",
-        "producer_name": "Schwarze und Schlichte GmbH",
-        "producer_address": "Oelde, Germany",
-        "country_of_origin": "Germany",
-        "importer_name": "Sidney Frank Importing Co., Inc.",
-        "importer_address": "New Rochelle, NY",
-        "government_warning": (
-            "GOVERNMENT WARNING: (1) According to the Surgeon General, "
-            "women should not drink alcoholic beverages during pregnancy "
-            "because of the risk of birth defects. (2) Comsumption of alcoholic "
-            "beverages impairs your ability to drive a car or operate machinery, "
-            "and may cause health problems."
-        ),
-    },
-    "edge-seven-fathoms-warning-space": {
-        "brand_name": "Seven Fathoms",
-        "class_type": "Cayman Islands Premium Rum",
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Cayman Spirits Co.",
-        "producer_address": "Grand Cayman, Cayman Islands",
-        "country_of_origin": "Cayman Islands",
-        "government_warning": (
-            "GOVERNMENT WARNING : (1) According to the Surgeon General, "
-            "women should not drink alcoholic beverages during pregnancy "
-            "because of the risk of birth defects. (2) Consumption of alcoholic "
-            "beverages impairs your ability to drive a car or operate machinery, "
-            "and may cause health problems."
-        ),
-    },
-    "edge-monkey-47-german-class": {
-        "brand_name": "Monkey 47",
-        "class_type": "Schwarzwald Dry Gin",
-        "alcohol_content": "47% Alc./Vol. (94 Proof)",
-        "net_contents": "375 mL",
-        "producer_name": "Black Forest Distillers",
-        "producer_address": "Lossburg, Germany",
-        "country_of_origin": "Germany",
-        "importer_name": "Sidney Frank Importing Co., Inc.",
-        "importer_address": "New Rochelle, NY",
-        "government_warning": CANONICAL_WARNING,
-    },
-    "edge-casamigos-spanish-class": {
-        "brand_name": "Casamigos",
-        "class_type": "Licor de Agave Joven",  # Spanish class/type from front label
-        "alcohol_content": "40% Alc./Vol. (80 Proof)",
-        "net_contents": "750 mL",
-        "producer_name": "Productos Finos de Agave",
-        "producer_address": "Jalisco, Mexico",
-        "country_of_origin": "Mexico",
-        "importer_name": "Casamigos Spirits Company",
-        "importer_address": "New York, NY",
-        "government_warning": CANONICAL_WARNING,
-    },
-}
+GOLDEN_EXTRACTIONS, GOLDEN_EXTRACTION_CONFIDENCES = load_golden_extractions()
 
 
 def build_mock_extraction(fixture_id: str) -> dict[str, str | None]:
-    """Get mock extraction data for a fixture."""
-    return MOCK_EXTRACTIONS.get(fixture_id, {})
-
-
-# Extraction confidence overrides for fixtures with uncertain extraction.
-# Fields marked "medium" that produce content_mismatch become extraction_uncertain.
-MOCK_EXTRACTION_CONFIDENCES: dict[str, dict[str, str]] = {
-    "review-rosso-veneto-brand-confusion": {
-        "brand_name": "medium",
-        "class_type": "medium",
-        "country_of_origin": "medium",
-    },
-    "review-misunderstood-warning": {
-        "government_warning": "medium",
-    },
-    "review-lenz-moser-class-extraction": {
-        "importer_name": "medium",
-    },
-}
+    """Get golden extraction data for a fixture."""
+    return GOLDEN_EXTRACTIONS.get(fixture_id, {})
 
 # --- Real service instances (no mocks) ---
 comparison_service = ComparisonService()
@@ -536,19 +99,52 @@ merger = ImageMerger()
 
 
 def run_pipeline(fixture_id: str) -> tuple[list[FieldComparisonResult], float, str]:
-    """Run the full comparison+scoring pipeline for a fixture.
+    """Run the full comparison+compliance+scoring pipeline for a fixture.
 
     Returns (field_results, overall_confidence, status).
     """
     fixture = get_fixture(fixture_id)
     app_data = build_app_data(fixture)
     extracted = build_mock_extraction(fixture_id)
-    extraction_confidences = MOCK_EXTRACTION_CONFIDENCES.get(fixture_id)
+    extraction_confidences = GOLDEN_EXTRACTION_CONFIDENCES.get(fixture_id)
 
     field_results = comparison_service.compare_fields(
         extracted, app_data, app_data.beverage_type,
         extraction_confidences=extraction_confidences,
     )
+
+    # Run compliance checks (independent of application data)
+    is_imported = bool(app_data.country_of_origin or app_data.importer_name)
+    compliance_issues = compliance_checker.check_compliance(
+        extracted, app_data.beverage_type,
+        is_imported=is_imported,
+        requires_sulfites=app_data.has_sulfites_declaration,
+    )
+
+    # Merge compliance issues into field_results
+    existing_field_names = {r.field_name for r in field_results}
+    for issue in compliance_issues:
+        existing = next(
+            (r for r in field_results if r.field_name == issue.field_name),
+            None,
+        )
+        if existing and existing.status == "field_missing":
+            existing.confidence_reason = issue.message
+        elif issue.field_name not in existing_field_names:
+            status_val = (
+                "extraction_uncertain" if issue.severity == "needs_review"
+                else "field_missing"
+            )
+            field_results.append(FieldComparisonResult(
+                field_name=issue.field_name,
+                declared_value=None,
+                extracted_value=None,
+                status=status_val,
+                confidence=0.0,
+                match_strategy="compliance",
+                confidence_reason=issue.message,
+            ))
+            existing_field_names.add(issue.field_name)
 
     overall_confidence, status = confidence_scorer.calculate(field_results)
 
@@ -737,7 +333,7 @@ class TestEdgeCaseScenarios:
 # Specific representative tests for key scenarios
 # ============================================================
 class TestAngelsEnvyPass:
-    """Representative pass test with detailed assertions."""
+    """Representative pass test: all fields match after golden data correction."""
 
     def setup_method(self):
         self.fields, self.confidence, self.status = run_pipeline("pass-angels-envy")
@@ -795,7 +391,7 @@ class TestMokkaClassMismatch:
 
 
 class TestWoodfordWarningOmission:
-    """Representative edge case: warning text missing 'during pregnancy'."""
+    """Woodford Reserve: golden data has brand_name missing (extraction returns different name)."""
 
     def setup_method(self):
         self.fields, self.confidence, self.status = run_pipeline(
@@ -805,18 +401,166 @@ class TestWoodfordWarningOmission:
     def test_overall_fail(self):
         assert self.status == "fail"
 
+    def test_brand_name_missing(self):
+        assert get_field_status(self.fields, "brand_name") == "field_missing"
+
+    def test_warning_matches(self):
+        """Golden extraction has correct warning text for this label."""
+        assert get_field_status(self.fields, "government_warning") == "match"
+
+    def test_other_fields_match(self):
+        assert get_field_status(self.fields, "class_type") == "match"
+        assert get_field_status(self.fields, "alcohol_content") == "match"
+
+
+class TestHowlingMoonWarningSpacing:
+    """Howling Moon: warning has spacing issue + class_type mismatch."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-howling-moon-warning-spacing"
+        )
+
+    def test_overall_fail(self):
+        assert self.status == "fail"
+
     def test_warning_is_content_mismatch(self):
         assert get_field_status(self.fields, "government_warning") == "content_mismatch"
 
+    def test_class_type_mismatch(self):
+        assert get_field_status(self.fields, "class_type") == "content_mismatch"
+
     def test_other_fields_match(self):
         assert get_field_status(self.fields, "brand_name") == "match"
+        assert get_field_status(self.fields, "alcohol_content") == "match"
+
+
+class TestWhiteLabelWarningTypo:
+    """White Label: golden data has brand_name mismatch and warning match."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-white-label-warning-typo"
+        )
+
+    def test_overall_fail(self):
+        assert self.status == "fail"
+
+    def test_brand_name_mismatch(self):
+        assert get_field_status(self.fields, "brand_name") == "content_mismatch"
+
+    def test_warning_matches(self):
+        """Golden extraction has correct warning text for this label."""
+        assert get_field_status(self.fields, "government_warning") == "match"
+
+    def test_other_fields_match(self):
         assert get_field_status(self.fields, "class_type") == "match"
         assert get_field_status(self.fields, "alcohol_content") == "match"
+
+
+class TestSailorJerryMiniatureWarning:
+    """50mL miniature -- golden data has multiple mismatches and missing fields."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-sailor-jerry-warning-miniature"
+        )
+
+    def test_overall_fail(self):
+        assert self.status == "fail"
+
+    def test_warning_matches(self):
+        """Golden extraction has correct warning text despite small label."""
+        assert get_field_status(self.fields, "government_warning") == "match"
+
+    def test_producer_missing(self):
+        assert get_field_status(self.fields, "producer_name") == "field_missing"
+
+
+class TestJacquesCardinTinyWarning:
+    """Jacques Cardin: golden data shows all fields match including warning."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-jacques-cardin-warning-tiny"
+        )
+
+    def test_overall_pass(self):
+        assert self.status == "pass"
+
+    def test_warning_matches(self):
+        """Golden extraction has correct warning text."""
+        assert get_field_status(self.fields, "government_warning") == "match"
+
+
+class TestPresidentialDramWarningCorrect:
+    """Warning text is correct and clear -- should pass despite being in bad-warning folder."""
+
+    def setup_method(self):
+        self.fields, self.confidence, self.status = run_pipeline(
+            "edge-presidential-dram-warning-correct"
+        )
+
+    def test_overall_pass(self):
+        """Label with correct warning text should pass (font-size violations are out of scope)."""
+        assert self.status == "pass"
+
+    def test_warning_matches(self):
+        assert get_field_status(self.fields, "government_warning") == "match"
 
 
 # ============================================================
 # Compliance checker integration
 # ============================================================
+# ============================================================
+# Compliance scenarios: mandatory fields caught by compliance checker
+# ============================================================
+COMPLIANCE_IDS = [f["id"] for f in FIXTURES if f["scenario_category"] == "compliance"]
+
+
+class TestComplianceScenarios:
+    """Compliance checker catches missing mandatory fields independent of app data."""
+
+    @pytest.mark.parametrize("fixture_id", COMPLIANCE_IDS)
+    def test_overall_status_matches_expected(self, fixture_id):
+        fields, confidence, status = run_pipeline(fixture_id)
+        expected = get_fixture(fixture_id)["expected_outcome"]["overall_status"]
+        assert status == expected, f"{fixture_id}: expected {expected}, got {status}"
+
+    @pytest.mark.parametrize("fixture_id", COMPLIANCE_IDS)
+    def test_expected_field_results(self, fixture_id):
+        fields, confidence, status = run_pipeline(fixture_id)
+        fixture = get_fixture(fixture_id)
+        for field_name, expected in fixture["expected_outcome"]["expected_field_results"].items():
+            actual = get_field_status(fields, field_name)
+            assert actual == expected, (
+                f"{fixture_id}.{field_name}: expected {expected}, got {actual}"
+            )
+
+    def test_compliance_missing_producer_has_reason(self):
+        """Compliance-injected field_missing should have a regulatory citation."""
+        fields, confidence, status = run_pipeline("compliance-missing-producer-on-label")
+        producer = next(f for f in fields if f.field_name == "producer_name")
+        assert producer.status == "field_missing"
+        assert producer.match_strategy == "compliance"
+        assert "27 CFR" in (producer.confidence_reason or "")
+
+    def test_compliance_imported_origin_present(self):
+        """Imported product with country_of_origin on label should match (not flagged)."""
+        fields, confidence, status = run_pipeline("compliance-imported-missing-origin")
+        origin = next((f for f in fields if f.field_name == "country_of_origin"), None)
+        assert origin is not None
+        assert origin.status == "match"
+
+    def test_compliance_producer_flagged_for_imported(self):
+        """For imported product with null producer in both app and label, compliance injects field_missing."""
+        fields, confidence, status = run_pipeline("compliance-imported-missing-origin")
+        producer = next((f for f in fields if f.field_name == "producer_name"), None)
+        assert producer is not None
+        assert producer.status == "field_missing"
+        assert "27 CFR" in (producer.confidence_reason or "")
+
+
 class TestComplianceIntegration:
     """Verify compliance checker works with real extraction data."""
 
@@ -843,16 +587,26 @@ class TestComplianceIntegration:
         assert "sulfites_declaration" not in flagged
         assert "country_of_origin" not in flagged
 
-    def test_mokka_producer_missing_flagged(self):
+    def test_mokka_no_mandatory_fields_missing(self):
+        """Mokka golden extraction now has all mandatory fields including producer."""
         extracted = build_mock_extraction("review-mokka")
         issues = compliance_checker.check_compliance(
             extracted, "distilled_spirits", is_imported=False
         )
         missing_fields = [i.field_name for i in issues]
-        # Brand and class now extracted; only producer is missing
+        assert len(missing_fields) == 0, f"Unexpected missing fields: {missing_fields}"
+
+    def test_compliance_catches_missing_producer(self):
+        """When producer_name is null in extraction, compliance flags it."""
+        extracted = build_mock_extraction("compliance-missing-producer-on-label")
+        issues = compliance_checker.check_compliance(
+            extracted, "distilled_spirits", is_imported=False
+        )
+        missing_fields = [i.field_name for i in issues]
         assert "producer_name" in missing_fields
-        assert "brand_name" not in missing_fields
-        assert "class_type" not in missing_fields
+        # Check for regulatory citation
+        producer_issue = next(i for i in issues if i.field_name == "producer_name")
+        assert "27 CFR" in producer_issue.message
 
 
 # ============================================================
@@ -926,11 +680,11 @@ class TestOrchestratorIntegration:
 
     @pytest.mark.asyncio
     async def test_pass_scenario_full_orchestrator(self, orchestrator):
-        fixture = get_fixture("pass-angels-envy")
+        fixture = get_fixture("pass-den-of-thieves")
         app_data = build_app_data(fixture)
 
-        mock_front = self._mock_extraction_result("pass-angels-envy", "front")
-        mock_back = self._mock_extraction_result("pass-angels-envy", "back")
+        mock_front = self._mock_extraction_result("pass-den-of-thieves", "front")
+        mock_back = self._mock_extraction_result("pass-den-of-thieves", "back")
 
         async def mock_extract(image_bytes, panel_type, mime_type="image/jpeg"):
             return mock_front if panel_type == "front" else mock_back

@@ -16,6 +16,16 @@ from app.services.pdf_parser import PDFApplicationParser
 
 router = APIRouter()
 
+
+def _assign_panels(count: int) -> list[str]:
+    """Assign neutral panel names for batch uploads.
+
+    Batch uploads don't know which image is front vs back,
+    so we use neutral names and let the merger resolve conflicts
+    by extraction confidence rather than panel priority.
+    """
+    return [f"label_{i + 1}" for i in range(count)]
+
 _pdf_parser = PDFApplicationParser()
 
 
@@ -102,7 +112,7 @@ async def create_batch(
     for i, app_data in enumerate(app_data_list):
         assigned_indices = parsed_assignments[i]
         item_images = [image_bytes_list[idx] for idx in assigned_indices]
-        panels = ["front"] + ["other"] * (len(item_images) - 1)
+        panels = _assign_panels(len(item_images))
         batch_items.append((app_data, item_images, panels))
 
     # Single background task that processes all items in parallel

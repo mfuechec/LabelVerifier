@@ -18,10 +18,10 @@ export default function AnnotatedLabelViewer({
   onFieldClick,
 }: AnnotatedLabelViewerProps) {
   const [zoom, setZoom] = useState(1);
-  const [activePanel, setActivePanel] = useState<string>('front');
+  const panels = annotatedImages ? Object.keys(annotatedImages).sort() : [];
+  const [activePanel, setActivePanel] = useState<string>(panels[0] || 'front');
 
   // Determine which image to show
-  const panels = annotatedImages ? Object.keys(annotatedImages) : [];
   const resolvedUrl = annotatedImages?.[activePanel] || imageUrl;
   // Convert relative API paths to full URLs
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -61,7 +61,7 @@ export default function AnnotatedLabelViewer({
                 color: activePanel === panel ? 'var(--white)' : 'var(--slate-600)',
               }}
             >
-              {panel.charAt(0).toUpperCase() + panel.slice(1)}
+              {panel.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
             </button>
           ))}
         </div>

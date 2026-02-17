@@ -57,7 +57,12 @@ def fuzzy_match(
         return ("field_missing", 0.0, "Field not found on label")
 
     # Check if one value fully contains the other (e.g. "Cascade" in "Cascade Winery")
-    if norm_dec in norm_ext or norm_ext in norm_dec:
+    # Guard: require either 2+ words or the shorter string being at least 50% of the longer.
+    # Prevents single short tokens like "Fete" matching "Lenz Moser Fête Rosé".
+    shorter, longer = (norm_dec, norm_ext) if len(norm_dec) <= len(norm_ext) else (norm_ext, norm_dec)
+    length_ratio = len(shorter) / len(longer) if longer else 0
+    containment_ok = len(shorter.split()) >= 2 or length_ratio >= 0.5
+    if (norm_dec in norm_ext or norm_ext in norm_dec) and containment_ok:
         best_ratio = max(fuzz.partial_ratio(norm_ext, norm_dec), fuzz.token_set_ratio(norm_ext, norm_dec))
         if best_ratio >= threshold:
             return ("match", best_ratio, f"Fuzzy match: {best_ratio:.0f}% (containment match, threshold: {threshold:.0f}%)")
@@ -116,6 +121,13 @@ def class_type_match(
     elif dec_qualifier:
         from app.services.ttb_classes import _strip_qualifiers
         dec_base, _ = _strip_qualifiers(declared.strip())
+
+    # Subset word match: if all declared words appear in extracted text, treat as match.
+    # Handles cases like declared "Blanco Tequila" vs extracted "Tequila 100% Agave Azul Blanco".
+    ext_words = set(normalize_for_fuzzy(ext_base).split())
+    dec_words = set(normalize_for_fuzzy(dec_base).split())
+    if dec_words and dec_words.issubset(ext_words):
+        return ("match", 95.0, f"Subset match: all declared words found in extracted text")
 
     status, score, fuzzy_reason = fuzzy_match(ext_base, dec_base)
 
