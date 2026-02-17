@@ -13,19 +13,9 @@ export function useVerify() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      images,
-      panels,
-      applicationPdf,
-    }: {
-      images: File[];
-      panels: string[];
-      applicationPdf: File;
-    }) => {
+    mutationFn: async ({ colaPdf }: { colaPdf: File }) => {
       const formData = new FormData();
-      formData.append('application_pdf', applicationPdf);
-      images.forEach((img) => formData.append('images[]', img));
-      panels.forEach((p) => formData.append('panels[]', p));
+      formData.append('cola_pdf', colaPdf);
 
       const res = await client.post<{ data: VerificationResult }>('/verify', formData);
       return res.data.data;
@@ -125,23 +115,11 @@ export function useReviewField() {
 
 export function useBatchUpload() {
   return useMutation({
-    mutationFn: async ({
-      pdfs,
-      images,
-      imageAssignments,
-    }: {
-      pdfs: File[];
-      images: File[];
-      imageAssignments: number[][];
-    }) => {
+    mutationFn: async ({ colaPdfs }: { colaPdfs: File[] }) => {
       const formData = new FormData();
-      pdfs.forEach((pdf) => formData.append('application_pdfs[]', pdf));
-      images.forEach((img) => formData.append('images[]', img));
-      imageAssignments.forEach((indices) =>
-        formData.append('image_assignments[]', JSON.stringify(indices))
-      );
+      colaPdfs.forEach((pdf) => formData.append('cola_pdfs[]', pdf));
 
-      const res = await client.post<{ data: { batch_id: string; total_items: number } }>(
+      const res = await client.post<{ data: { batch_id: string; total_items: number; skipped_count: number } }>(
         '/batch',
         formData
       );

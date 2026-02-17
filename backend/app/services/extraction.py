@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 
 from anthropic import AsyncAnthropic
@@ -18,20 +19,22 @@ INITIAL_BACKOFF_SECONDS = 2
 EXTRACTION_PROMPT = """You are an alcohol beverage label analysis system for the US TTB. Extract ALL compliance-relevant fields from this label image.
 
 Return ONLY a JSON object exactly like this (no markdown, no extra text):
-{"brand_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
+{"brand_name":{"value":null,"conf":"high"},"fanciful_name":{"value":null,"conf":"high"},"class_type":{"value":null,"conf":"high"},"alcohol_content":{"value":null,"conf":"high"},"alcohol_proof":{"value":null,"conf":"high"},"net_contents":{"value":null,"conf":"high"},"producer_name":{"value":null,"conf":"high"},"producer_address":{"value":null,"conf":"high"},"country_of_origin":{"value":null,"conf":"high"},"importer_name":{"value":null,"conf":"high"},"importer_address":{"value":null,"conf":"high"},"government_warning":{"value":null,"conf":"high"},"sulfites_declaration":{"value":null,"conf":"high"}}
 
 Rules:
 - Replace null with the extracted string value, or keep null if not found on the label
 - If a field is NOT clearly visible on the label, set value to null. Do NOT guess or fabricate text.
 - conf: "high" = clearly readable, "medium" = stylized/decorative/partially obscured, "low" = barely legible or guessing
 - Do NOT correct spelling, grammar, or formatting errors -- extract EXACTLY as printed on the label
+- IMPORTANT: Text may be printed VERTICALLY or ROTATED 90 degrees along the left/right edges of the label. Carefully scan ALL edges and margins for sideways text -- class/type, net contents, and alcohol content are commonly placed there, especially on wine labels
 
 Field-specific guidance:
-- brand_name: The product brand name, usually the most prominent text on the label. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
-- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation
+- brand_name: The product brand name, usually the most prominent text on the label. Do NOT extract the fanciful/secondary name as the brand. Do NOT confuse regulatory text like "Hecho en Mexico", "Made in [country]", "Product of [country]", or "Produced and Bottled by..." with the brand name -- those belong in country_of_origin or producer fields
+- fanciful_name: A secondary or creative product name, often below or near the brand name in smaller text. NOT the brand name itself. Examples: "HONEY & BOURBON" on a Barenjager label, "MIDNIGHT MOONSHINE" on a Howling Moon label. If no secondary name, set to null
+- class_type: The beverage classification (e.g. "Straight Bourbon Whiskey", "Vodka", "Red Wine"). Include qualifiers like "flavored" or geographic terms, but separate finishing/aging statements like "Finished in Port Wine Barrels" from the base class designation. CHECK VERTICAL TEXT along label edges -- wine labels often print class/type sideways (e.g. "DRY RED WINE" rotated along the right edge)
 - alcohol_content: Include the full format as printed (e.g. "45% Alc./Vol.", "35% ALC. BY VOL.")
 - alcohol_proof: Extract only if separately stated (e.g. "90 Proof")
-- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ"). Read the number carefully
+- net_contents: The volume measurement as printed (e.g. "750mL", "50ML", "25.4 FL OZ", "1 LTR."). Read the number carefully. CHECK VERTICAL TEXT along label edges -- net contents is often printed sideways
 - producer_name: The company that produced/distilled/bottled the product. Look near phrases like "Produced by", "Bottled by", "Distilled by", "Made by". Extract ONLY the company name, not the surrounding phrase
 - producer_address: The physical location (city, state/country) of the producer. Do NOT extract production statements like "Produced and Bottled in Germany" -- look for an actual city name
 - country_of_origin: The country where the product was made. Look for "Product of [country]", "Made in [country]", "Produced in [country]"
@@ -87,12 +90,63 @@ Rules:
 - Extract EXACTLY as printed -- do NOT correct errors"""
 
 
+# Focused prompt for specialty class/type re-extraction (fanciful name + composition)
+SPECIALTY_CLASS_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find the product's distinctive/fanciful name and its statement of composition on this label.
+
+For specialty and proprietary spirits, the label will NOT say a standard class like "Vodka" or "Whiskey". Instead it shows:
+1. A FANCIFUL/DISTINCTIVE NAME -- the creative product name (e.g. "Fireball", "Jagermeister", "Barenjager")
+2. A STATEMENT OF COMPOSITION -- describes what the product is (e.g. "Cinnamon Whisky", "Liqueur", "Honey & Bourbon Liqueur", "Whisky with natural honey flavor")
+
+The fanciful name is usually the most prominent text. The composition statement is often in smaller text nearby, describing the product type or ingredients.
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"fanciful_name": {"value": null, "conf": "high"}, "composition_statement": {"value": null, "conf": "high"}}
+
+Rules:
+- fanciful_name: The creative/brand product name (NOT the company name, NOT regulatory text)
+- composition_statement: The description of what the product is or contains
+- Replace null with the extracted string, or keep null if not found
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- Extract EXACTLY as printed -- do NOT correct errors"""
+
+
+BRAND_CONFIRM_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to locate the BRAND NAME on this label.
+
+The application declares the brand name as: "{declared_brand}"
+
+Search the ENTIRE label image carefully for this brand name or any close variant. Brand names are typically the most prominent text, but may also appear in smaller regulatory text.
+
+IMPORTANT RULES:
+- If you find "{declared_brand}" or a close variant, extract it EXACTLY as printed on the label
+- If you cannot find it anywhere, extract whatever text you believe is the actual brand name
+- Do NOT just repeat back "{declared_brand}" -- you must find it visually on the label
+- Look at ALL text including decorative/stylized text and fine print
+
+Return ONLY a JSON object (no markdown, no extra text):
+{{"brand_name": {{"value": null, "conf": "high"}}, "location_description": null}}
+
+Rules:
+- brand_name.value: The brand name as printed on the label, or null if not visible
+- brand_name.conf: "high" = clearly readable, "medium" = stylized/decorative, "low" = barely legible
+- location_description: Where on the label you found it (e.g. "large text at top center")
+- Extract EXACTLY as printed -- do NOT correct spelling"""
+
+
+@dataclass
+class LLMCallStats:
+    input_tokens: int
+    output_tokens: int
+    elapsed_ms: int
+    call_type: str
+
+
 @dataclass
 class ExtractionResult:
     fields: dict = field(default_factory=dict)
     panel_type: str = ""
     extraction_notes: str = ""
     error: str | None = None
+    llm_stats: list[LLMCallStats] = field(default_factory=list)
 
 
 def _repair_json(text: str) -> dict | None:
@@ -169,9 +223,13 @@ class GroqExtractor(BaseExtractor):
         """Extract all fields from a label image using a single LLM call."""
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
         image_url = f"data:{mime_type};base64,{base64_image}"
+        llm_stats: list[LLMCallStats] = []
 
         try:
-            parsed = await self._call_llm_with_retry(image_url, EXTRACTION_PROMPT, panel_type)
+            parsed, stats = await self._call_llm_with_retry(image_url, EXTRACTION_PROMPT, panel_type)
+            if stats:
+                stats.call_type = "extract_fields"
+                llm_stats.append(stats)
         except Exception as e:
             return ExtractionResult(
                 panel_type=panel_type,
@@ -201,11 +259,12 @@ class GroqExtractor(BaseExtractor):
         return ExtractionResult(
             fields=fields,
             panel_type=panel_type,
+            llm_stats=llm_stats,
         )
 
     async def _call_llm_with_retry(
         self, image_url: str, prompt: str, panel_type: str
-    ) -> dict:
+    ) -> tuple[dict, LLMCallStats | None]:
         """Call LLM with exponential backoff retry on rate limit errors."""
         last_error = None
         for attempt in range(MAX_RETRIES + 1):
@@ -229,12 +288,14 @@ class GroqExtractor(BaseExtractor):
 
         raise last_error
 
-    async def _call_llm(self, image_url: str, prompt: str, panel_type: str) -> dict:
-        """Make a single LLM call and return parsed JSON dict."""
+    async def _call_llm(self, image_url: str, prompt: str, panel_type: str) -> tuple[dict, LLMCallStats | None]:
+        """Make a single LLM call and return parsed JSON dict + stats."""
         try:
+            t0 = time.monotonic()
             response = await self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=2048,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -251,16 +312,29 @@ class GroqExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
 
             response_text = response.choices[0].message.content
             logger.info("Groq response (%s): %s", panel_type, response_text[:200])
 
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "prompt_tokens", 0),
+                output_tokens=getattr(usage, "completion_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="",
+            )
+            logger.info(
+                "Groq LLM stats (%s): %d in / %d out tokens, %dms",
+                panel_type, stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
             parsed = _repair_json(response_text)
             if parsed is None:
                 logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
-                return {}
+                return {}, stats
 
-            return parsed
+            return parsed, stats
 
         except RateLimitError:
             raise
@@ -303,11 +377,14 @@ class AnthropicExtractor(BaseExtractor):
     ) -> ExtractionResult:
         """Extract all fields from a label image using Anthropic's vision API."""
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        llm_stats: list[LLMCallStats] = []
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -328,6 +405,20 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            main_stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="extract_fields",
+            )
+            llm_stats.append(main_stats)
+            logger.info(
+                "Anthropic LLM stats (%s): %d in / %d out tokens, %dms",
+                panel_type, main_stats.input_tokens, main_stats.output_tokens, main_stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Anthropic response (%s): %s", panel_type, response_text[:200])
@@ -335,49 +426,18 @@ class AnthropicExtractor(BaseExtractor):
             parsed = _repair_json(response_text)
             if parsed is None:
                 logger.error("JSON parse error (%s): %s", panel_type, response_text[:200])
-                return ExtractionResult(fields={}, panel_type=panel_type)
+                return ExtractionResult(fields={}, panel_type=panel_type, llm_stats=llm_stats)
 
             fields = _convert_parsed_to_fields(parsed)
 
-            # Second pass: re-extract government warning with focused prompt.
-            # Always attempt re-extraction — the focused prompt is more accurate
-            # for reading warnings that are rotated, small, or partially obscured.
-            gw_field = fields.get("government_warning", {})
-            reextracted = await self.reextract_warning(image_bytes, mime_type)
-            if reextracted:
-                old_val = gw_field.get("value") if isinstance(gw_field, dict) else gw_field
-                if old_val != reextracted:
-                    logger.info("Warning re-extraction updated value for %s", panel_type)
-                fields["government_warning"] = {
-                    "value": reextracted,
-                    "bounding_box": None,
-                    "extraction_confidence": gw_field.get("extraction_confidence", "high") if isinstance(gw_field, dict) else "high",
-                }
-
-            # Third pass: re-extract importer info if missing.
-            # Small importer text is often missed on the first pass.
-            imp_field = fields.get("importer_name", {})
-            imp_val = imp_field.get("value") if isinstance(imp_field, dict) else imp_field
-            if not imp_val:
-                reextracted_imp = await self.reextract_importer(image_bytes, mime_type)
-                if reextracted_imp:
-                    for key in ("importer_name", "importer_address"):
-                        val = reextracted_imp.get(key)
-                        if val:
-                            fields[key] = {
-                                "value": val,
-                                "bounding_box": None,
-                                "extraction_confidence": "medium",
-                            }
-                            logger.info("Importer re-extraction found %s for %s", key, panel_type)
-
-            return ExtractionResult(fields=fields, panel_type=panel_type)
+            return ExtractionResult(fields=fields, panel_type=panel_type, llm_stats=llm_stats)
 
         except Exception as e:
             logger.exception("Anthropic extraction failed (%s): %s", panel_type, e)
             return ExtractionResult(
                 panel_type=panel_type,
                 error=f"Extraction failed: {e}",
+                llm_stats=llm_stats,
             )
 
     async def reextract_warning(
@@ -385,7 +445,7 @@ class AnthropicExtractor(BaseExtractor):
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
         model_override: str | None = None,
-    ) -> str | None:
+    ) -> tuple[str | None, LLMCallStats | None]:
         """Re-extract just the government warning with a focused prompt.
 
         Args:
@@ -394,15 +454,17 @@ class AnthropicExtractor(BaseExtractor):
             model_override: Use a different model (e.g. Sonnet) for this call.
 
         Returns:
-            The extracted warning text, or None on failure.
+            Tuple of (extracted warning text or None, LLMCallStats or None).
         """
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
         model = model_override or self.model
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=model,
                 max_tokens=1024,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -423,40 +485,55 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_warning",
+            )
+            logger.info(
+                "Warning re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Warning re-extraction (%s): %s", model, response_text[:200])
 
             parsed = _repair_json(response_text)
             if parsed is None:
-                return None
+                return None, stats
 
             gw = parsed.get("government_warning")
             if isinstance(gw, dict) and "value" in gw:
-                return gw["value"]
-            return gw
+                return gw["value"], stats
+            return gw, stats
 
         except Exception as e:
             logger.exception("Warning re-extraction failed: %s", e)
-            return None
+            return None, None
 
 
     async def reextract_importer(
         self,
         image_bytes: bytes,
         mime_type: str = "image/jpeg",
-    ) -> dict | None:
+    ) -> tuple[dict | None, LLMCallStats | None]:
         """Re-extract importer name and address with a focused prompt.
 
         Returns:
-            Dict with importer_name and importer_address values, or None on failure.
+            Tuple of (dict with importer values or None, LLMCallStats or None).
         """
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
         try:
+            t0 = time.monotonic()
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=512,
+                temperature=0,
                 messages=[
                     {
                         "role": "user",
@@ -477,28 +554,189 @@ class AnthropicExtractor(BaseExtractor):
                     }
                 ],
             )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_importer",
+            )
+            logger.info(
+                "Importer re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
 
             response_text = response.content[0].text
             logger.info("Importer re-extraction: %s", response_text[:200])
 
             parsed = _repair_json(response_text)
             if parsed is None:
-                return None
+                return None, stats
 
             result = {}
             for key in ("importer_name", "importer_address"):
-                field = parsed.get(key)
-                if isinstance(field, dict) and "value" in field:
-                    result[key] = field["value"]
-                elif isinstance(field, str):
-                    result[key] = field
+                fld = parsed.get(key)
+                if isinstance(fld, dict) and "value" in fld:
+                    result[key] = fld["value"]
+                elif isinstance(fld, str):
+                    result[key] = fld
 
-            return result if any(result.values()) else None
+            return (result if any(result.values()) else None), stats
 
         except Exception as e:
             logger.exception("Importer re-extraction failed: %s", e)
-            return None
+            return None, None
 
+    async def reextract_specialty_class(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[dict | None, LLMCallStats | None]:
+        """Re-extract fanciful name and composition statement for specialty products.
 
-# Backward compatibility alias
-ExtractionService = GroqExtractor
+        Returns:
+            Tuple of (dict with fanciful_name/composition_statement or None, LLMCallStats or None).
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            t0 = time.monotonic()
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=512,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": SPECIALTY_CLASS_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_specialty_class",
+            )
+            logger.info(
+                "Specialty class re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
+            response_text = response.content[0].text
+            logger.info("Specialty class re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None, stats
+
+            result = {}
+            for key in ("fanciful_name", "composition_statement"):
+                fld = parsed.get(key)
+                if isinstance(fld, dict) and "value" in fld:
+                    result[key] = fld["value"]
+                elif isinstance(fld, str):
+                    result[key] = fld
+
+            return (result if any(result.values()) else None), stats
+
+        except Exception as e:
+            logger.exception("Specialty class re-extraction failed: %s", e)
+            return None, None
+
+    async def reextract_brand(
+        self,
+        image_bytes: bytes,
+        declared_brand: str,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[dict | None, LLMCallStats | None]:
+        """Re-extract brand name with a focused prompt using declared brand as hint.
+
+        Returns:
+            Tuple of (dict with brand_name/conf/location_description or None, LLMCallStats or None).
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            t0 = time.monotonic()
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=256,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": BRAND_CONFIRM_PROMPT.format(declared_brand=declared_brand),
+                            },
+                        ],
+                    }
+                ],
+            )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_brand",
+            )
+            logger.info(
+                "Brand re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
+            response_text = response.content[0].text
+            logger.info("Brand re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None, stats
+
+            # Extract brand_name value and conf
+            bn = parsed.get("brand_name")
+            if isinstance(bn, dict) and "value" in bn:
+                brand_value = bn["value"]
+                conf = bn.get("conf", "high")
+            elif isinstance(bn, str):
+                brand_value = bn
+                conf = "high"
+            else:
+                return None, stats
+
+            location = parsed.get("location_description")
+
+            return {"brand_name": brand_value, "conf": conf, "location_description": location}, stats
+
+        except Exception as e:
+            logger.exception("Brand re-extraction failed: %s", e)
+            return None, None

@@ -12,13 +12,6 @@ export const STATUS_COLORS: Record<string, string> = {
   extraction_uncertain: 'var(--yellow-500)',
 };
 
-export const STATUS_BG_COLORS: Record<string, string> = {
-  pass: 'var(--emerald-100)',
-  needs_review: 'var(--yellow-100)',
-  fail: 'var(--red-100)',
-  pending: 'var(--slate-100)',
-};
-
 export const STATUS_LABELS: Record<string, string> = {
   match: 'Match',
   content_mismatch: 'Mismatch',

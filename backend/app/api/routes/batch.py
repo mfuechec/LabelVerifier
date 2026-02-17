@@ -1,99 +1,74 @@
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile
 
 logger = logging.getLogger(__name__)
 
 from app.api.dependencies import get_db, get_db_path
-from app.config import settings
-from app.models.schemas import ApplicationData, BatchResponse, BatchSessionItem, BatchStatus
+from app.models.schemas import BatchResponse, BatchSessionItem, BatchSkippedItem, BatchStatus, ProcessingStats
 from app.services.orchestrator import VerificationOrchestrator
-from app.services.pdf_parser import PDFApplicationParser
+from app.services.pdf_parser import COLAPDFParser, COLAParseResult
 
 router = APIRouter()
 
-
-def _assign_panels(count: int) -> list[str]:
-    """Assign neutral panel names for batch uploads.
-
-    Batch uploads don't know which image is front vs back,
-    so we use neutral names and let the merger resolve conflicts
-    by extraction confidence rather than panel priority.
-    """
-    return [f"label_{i + 1}" for i in range(count)]
-
-_pdf_parser = PDFApplicationParser()
-
-
-def get_orchestrator(request: Request | None = None) -> VerificationOrchestrator:
-    db_path = get_db_path(request)
-    return VerificationOrchestrator(db_path=db_path)
+_pdf_parser = COLAPDFParser()
 
 
 @router.post("/batch")
 async def create_batch(
     request: Request,
     background_tasks: BackgroundTasks,
-    application_pdfs: list[UploadFile] = File(..., alias="application_pdfs[]"),
-    images: list[UploadFile] = File(..., alias="images[]"),
-    image_assignments: list[str] = Form(..., alias="image_assignments[]"),
+    cola_pdfs: list[UploadFile] = File(..., alias="cola_pdfs[]"),
 ):
-    if not application_pdfs:
-        raise HTTPException(status_code=422, detail="At least one application PDF is required")
+    """Submit multiple COLA PDFs for batch verification.
 
-    if len(image_assignments) != len(application_pdfs):
+    Each PDF is self-contained (application form + label images).
+    """
+    if not cola_pdfs:
+        raise HTTPException(status_code=422, detail="At least one COLA PDF is required")
+
+    # Parse each PDF, collecting valid results and skipped items
+    parse_results: list[COLAParseResult] = []
+    skipped: list[tuple[str, str]] = []  # (filename, reason)
+
+    for pdf_file in cola_pdfs:
+        filename = pdf_file.filename or "unknown"
+        pdf_bytes = await pdf_file.read()
+
+        if not pdf_bytes:
+            skipped.append((filename, "Empty file"))
+            continue
+
+        if pdf_file.content_type and pdf_file.content_type != "application/pdf":
+            skipped.append((filename, f"Not a PDF (got {pdf_file.content_type})"))
+            continue
+
+        try:
+            result = _pdf_parser.parse(pdf_bytes)
+        except ValueError as e:
+            skipped.append((filename, str(e)))
+            continue
+
+        if not result.label_images:
+            brand = result.application_data.brand_name or "unknown"
+            skipped.append((filename, f"No label images found in PDF for '{brand}'"))
+            continue
+
+        parse_results.append(result)
+
+    if not parse_results:
         raise HTTPException(
             status_code=422,
-            detail=f"Number of image assignments ({len(image_assignments)}) must match number of PDFs ({len(application_pdfs)})",
+            detail=f"No valid COLA PDFs to process ({len(skipped)} skipped)",
         )
-
-    # Parse assignments JSON
-    parsed_assignments: list[list[int]] = []
-    for assignment_str in image_assignments:
-        try:
-            indices = json.loads(assignment_str)
-            if not isinstance(indices, list):
-                raise ValueError
-            parsed_assignments.append(indices)
-        except (json.JSONDecodeError, ValueError):
-            raise HTTPException(status_code=422, detail="Invalid image_assignments format; each entry must be a JSON array of image indices")
-
-    # Read all image bytes upfront
-    image_bytes_list: list[bytes] = []
-    for img in images:
-        content = await img.read()
-        if img.content_type and img.content_type not in settings.allowed_mime_types:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Unsupported image type: {img.content_type}",
-            )
-        if len(content) > settings.max_image_size:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Image too large: {len(content)} bytes. Maximum: {settings.max_image_size}",
-            )
-        image_bytes_list.append(content)
-
-    # Parse each PDF
-    app_data_list: list[ApplicationData] = []
-    for pdf_file in application_pdfs:
-        pdf_bytes = await pdf_file.read()
-        if not pdf_bytes:
-            raise HTTPException(status_code=422, detail="Application PDF is empty")
-        try:
-            app_data = _pdf_parser.parse_application_pdf(pdf_bytes)
-        except ValueError as e:
-            raise HTTPException(status_code=422, detail=str(e))
-        app_data_list.append(app_data)
 
     # Create batch record
     batch_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
-    total_items = len(application_pdfs)
+    total_items = len(parse_results)
 
     db_path = get_db_path(request)
     conn = get_db(db_path)
@@ -103,27 +78,30 @@ async def create_batch(
                VALUES (?, ?, ?, ?, ?)""",
             (batch_id, "processing", total_items, now, now),
         )
+        for filename, reason in skipped:
+            conn.execute(
+                """INSERT INTO batch_skipped_items (id, batch_id, filename, reason)
+                   VALUES (?, ?, ?, ?)""",
+                (str(uuid.uuid4()), batch_id, filename, reason),
+            )
         conn.commit()
     finally:
         conn.close()
 
-    # Build item list for parallel processing
-    batch_items = []
-    for i, app_data in enumerate(app_data_list):
-        assigned_indices = parsed_assignments[i]
-        item_images = [image_bytes_list[idx] for idx in assigned_indices]
-        panels = _assign_panels(len(item_images))
-        batch_items.append((app_data, item_images, panels))
-
-    # Single background task that processes all items in parallel
     background_tasks.add_task(
         _process_batch,
         db_path=db_path,
         batch_id=batch_id,
-        items=batch_items,
+        parse_results=parse_results,
     )
 
-    return {"data": {"batch_id": batch_id, "total_items": total_items}}
+    return {
+        "data": {
+            "batch_id": batch_id,
+            "total_items": total_items,
+            "skipped_count": len(skipped),
+        }
+    }
 
 
 @router.get("/batch/{batch_id}")
@@ -144,9 +122,10 @@ def get_batch(batch_id: str, request: Request):
             created_at=row["created_at"],
         )
 
-        # Get sessions belonging to this batch
         sessions = conn.execute(
             """SELECT vs.id, vs.beverage_type, vs.status, vs.overall_confidence, vs.created_at,
+                      vs.total_input_tokens, vs.total_output_tokens,
+                      vs.total_llm_calls, vs.processing_time_ms, vs.extraction_time_ms,
                       a.brand_name
                FROM verification_sessions vs
                LEFT JOIN applications a ON a.session_id = vs.id
@@ -155,19 +134,42 @@ def get_batch(batch_id: str, request: Request):
             (batch_id,),
         ).fetchall()
 
-        items = [
-            BatchSessionItem(
-                session_id=s["id"],
-                brand_name=s["brand_name"],
-                beverage_type=s["beverage_type"],
-                status=s["status"],
-                overall_confidence=s["overall_confidence"],
-                created_at=s["created_at"],
+        items = []
+        for s in sessions:
+            ps = None
+            try:
+                if s["total_llm_calls"]:
+                    ps = ProcessingStats(
+                        total_llm_calls=s["total_llm_calls"],
+                        total_input_tokens=s["total_input_tokens"],
+                        total_output_tokens=s["total_output_tokens"],
+                        extraction_time_ms=s["extraction_time_ms"] or 0,
+                        total_time_ms=s["processing_time_ms"],
+                    )
+            except (IndexError, KeyError):
+                pass
+            items.append(
+                BatchSessionItem(
+                    session_id=s["id"],
+                    brand_name=s["brand_name"],
+                    beverage_type=s["beverage_type"],
+                    status=s["status"],
+                    overall_confidence=s["overall_confidence"],
+                    created_at=s["created_at"],
+                    processing_stats=ps,
+                )
             )
-            for s in sessions
+
+        skipped_rows = conn.execute(
+            "SELECT filename, reason FROM batch_skipped_items WHERE batch_id = ?",
+            (batch_id,),
+        ).fetchall()
+        skipped_items = [
+            BatchSkippedItem(filename=r["filename"], reason=r["reason"])
+            for r in skipped_rows
         ]
 
-        return {"data": BatchResponse(batch=batch, items=items).model_dump()}
+        return {"data": BatchResponse(batch=batch, items=items, skipped_items=skipped_items).model_dump()}
     finally:
         conn.close()
 
@@ -175,16 +177,15 @@ def get_batch(batch_id: str, request: Request):
 async def _process_batch(
     db_path: str,
     batch_id: str,
-    items: list[tuple[ApplicationData, list[bytes], list[str]]],
+    parse_results: list[COLAParseResult],
 ):
-    """Process all batch items in parallel using asyncio.gather."""
+    """Process all batch items in parallel."""
     tasks = [
-        _process_single_item(db_path, batch_id, app_data, images, panels)
-        for app_data, images, panels in items
+        _process_single_item(db_path, batch_id, pr)
+        for pr in parse_results
     ]
     await asyncio.gather(*tasks)
 
-    # Mark batch as completed or failed
     now = datetime.now(timezone.utc).isoformat()
     conn = get_db(db_path)
     try:
@@ -203,17 +204,17 @@ async def _process_batch(
 async def _process_single_item(
     db_path: str,
     batch_id: str,
-    app_data: ApplicationData,
-    images: list[bytes],
-    panels: list[str],
+    parse_result: COLAParseResult,
 ):
     orchestrator = VerificationOrchestrator(db_path=db_path)
     now = datetime.now(timezone.utc).isoformat()
 
     try:
-        logger.info("Batch %s: processing item for %s (%d images)", batch_id, app_data.brand_name, len(images))
-        result = await orchestrator.verify_single(images, panels, app_data, batch_id=batch_id)
-        logger.info("Batch %s: item completed, status=%s confidence=%.1f", batch_id, result.status, result.overall_confidence)
+        brand = parse_result.application_data.brand_name
+        n_imgs = len(parse_result.label_images)
+        logger.info("Batch %s: processing %s (%d images)", batch_id, brand, n_imgs)
+        result = await orchestrator.verify_from_cola(parse_result, batch_id=batch_id)
+        logger.info("Batch %s: %s completed, status=%s", batch_id, brand, result.status)
 
         conn = get_db(db_path)
         try:

@@ -3,12 +3,13 @@ from app.services.normalizer import (
     normalize_whitespace,
     normalize_warning_text,
     normalize_for_fuzzy,
+    normalize_company_name,
     normalize_country,
     extract_abv,
     extract_proof,
     normalize_net_contents,
 )
-from app.services.ttb_classes import normalize_class_type
+from app.services.ttb_classes import normalize_class_type, is_administrative_class_type
 from app.models.schemas import ApplicationData, FieldComparisonResult
 
 
@@ -41,6 +42,80 @@ def exact_match(extracted: str, canonical: str) -> tuple[str, float, str]:
     # Calculate similarity for partial credit
     ratio = fuzz.ratio(clean_ext, clean_can)
     return ("content_mismatch", ratio, f"Word-level similarity: {ratio:.0f}%")
+
+
+_US_STATE_ABBREVS: dict[str, str] = {
+    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar",
+    "california": "ca", "colorado": "co", "connecticut": "ct", "delaware": "de",
+    "florida": "fl", "georgia": "ga", "hawaii": "hi", "idaho": "id",
+    "illinois": "il", "indiana": "in", "iowa": "ia", "kansas": "ks",
+    "kentucky": "ky", "louisiana": "la", "maine": "me", "maryland": "md",
+    "massachusetts": "ma", "michigan": "mi", "minnesota": "mn", "mississippi": "ms",
+    "missouri": "mo", "montana": "mt", "nebraska": "ne", "nevada": "nv",
+    "new hampshire": "nh", "new jersey": "nj", "new mexico": "nm", "new york": "ny",
+    "north carolina": "nc", "north dakota": "nd", "ohio": "oh", "oklahoma": "ok",
+    "oregon": "or", "pennsylvania": "pa", "rhode island": "ri", "south carolina": "sc",
+    "south dakota": "sd", "tennessee": "tn", "texas": "tx", "utah": "ut",
+    "vermont": "vt", "virginia": "va", "washington": "wa", "west virginia": "wv",
+    "wisconsin": "wi", "wyoming": "wy",
+}
+_STATE_FULL_TO_ABBREV = {**_US_STATE_ABBREVS}
+_STATE_ABBREV_TO_FULL = {v: k for k, v in _US_STATE_ABBREVS.items()}
+
+
+def _normalize_address_tokens(text: str) -> set[str]:
+    """Normalize an address string into a set of comparable tokens.
+
+    Expands/collapses state names so 'North Carolina' and 'NC' both yield {'nc'}.
+    Strips punctuation, zips, and common noise words.
+    """
+    import re as _re
+    # Collapse dotted abbreviations before fuzzy normalization: "N.Y." -> "NY"
+    text = _re.sub(r"\b([A-Za-z])\.([A-Za-z])\.", r"\1\2", text)
+    t = normalize_for_fuzzy(text)
+    # Remove zip codes
+    t = _re.sub(r"\b\d{5}(?:-\d{4})?\b", "", t)
+    # Remove street numbers at start (e.g. "42 old elk mountain rd")
+    t = _re.sub(r"^\d+\s+", "", t)
+
+    tokens = set(t.split())
+    # Remove noise words
+    tokens -= {"st", "rd", "ave", "blvd", "dr", "ln", "ct", "ste", "suite", "apt"}
+
+    # Expand full state names to abbreviations for normalization
+    for full_name, abbrev in _STATE_FULL_TO_ABBREV.items():
+        full_words = set(full_name.split())
+        if full_words.issubset(tokens):
+            tokens -= full_words
+            tokens.add(abbrev)
+
+    return tokens
+
+
+def address_match(
+    extracted: str | None, declared: str
+) -> tuple[str, float, str]:
+    """Address match: accepts city/state partial matches.
+
+    Labels often print only city/state while applications have full street addresses.
+    If all extracted address tokens appear in the declared address, it's a match.
+    Falls back to standard fuzzy match otherwise.
+    """
+    if not extracted:
+        return ("field_missing", 0.0, "Field not found on label")
+
+    ext_tokens = _normalize_address_tokens(extracted)
+    dec_tokens = _normalize_address_tokens(declared)
+
+    if not ext_tokens:
+        return ("field_missing", 0.0, "Field not found on label")
+
+    # If all extracted tokens are found in declared, treat as match
+    if ext_tokens.issubset(dec_tokens) and len(ext_tokens) >= 1:
+        return ("match", 100.0, f"Address match: extracted location found in declared address")
+
+    # Fall back to standard fuzzy
+    return fuzzy_match(extracted, declared)
 
 
 def fuzzy_match(
@@ -143,6 +218,60 @@ def class_type_match(
     return (status, score, reason)
 
 
+def specialty_class_match(
+    fanciful_name: str | None,
+    composition_statement: str | None,
+    expected_base_spirit: str | None,
+    declared_fanciful_name: str | None = None,
+) -> tuple[str, float, str]:
+    """Verify a specialty/proprietary product has a fanciful name and/or composition statement.
+
+    Per 27 CFR 5.156, products with administrative COLA codes must display
+    a distinctive/fanciful name and a statement of composition on the label.
+
+    Args:
+        fanciful_name: The product's distinctive/fanciful name from the label.
+        composition_statement: The statement of composition (e.g. "Whisky with honey").
+        expected_base_spirit: If set, the composition should reference this spirit.
+        declared_fanciful_name: The fanciful name from the COLA application (for verification).
+
+    Returns:
+        (status, confidence, reason) tuple.
+    """
+    has_fanciful = bool(fanciful_name and fanciful_name.strip())
+    has_composition = bool(composition_statement and composition_statement.strip())
+
+    if not has_fanciful and not has_composition:
+        return ("field_missing", 0.0, "No fanciful name or composition statement found on label")
+
+    # Verify extracted fanciful name against COLA's declared fanciful name
+    if declared_fanciful_name and has_fanciful:
+        fn_status, fn_score, _ = fuzzy_match(fanciful_name, declared_fanciful_name)
+        if fn_status == "content_mismatch":
+            return (
+                "content_mismatch",
+                fn_score,
+                f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
+            )
+
+    if has_fanciful and has_composition:
+        # Check base spirit if expected
+        if expected_base_spirit:
+            comp_lower = composition_statement.strip().lower()
+            if expected_base_spirit.lower() not in comp_lower:
+                return (
+                    "extraction_uncertain",
+                    70.0,
+                    f"Composition '{composition_statement}' does not reference expected base spirit '{expected_base_spirit}'",
+                )
+        return ("match", 100.0, "Fanciful name and composition statement found")
+
+    # Only one present
+    present = "fanciful name" if has_fanciful else "composition statement"
+    missing = "composition statement" if has_fanciful else "fanciful name"
+    return ("match", 85.0, f"Only {present} found; {missing} not detected")
+
+
 def numeric_match_abv(
     extracted: str | None, declared: str
 ) -> tuple[str, float, str | None, str]:
@@ -178,37 +307,55 @@ def numeric_match_abv(
 def numeric_match_net_contents(
     extracted: str | None, declared: str
 ) -> tuple[str, float, str]:
-    """Numeric match for net contents with unit normalization."""
+    """Numeric match for net contents with unit normalization.
+
+    Declared may contain multiple values (newline-separated from COLA forms).
+    Matches extracted against ANY declared size -- best match wins.
+    """
     if not extracted:
         return ("field_missing", 0.0, "Net contents not found on label")
 
     ext_val, ext_unit = normalize_net_contents(extracted)
-    dec_val, dec_unit = normalize_net_contents(declared)
 
     if ext_val is None:
         return ("field_missing", 0.0, "Could not parse extracted net contents")
-    if dec_val is None:
-        return ("content_mismatch", 0.0, "Could not parse declared net contents")
 
-    # Normalize both to mL for comparison
     def to_ml(val: float, unit: str | None) -> float:
         if unit == "fl oz":
             return val * 29.5735
         return val  # already mL
 
     ext_ml = to_ml(ext_val, ext_unit)
-    dec_ml = to_ml(dec_val, dec_unit)
-
-    # Use tighter tolerance for same-unit, wider for cross-unit conversions
-    cross_unit = ext_unit != dec_unit
-    tolerance = 5.0 if cross_unit else 0.5
-
     ext_label = f"{ext_val}{ext_unit or 'mL'}"
-    dec_label = f"{dec_val}{dec_unit or 'mL'}"
 
-    if abs(ext_ml - dec_ml) < tolerance:
-        return ("match", 100.0, f"Net contents match within tolerance ({ext_label} vs {dec_label})")
-    return ("content_mismatch", 0.0, f"Net contents differ: {ext_label} vs {dec_label}")
+    # Split declared on newlines and try each
+    declared_options = [d.strip() for d in declared.split("\n") if d.strip()]
+    if not declared_options:
+        declared_options = [declared]
+
+    best_match = None
+    for dec_str in declared_options:
+        dec_val, dec_unit = normalize_net_contents(dec_str)
+        if dec_val is None:
+            continue
+
+        dec_ml = to_ml(dec_val, dec_unit)
+        cross_unit = ext_unit != dec_unit
+        tolerance = 5.0 if cross_unit else 0.5
+        dec_label = f"{dec_val}{dec_unit or 'mL'}"
+
+        if abs(ext_ml - dec_ml) < tolerance:
+            return ("match", 100.0, f"Net contents match within tolerance ({ext_label} vs {dec_label})")
+
+        # Track closest mismatch for reporting
+        diff = abs(ext_ml - dec_ml)
+        if best_match is None or diff < best_match[0]:
+            best_match = (diff, dec_label)
+
+    if best_match is None:
+        return ("content_mismatch", 0.0, "Could not parse declared net contents")
+
+    return ("content_mismatch", 0.0, f"Net contents differ: {ext_label} vs {best_match[1]}")
 
 
 def presence_check(extracted: str | None, required: bool) -> tuple[str, float, str]:
@@ -228,11 +375,11 @@ class ComparisonService:
         "class_type": "class_type",
         "alcohol_content": "numeric_abv",
         "net_contents": "numeric_net",
-        "producer_name": "fuzzy",
-        "producer_address": "fuzzy",
+        "producer_name": "company_name",
+        "producer_address": "address",
         "country_of_origin": "fuzzy",
-        "importer_name": "fuzzy",
-        "importer_address": "fuzzy",
+        "importer_name": "company_name",
+        "importer_address": "address",
         "government_warning": "exact",
         "sulfites_declaration": "presence",
     }
@@ -331,9 +478,51 @@ class ComparisonService:
             elif strategy == "class_type":
                 dec_value = declared_map.get(field_name)
                 if dec_value:
-                    status, score, reason = class_type_match(
-                        ext_value, dec_value, beverage_type
-                    )
+                    is_admin, base_spirit = is_administrative_class_type(dec_value)
+                    specialty_data = extracted.get("_specialty_class_data")
+                    if is_admin and specialty_data:
+                        fn = specialty_data.get("fanciful_name")
+                        cs = specialty_data.get("composition_statement")
+                        status, score, reason = specialty_class_match(
+                            fn, cs, base_spirit,
+                            declared_fanciful_name=declared.fanciful_name,
+                        )
+                        # Build display value for extracted
+                        parts = [p for p in [fn, cs] if p]
+                        ext_display = " — ".join(parts) if parts else None
+                        results.append(
+                            FieldComparisonResult(
+                                field_name=field_name,
+                                declared_value=dec_value,
+                                extracted_value=ext_display,
+                                status=status,
+                                confidence=score,
+                                match_strategy="specialty_class",
+                                confidence_reason=reason,
+                            )
+                        )
+                    else:
+                        status, score, reason = class_type_match(
+                            ext_value, dec_value, beverage_type
+                        )
+                        results.append(
+                            FieldComparisonResult(
+                                field_name=field_name,
+                                declared_value=dec_value,
+                                extracted_value=ext_value,
+                                status=status,
+                                confidence=score,
+                                match_strategy="class_type",
+                                confidence_reason=reason,
+                            )
+                        )
+
+            elif strategy == "company_name":
+                dec_value = declared_map.get(field_name)
+                if dec_value:
+                    norm_ext = normalize_company_name(ext_value) if ext_value else None
+                    norm_dec = normalize_company_name(dec_value)
+                    status, score, reason = fuzzy_match(norm_ext, norm_dec)
                     results.append(
                         FieldComparisonResult(
                             field_name=field_name,
@@ -341,7 +530,23 @@ class ComparisonService:
                             extracted_value=ext_value,
                             status=status,
                             confidence=score,
-                            match_strategy="class_type",
+                            match_strategy="fuzzy",
+                            confidence_reason=reason,
+                        )
+                    )
+
+            elif strategy == "address":
+                dec_value = declared_map.get(field_name)
+                if dec_value:
+                    status, score, reason = address_match(ext_value, dec_value)
+                    results.append(
+                        FieldComparisonResult(
+                            field_name=field_name,
+                            declared_value=dec_value,
+                            extracted_value=ext_value,
+                            status=status,
+                            confidence=score,
+                            match_strategy="fuzzy",
                             confidence_reason=reason,
                         )
                     )

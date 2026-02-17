@@ -4,7 +4,9 @@ from pydantic import BaseModel
 
 class ApplicationData(BaseModel):
     application_id: str | None = None
+    ttb_id: str | None = None
     brand_name: str
+    fanciful_name: str | None = None
     class_type: str
     alcohol_content: str
     net_contents: str
@@ -15,6 +17,7 @@ class ApplicationData(BaseModel):
     importer_address: str | None = None
     beverage_type: Literal["beer", "wine", "distilled_spirits"]
     has_sulfites_declaration: bool = False
+    source_of_product: Literal["domestic", "imported"] | None = None
 
 
 class BoundingBox(BaseModel):
@@ -51,6 +54,14 @@ class ComplianceIssueResponse(BaseModel):
     message: str
 
 
+class ProcessingStats(BaseModel):
+    total_llm_calls: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    extraction_time_ms: int = 0
+    total_time_ms: int = 0
+
+
 class VerificationResult(BaseModel):
     session_id: str
     status: Literal["pending", "pass", "needs_review", "fail"]
@@ -61,6 +72,7 @@ class VerificationResult(BaseModel):
     created_at: str
     review_summary: ReviewSummary | None = None
     compliance_issues: list[ComplianceIssueResponse] = []
+    processing_stats: ProcessingStats | None = None
 
 
 class OverrideRequest(BaseModel):
@@ -95,11 +107,18 @@ class BatchSessionItem(BaseModel):
     status: str
     overall_confidence: float | None = None
     created_at: str
+    processing_stats: ProcessingStats | None = None
+
+
+class BatchSkippedItem(BaseModel):
+    filename: str
+    reason: str
 
 
 class BatchResponse(BaseModel):
     batch: BatchStatus
     items: list[BatchSessionItem]
+    skipped_items: list[BatchSkippedItem] = []
 
 
 class HistoryItem(BaseModel):

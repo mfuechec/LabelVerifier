@@ -12,7 +12,11 @@ BUILD_SHA = os.environ.get("RAILWAY_GIT_COMMIT_SHA", "local")
 
 @router.get("/health")
 async def health_check():
-    checks = {"api_key_configured": bool(settings.groq_api_key)}
+    if settings.llm_provider == "anthropic":
+        api_key_ok = bool(settings.anthropic_api_key)
+    else:
+        api_key_ok = bool(settings.groq_api_key)
+    checks = {"api_key_configured": api_key_ok}
     try:
         conn = get_db()
         conn.execute("SELECT 1")

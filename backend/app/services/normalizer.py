@@ -23,14 +23,26 @@ def normalize_warning_text(text: str) -> str:
     # Remove hyphens between word characters (OCR line-break artifacts)
     # e.g., "ALCO- HOLIC" -> "ALCOHOLIC", "MACHIN-ERY" -> "MACHINERY"
     text = re.sub(r"(\w)-\s*(\w)", r"\1\2", text)
+    # Ensure space after parenthesized numbers: "(1)According" -> "(1) According"
+    text = re.sub(r"\((\d+)\)(\w)", r"(\1) \2", text)
+    # Ensure space before parenthesized numbers: "defects.(2)" -> "defects. (2)"
+    text = re.sub(r"(\S)(\(\d+\))", r"\1 \2", text)
     return text
 
 
 def extract_abv(text: str | None) -> float | None:
-    """Extract ABV percentage from various formats."""
+    """Extract ABV percentage from various formats.
+
+    Handles: "40%", "40% ABV", "40 %", and plain numbers like "35"
+    (as found in COLA application forms).
+    """
     if not text:
         return None
     match = re.search(r"(\d+\.?\d*)\s*%", text)
+    if match:
+        return float(match.group(1))
+    # Fallback: plain number (COLA forms store just "35")
+    match = re.search(r"^(\d+\.?\d*)$", text.strip())
     if match:
         return float(match.group(1))
     return None
@@ -76,6 +88,11 @@ def normalize_net_contents(text: str | None) -> tuple[float | None, str | None]:
     match = re.search(r"(\d+\.?\d*)\s*(?:Liters?|Litres?|L)\b", text, re.IGNORECASE)
     if match:
         return (float(match.group(1)) * 1000.0, "mL")
+
+    # Try spelled-out units: "MILLILITERS", "MILLILITER"
+    match = re.search(r"(\d+\.?\d*)\s*MILLILITERS?\b", text, re.IGNORECASE)
+    if match:
+        return (float(match.group(1)), "mL")
 
     return (None, None)
 
@@ -130,6 +147,23 @@ def normalize_country(text: str) -> str:
         return text
     lowered = text.strip().lower()
     return COUNTRY_ALIASES.get(lowered, text)
+
+
+def normalize_company_name(text: str) -> str:
+    """Normalize company name for comparison: expand &, strip legal suffixes."""
+    if not text:
+        return ""
+    # Replace & with 'and' before general normalization
+    text = text.replace("&", " and ")
+    text = normalize_for_fuzzy(text)
+    # Strip common legal suffixes
+    text = re.sub(
+        r"\b(inc|llc|ltd|co|corp|company|corporation|incorporated|importing)\b",
+        "",
+        text,
+    )
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 
 def normalize_for_fuzzy(text: str) -> str:

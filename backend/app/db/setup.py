@@ -109,7 +109,15 @@ def create_tables(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_images_session ON label_images(session_id);
         CREATE INDEX IF NOT EXISTS idx_extracted_session ON extracted_fields(session_id);
         CREATE INDEX IF NOT EXISTS idx_comparison_session ON comparison_results(session_id);
+        CREATE TABLE IF NOT EXISTS batch_skipped_items (
+            id TEXT PRIMARY KEY,
+            batch_id TEXT NOT NULL REFERENCES batches(id),
+            filename TEXT NOT NULL,
+            reason TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_feedback_session ON agent_feedback(session_id);
+        CREATE INDEX IF NOT EXISTS idx_skipped_batch ON batch_skipped_items(batch_id);
     """)
     conn.commit()
 
@@ -119,12 +127,38 @@ def create_tables(conn: sqlite3.Connection) -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """Run incremental schema migrations for existing databases."""
-    columns = {
+    session_cols = {
         row[1]
         for row in conn.execute("PRAGMA table_info(verification_sessions)").fetchall()
     }
-    if "batch_id" not in columns:
+    if "batch_id" not in session_cols:
         conn.execute("ALTER TABLE verification_sessions ADD COLUMN batch_id TEXT REFERENCES batches(id)")
         conn.commit()
     conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_batch ON verification_sessions(batch_id)")
     conn.commit()
+
+    # Add processing stats columns to verification_sessions
+    for col_name, col_def in [
+        ("total_input_tokens", "INTEGER DEFAULT 0"),
+        ("total_output_tokens", "INTEGER DEFAULT 0"),
+        ("total_llm_calls", "INTEGER DEFAULT 0"),
+        ("processing_time_ms", "INTEGER DEFAULT 0"),
+        ("extraction_time_ms", "INTEGER DEFAULT 0"),
+    ]:
+        if col_name not in session_cols:
+            conn.execute(f"ALTER TABLE verification_sessions ADD COLUMN {col_name} {col_def}")
+            conn.commit()
+
+    # Add new COLA fields to applications table
+    app_cols = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(applications)").fetchall()
+    }
+    for col_name, col_def in [
+        ("fanciful_name", "TEXT"),
+        ("ttb_id", "TEXT"),
+        ("source_of_product", "TEXT"),
+    ]:
+        if col_name not in app_cols:
+            conn.execute(f"ALTER TABLE applications ADD COLUMN {col_name} {col_def}")
+            conn.commit()

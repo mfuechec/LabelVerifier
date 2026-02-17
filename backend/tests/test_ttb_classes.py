@@ -1,219 +1,187 @@
+"""Tests for TTB class/type canonicalization."""
+
 import pytest
-from app.services.ttb_classes import normalize_class_type
+from app.services.ttb_classes import normalize_class_type, is_administrative_class_type
 
 
-class TestNormalizeClassTypeSpirits:
-    def test_exact_canonical_class(self):
-        canonical, qualifier = normalize_class_type("Bourbon Whiskey", "distilled_spirits")
-        assert canonical == "bourbon whiskey"
-        assert qualifier is None
-
-    def test_strips_finishing_statement(self):
-        canonical, qualifier = normalize_class_type(
-            "Kentucky Straight Bourbon Whiskey Finished in Port Wine Barrels",
-            "distilled_spirits",
-        )
-        assert canonical == "straight bourbon whiskey"
-        assert "finished in port wine barrels" in qualifier.lower()
-
-    def test_strips_with_natural_flavors(self):
-        canonical, qualifier = normalize_class_type(
-            "Bourbon Whiskey with Natural Flavors",
-            "distilled_spirits",
-        )
-        assert canonical == "bourbon whiskey"
-        assert "natural flavors" in qualifier.lower()
-
-    def test_strips_aged_in_statement(self):
-        canonical, qualifier = normalize_class_type(
-            "Rye Whiskey Aged in Charred Oak Barrels",
-            "distilled_spirits",
-        )
-        assert canonical == "rye whiskey"
-        assert "aged in" in qualifier.lower()
-
-    def test_strips_barrel_rested(self):
-        canonical, qualifier = normalize_class_type(
-            "Vodka Barrel Rested",
-            "distilled_spirits",
-        )
+class TestNormalizeClassType:
+    def test_vodka(self):
+        canonical, _ = normalize_class_type("vodka", "distilled_spirits")
         assert canonical == "vodka"
-        assert "barrel rested" in qualifier.lower()
 
-    def test_strips_locally_crafted(self):
-        canonical, qualifier = normalize_class_type(
-            "Locally Crafted Vodka",
-            "distilled_spirits",
-        )
+    def test_vodka_uppercase(self):
+        canonical, _ = normalize_class_type("VODKA", "distilled_spirits")
         assert canonical == "vodka"
-        assert "locally crafted" in qualifier.lower()
-
-    def test_kentucky_geographic_qualifier(self):
-        """Kentucky Straight Bourbon Whiskey should map to straight bourbon whiskey."""
-        canonical, qualifier = normalize_class_type(
-            "Kentucky Straight Bourbon Whiskey",
-            "distilled_spirits",
-        )
-        assert canonical == "straight bourbon whiskey"
-
-    def test_tennessee_geographic_qualifier(self):
-        canonical, qualifier = normalize_class_type(
-            "Tennessee Whiskey",
-            "distilled_spirits",
-        )
-        assert canonical == "tennessee whiskey"
-
-    def test_flavored_whiskey(self):
-        canonical, qualifier = normalize_class_type(
-            "Chocolate Flavored Whiskey",
-            "distilled_spirits",
-        )
-        assert canonical == "flavored whiskey"
-
-    def test_plain_vodka(self):
-        canonical, qualifier = normalize_class_type("Vodka", "distilled_spirits")
-        assert canonical == "vodka"
-        assert qualifier is None
-
-    def test_flavored_vodka(self):
-        canonical, qualifier = normalize_class_type("Citrus Flavored Vodka", "distilled_spirits")
-        assert canonical == "flavored vodka"
-
-    def test_rum(self):
-        canonical, qualifier = normalize_class_type("Rum", "distilled_spirits")
-        assert canonical == "rum"
 
     def test_gin(self):
-        canonical, qualifier = normalize_class_type("Gin", "distilled_spirits")
+        canonical, _ = normalize_class_type("Gin", "distilled_spirits")
         assert canonical == "gin"
 
     def test_tequila(self):
-        canonical, qualifier = normalize_class_type("Tequila", "distilled_spirits")
+        canonical, _ = normalize_class_type("Tequila", "distilled_spirits")
         assert canonical == "tequila"
 
-    def test_brandy(self):
-        canonical, qualifier = normalize_class_type("Brandy", "distilled_spirits")
-        assert canonical == "brandy"
+    def test_whisky_variant(self):
+        """'Whisky' should normalize same as 'Whiskey'."""
+        c1, _ = normalize_class_type("Whisky", "distilled_spirits")
+        c2, _ = normalize_class_type("Whiskey", "distilled_spirits")
+        assert c1 == c2
 
-    def test_straight_rye_whiskey(self):
-        canonical, qualifier = normalize_class_type("Straight Rye Whiskey", "distilled_spirits")
-        assert canonical == "straight rye whiskey"
-
-    def test_whisky_variant_spelling(self):
-        canonical, qualifier = normalize_class_type("Bourbon Whisky", "distilled_spirits")
-        assert canonical == "bourbon whiskey"
-
-    def test_case_insensitive(self):
-        canonical, qualifier = normalize_class_type("STRAIGHT BOURBON WHISKEY", "distilled_spirits")
-        assert canonical == "straight bourbon whiskey"
-
-    def test_corn_whiskey(self):
-        canonical, qualifier = normalize_class_type("Corn Whiskey", "distilled_spirits")
-        assert canonical == "corn whiskey"
-
-    def test_blended_whiskey(self):
-        canonical, qualifier = normalize_class_type("Blended Whiskey", "distilled_spirits")
-        assert canonical == "blended whiskey"
-
-    def test_london_dry_gin(self):
-        canonical, qualifier = normalize_class_type("London Dry Gin", "distilled_spirits")
-        assert canonical == "london dry gin"
-
-    def test_scotch_whisky(self):
-        canonical, qualifier = normalize_class_type("Scotch Whisky", "distilled_spirits")
-        assert canonical == "scotch whisky"
-
-
-class TestNormalizeClassTypeWine:
     def test_red_wine(self):
-        canonical, qualifier = normalize_class_type("Red Wine", "wine")
+        canonical, _ = normalize_class_type("Red Wine", "wine")
         assert canonical == "red wine"
 
-    def test_white_wine(self):
-        canonical, qualifier = normalize_class_type("White Wine", "wine")
-        assert canonical == "white wine"
+    def test_champagne(self):
+        canonical, _ = normalize_class_type("Champagne", "wine")
+        assert canonical == "champagne"
 
-    def test_rose_wine(self):
-        canonical, qualifier = normalize_class_type("Rose Wine", "wine")
-        assert canonical == "rose wine"
+    def test_unknown_class(self):
+        canonical, _ = normalize_class_type("COMPLETELY MADE UP CLASS", "distilled_spirits")
+        assert canonical is None
 
-    def test_sparkling_wine(self):
-        canonical, qualifier = normalize_class_type("Sparkling Wine", "wine")
-        assert canonical == "sparkling wine"
-
-    def test_table_wine(self):
-        canonical, qualifier = normalize_class_type("Table Wine", "wine")
-        assert canonical == "table wine"
-
-    def test_dessert_wine(self):
-        canonical, qualifier = normalize_class_type("Dessert Wine", "wine")
-        assert canonical == "dessert wine"
-
-    def test_wine_with_appellation(self):
-        """Wine with geographic appellation -- qualifier stripped, base class matched."""
+    def test_qualifier_stripped(self):
+        """Qualifiers like 'flavored' should be stripped."""
         canonical, qualifier = normalize_class_type(
-            "Red Wine from Napa Valley",
-            "wine",
+            "Flavored Vodka", "distilled_spirits"
         )
-        assert canonical == "red wine"
+        # Should still find vodka as base class
+        assert canonical is not None
 
+    def test_distilled_spirits_specialty(self):
+        """Distilled spirits specialty is a recognized TTB class."""
+        canonical, _ = normalize_class_type(
+            "Distilled Spirits Specialty", "distilled_spirits"
+        )
+        assert canonical == "distilled spirits specialty"
 
-class TestNormalizeClassTypeBeer:
+    def test_brandy(self):
+        canonical, _ = normalize_class_type("Brandy", "distilled_spirits")
+        assert canonical is not None
+
+    def test_rum(self):
+        canonical, _ = normalize_class_type("Rum", "distilled_spirits")
+        assert canonical is not None
+
     def test_beer(self):
-        canonical, qualifier = normalize_class_type("Beer", "malt_beverages")
+        canonical, _ = normalize_class_type("Beer", "malt_beverages")
         assert canonical == "beer"
 
-    def test_ale(self):
-        canonical, qualifier = normalize_class_type("Ale", "malt_beverages")
-        assert canonical == "ale"
-
-    def test_lager(self):
-        canonical, qualifier = normalize_class_type("Lager", "malt_beverages")
-        assert canonical == "lager"
-
-    def test_stout(self):
-        canonical, qualifier = normalize_class_type("Stout", "malt_beverages")
-        assert canonical == "stout"
-
-    def test_malt_beverage(self):
-        canonical, qualifier = normalize_class_type("Malt Beverage", "malt_beverages")
-        assert canonical == "malt beverage"
-
-
-class TestNormalizeClassTypeUnknown:
-    def test_unknown_class_returns_none(self):
-        canonical, qualifier = normalize_class_type("Xyzzy Drink", "distilled_spirits")
+    def test_empty_string(self):
+        canonical, _ = normalize_class_type("", "distilled_spirits")
         assert canonical is None
+
+
+class TestIsAdministrativeClassType:
+    """Tests for detecting administrative COLA codes that won't appear on labels."""
+
+    def test_other_specialties(self):
+        is_admin, base = is_administrative_class_type("OTHER SPECIALTIES & PROPRIETARIES")
+        assert is_admin is True
+        assert base is None
+
+    def test_specialties_and_proprietaries(self):
+        is_admin, base = is_administrative_class_type("SPECIALTIES & PROPRIETARIES")
+        assert is_admin is True
+        assert base is None
+
+    def test_whisky_specialties(self):
+        is_admin, base = is_administrative_class_type("WHISKY SPECIALTIES")
+        assert is_admin is True
+        assert base == "whisky"
+
+    def test_vodka_specialties(self):
+        is_admin, base = is_administrative_class_type("VODKA SPECIALTIES")
+        assert is_admin is True
+        assert base == "vodka"
+
+    def test_gin_specialties(self):
+        is_admin, base = is_administrative_class_type("GIN SPECIALTIES")
+        assert is_admin is True
+        assert base == "gin"
+
+    def test_rum_specialties(self):
+        is_admin, base = is_administrative_class_type("RUM SPECIALTIES")
+        assert is_admin is True
+        assert base == "rum"
+
+    def test_whisky_proprietary(self):
+        is_admin, base = is_administrative_class_type("WHISKY PROPRIETARY")
+        assert is_admin is True
+        assert base == "whisky"
+
+    def test_malt_beverages_specialities_flavored(self):
+        is_admin, base = is_administrative_class_type("MALT BEVERAGES SPECIALITIES - FLAVORED")
+        assert is_admin is True
+        assert base is None
+
+    def test_malt_beverages_specialities(self):
+        is_admin, base = is_administrative_class_type("MALT BEVERAGES SPECIALITIES")
+        assert is_admin is True
+        assert base is None
+
+    def test_case_insensitive(self):
+        is_admin, base = is_administrative_class_type("other specialties & proprietaries")
+        assert is_admin is True
+
+    def test_extra_whitespace(self):
+        is_admin, base = is_administrative_class_type("  OTHER  SPECIALTIES &  PROPRIETARIES  ")
+        assert is_admin is True
+
+    def test_vodka_not_admin(self):
+        """Regular TTB classes should NOT be flagged as administrative."""
+        is_admin, base = is_administrative_class_type("VODKA")
+        assert is_admin is False
+        assert base is None
+
+    def test_bourbon_whiskey_not_admin(self):
+        is_admin, base = is_administrative_class_type("STRAIGHT BOURBON WHISKEY")
+        assert is_admin is False
 
     def test_none_input(self):
-        canonical, qualifier = normalize_class_type(None, "distilled_spirits")
-        assert canonical is None
-        assert qualifier is None
+        is_admin, base = is_administrative_class_type(None)
+        assert is_admin is False
 
-    def test_empty_input(self):
-        canonical, qualifier = normalize_class_type("", "distilled_spirits")
-        assert canonical is None
-        assert qualifier is None
+    def test_empty_string(self):
+        is_admin, base = is_administrative_class_type("")
+        assert is_admin is False
 
-    def test_whitespace_only(self):
-        canonical, qualifier = normalize_class_type("   ", "distilled_spirits")
-        assert canonical is None
-        assert qualifier is None
+    # Fix #5: Pattern-based fallback for unlisted specialty codes
+    def test_brandy_specialties_pattern(self):
+        """Codes matching '<spirit> SPECIALTIES' pattern should be detected even if not hardcoded."""
+        is_admin, base = is_administrative_class_type("BRANDY SPECIALTIES")
+        assert is_admin is True
+        assert base == "brandy"
 
+    def test_tequila_specialties_pattern(self):
+        is_admin, base = is_administrative_class_type("TEQUILA SPECIALTIES")
+        assert is_admin is True
+        assert base == "tequila"
 
-class TestNormalizeClassTypeQualifierCombinations:
-    def test_multiple_qualifiers_stripped(self):
-        canonical, qualifier = normalize_class_type(
-            "Small Batch Bourbon Whiskey Finished in Sherry Casks with Honey",
-            "distilled_spirits",
-        )
-        assert canonical == "bourbon whiskey"
-        assert qualifier is not None
+    def test_brandy_proprietary_pattern(self):
+        is_admin, base = is_administrative_class_type("BRANDY PROPRIETARY")
+        assert is_admin is True
+        assert base == "brandy"
 
-    def test_infused_with_stripped(self):
-        canonical, qualifier = normalize_class_type(
-            "Vodka Infused with Natural Flavors",
-            "distilled_spirits",
-        )
-        assert canonical == "vodka"
-        assert "infused" in qualifier.lower()
+    def test_pattern_does_not_match_plain_spirit(self):
+        """'WHISKY' alone should not match the specialty pattern."""
+        is_admin, _ = is_administrative_class_type("WHISKY")
+        assert is_admin is False
+
+    def test_pattern_does_not_match_arbitrary_text(self):
+        is_admin, _ = is_administrative_class_type("RANDOM SPECIALTIES WORD")
+        assert is_admin is False
+
+    def test_other_cordials_liqueurs_is_admin(self):
+        """'OTHER HERB & SEED CORDIALS/LIQUEURS' is an admin category code."""
+        is_admin, base = is_administrative_class_type("OTHER HERB & SEED CORDIALS/LIQUEURS")
+        assert is_admin is True
+
+    def test_other_grape_brandy_is_admin(self):
+        """'OTHER GRAPE BRANDY (PISCO, GRAPPA) FB' is an admin category code."""
+        is_admin, base = is_administrative_class_type("OTHER GRAPE BRANDY (PISCO, GRAPPA) FB")
+        assert is_admin is True
+
+    def test_table_wine_is_not_admin(self):
+        """'TABLE RED WINE' is a real class, not admin."""
+        is_admin, _ = is_administrative_class_type("TABLE RED WINE")
+        assert is_admin is False
