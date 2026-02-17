@@ -57,6 +57,45 @@ class TestCompareFieldsBrandMismatch:
         assert brand.status == "content_mismatch"
 
 
+class TestBrandNamePartialMatch:
+    """Brand name with typos or embedded in longer text should still match."""
+
+    def _make_app(self, brand_name):
+        return ApplicationData(
+            ttb_id="test", permit_id="test", serial="test",
+            brand_name=brand_name, class_type="Pisco",
+            alcohol_content="40%", net_contents="750ml",
+            beverage_type="distilled_spirits",
+        )
+
+    def test_cola_typo_brand_partial_matches(self, service):
+        """COLA declares 'VIJO TONEL' (typo for VIEJO), label says 'Pisco Viejo Tonel'."""
+        results = service.compare_fields(
+            {"brand_name": "Pisco Viejo Tonel"},
+            self._make_app("VIJO TONEL"), "distilled_spirits",
+        )
+        brand = next(r for r in results if r.field_name == "brand_name")
+        assert brand.status == "match", f"Expected match, got {brand.status} ({brand.confidence}%): {brand.confidence_reason}"
+
+    def test_brand_substring_exact(self, service):
+        """Declared brand is exact substring of extracted."""
+        results = service.compare_fields(
+            {"brand_name": "Pisco Viejo Tonel"},
+            self._make_app("TONEL"), "distilled_spirits",
+        )
+        brand = next(r for r in results if r.field_name == "brand_name")
+        assert brand.status == "match"
+
+    def test_completely_different_brand_still_fails(self, service):
+        """Unrelated brand names should still fail."""
+        results = service.compare_fields(
+            {"brand_name": "Pisco Viejo Tonel"},
+            self._make_app("JACK DANIELS"), "distilled_spirits",
+        )
+        brand = next(r for r in results if r.field_name == "brand_name")
+        assert brand.status == "content_mismatch"
+
+
 class TestCompareFieldsMissingWarning:
     """Government warning not found on label."""
 
@@ -94,6 +133,40 @@ class TestCompareFieldsMultiValueNetContents:
         results = service.compare_fields(extracted, app_data, "distilled_spirits")
         nc = next(r for r in results if r.field_name == "net_contents")
         assert nc.status == "match"
+
+
+class TestNetContentsMagnitudeCheck:
+    """Large net contents discrepancies should be extraction_uncertain, not mismatch."""
+
+    def test_order_of_magnitude_off_flags_uncertain(self, service):
+        """Extracted 7500mL vs declared 750mL (10x off) — likely OCR error."""
+        app_data = ApplicationData(
+            brand_name="TEST", class_type="VODKA",
+            alcohol_content="40", net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        results = service.compare_fields(
+            {"brand_name": "TEST", "alcohol_content": "40%",
+             "net_contents": "7500 mL"},
+            app_data, "distilled_spirits",
+        )
+        nc = next(r for r in results if r.field_name == "net_contents")
+        assert nc.status == "extraction_uncertain", f"Expected extraction_uncertain, got {nc.status}: {nc.confidence_reason}"
+
+    def test_small_mismatch_still_content_mismatch(self, service):
+        """Extracted 375mL vs declared 750mL (2x) — real mismatch."""
+        app_data = ApplicationData(
+            brand_name="TEST", class_type="VODKA",
+            alcohol_content="40", net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        results = service.compare_fields(
+            {"brand_name": "TEST", "alcohol_content": "40%",
+             "net_contents": "375 mL"},
+            app_data, "distilled_spirits",
+        )
+        nc = next(r for r in results if r.field_name == "net_contents")
+        assert nc.status == "content_mismatch"
 
 
 class TestCompareFieldsAbvMismatch:
@@ -352,6 +425,28 @@ class TestImporterNameMatch:
         imp = next(r for r in results if r.field_name == "importer_name")
         assert imp.status == "match"
 
+    def test_single_word_importer_contained_matches(self, service):
+        """'Niche' alone should match 'NICHE W. & S., NICHE IMPORT CO.'"""
+        app_data = ApplicationData(
+            brand_name="TEST",
+            class_type="TABLE WHITE WINE",
+            alcohol_content="12",
+            net_contents="1 LITER",
+            importer_name="NICHE W. & S., NICHE IMPORT CO.",
+            beverage_type="wine",
+        )
+        extracted = {
+            "brand_name": "TEST",
+            "class_type": "White Wine",
+            "alcohol_content": "12%",
+            "net_contents": "1 L",
+            "importer_name": "Niche",
+            "government_warning": "N/A",
+        }
+        results = service.compare_fields(extracted, app_data, "wine")
+        imp = next(r for r in results if r.field_name == "importer_name")
+        assert imp.status == "match"
+
     def test_wrong_importer_does_not_match(self, service):
         """Completely different importer should fail."""
         app_data = ApplicationData(
@@ -451,7 +546,7 @@ class TestAddressPartialMatch:
         assert addr.status == "content_mismatch"
 
 
-class TestCompareFieldsSpecialtyClass:
+class TestSpecialtyClassAdminCodes:
     """Administrative COLA codes should use specialty class matching."""
 
     def test_other_cordials_uses_specialty_matching(self, service):
@@ -555,3 +650,121 @@ class TestCompareFieldsSpecialtyClass:
         results = service.compare_fields(extracted, app_data, "distilled_spirits")
         ct = next(r for r in results if r.field_name == "class_type")
         assert ct.status == "content_mismatch"
+
+    def test_specialty_fanciful_in_composition_matches(self, service):
+        """When LLM puts the fanciful name into composition_statement, still match.
+
+        Real case: Howling Moon-1 — COLA declares fanciful 'RAYMOND FAIRCHILDS MOUNTAIN',
+        LLM extracts fanciful='Howling Moon' (the brand) and
+        composition="Raymond Fairchild's Mountain Moonshine" (contains the fanciful).
+        """
+        app_data = ApplicationData(
+            brand_name="HOWLING MOON",
+            fanciful_name="RAYMOND FAIRCHILDS MOUNTAIN",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="50",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "Howling Moon",
+            "class_type": None,
+            "alcohol_content": "50%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Howling Moon",
+                "composition_statement": "Raymond Fairchild's Mountain Moonshine",
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "match"
+
+    def test_specialty_style_designator_accepted(self, service):
+        """Short ALL-CAPS declared fanciful names like 'ACHOLADO' are style designators.
+
+        For pisco/brandy, these are variety codes filed in the COLA, not marketing names
+        on labels. If extracted fanciful contains the spirit type, accept the match.
+        """
+        app_data = ApplicationData(
+            brand_name="VIEJO TONEL",
+            fanciful_name="ACHOLADO",
+            class_type="OTHER GRAPE BRANDY (PISCO, GRAPPA) FB",
+            alcohol_content="40",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "Viejo Tonel",
+            "class_type": None,
+            "alcohol_content": "40%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Pisco Viejo Tonel",
+                "composition_statement": None,
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status in ("match", "extraction_uncertain")
+        assert ct.confidence >= 70.0
+
+    def test_specialty_style_designator_italia(self, service):
+        """'ITALIA' is a grape variety designator for pisco, not a marketing name."""
+        app_data = ApplicationData(
+            brand_name="VIEJO TONEL",
+            fanciful_name="ITALIA",
+            class_type="OTHER GRAPE BRANDY (PISCO, GRAPPA) FB",
+            alcohol_content="40",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "Viejo Tonel",
+            "class_type": None,
+            "alcohol_content": "40%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Pisco Viejo Tonel",
+                "composition_statement": None,
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status in ("match", "extraction_uncertain")
+        assert ct.confidence >= 70.0
+
+    def test_specialty_fanciful_combined_field_fuzzy_check(self, service):
+        """When declared fanciful doesn't match fanciful_name or composition individually,
+        check if it fuzzy-matches the combined text of both fields.
+
+        Real case: Howling Moon-1 — declared fanciful 'RAYMOND FAIRCHILDS MOUNTAIN',
+        fanciful='Howling Moon Mountain Moonshine', composition='Spirits Distilled From Grain'.
+        Neither field alone matches, but the label clearly has the product name somewhere.
+        The fix: also try fuzzy matching declared against the concatenation of both fields.
+        """
+        app_data = ApplicationData(
+            brand_name="HOWLING MOON",
+            fanciful_name="RAYMOND FAIRCHILDS MOUNTAIN",
+            class_type="OTHER SPECIALTIES & PROPRIETARIES",
+            alcohol_content="50",
+            net_contents="750 MILLILITERS",
+            beverage_type="distilled_spirits",
+        )
+        extracted = {
+            "brand_name": "Howling Moon",
+            "class_type": None,
+            "alcohol_content": "50%",
+            "net_contents": "750 mL",
+            "government_warning": "N/A",
+            "_specialty_class_data": {
+                "fanciful_name": "Raymond Fairchild's Mountain Moonshine",
+                "composition_statement": "Spirits Distilled From Grain",
+            },
+        }
+        results = service.compare_fields(extracted, app_data, "distilled_spirits")
+        ct = next(r for r in results if r.field_name == "class_type")
+        assert ct.status == "match"

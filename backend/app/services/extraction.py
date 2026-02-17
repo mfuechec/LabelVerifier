@@ -90,6 +90,33 @@ Rules:
 - Extract EXACTLY as printed -- do NOT correct errors"""
 
 
+# Focused prompt for country of origin re-extraction
+COUNTRY_REEXTRACT_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find the COUNTRY OF ORIGIN on this label.
+
+Look carefully for ANY text indicating where this product was made. Check ALL areas of the label including edges, back panel, neck labels, and fine print.
+
+Common patterns:
+- "Product of [country]"
+- "Made in [country]"
+- "Produced in [country]"
+- "Bottled in [country]"
+- "Imported from [country]"
+- "Hecho en [country]" (Spanish)
+- "Produit de [country]" / "Mis en bouteille en [country]" (French)
+- A country name near "Imported by" text
+
+Also look for geographic indicators like wine regions (e.g. "Niederösterreich, Austria") that imply country of origin.
+
+Return ONLY a JSON object (no markdown, no extra text):
+{"country_of_origin": {"value": null, "conf": "high"}}
+
+Rules:
+- Extract the country name as printed on the label
+- conf: "high" = clearly readable, "medium" = partially obscured, "low" = barely legible
+- If no country of origin is visible, return null
+- Extract EXACTLY as printed -- do NOT correct errors"""
+
+
 # Focused prompt for specialty class/type re-extraction (fanciful name + composition)
 SPECIALTY_CLASS_PROMPT = """You are an expert text reader for US alcohol label compliance. Your ONLY task is to find the product's distinctive/fanciful name and its statement of composition on this label.
 
@@ -365,7 +392,7 @@ def _convert_parsed_to_fields(parsed: dict) -> dict:
 
 
 class AnthropicExtractor(BaseExtractor):
-    def __init__(self, api_key: str, model: str = "claude-haiku-4-5-20251001"):
+    def __init__(self, api_key: str, model: str = "claude-sonnet-4-5-20250929"):
         self.client = AsyncAnthropic(api_key=api_key)
         self.model = model
 
@@ -587,6 +614,76 @@ class AnthropicExtractor(BaseExtractor):
 
         except Exception as e:
             logger.exception("Importer re-extraction failed: %s", e)
+            return None, None
+
+    async def reextract_country_of_origin(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+    ) -> tuple[str | None, LLMCallStats | None]:
+        """Re-extract country of origin with a focused prompt.
+
+        Returns:
+            Tuple of (country string or None, LLMCallStats or None).
+        """
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        try:
+            t0 = time.monotonic()
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=256,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": base64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": COUNTRY_REEXTRACT_PROMPT,
+                            },
+                        ],
+                    }
+                ],
+            )
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+
+            usage = response.usage
+            stats = LLMCallStats(
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+                elapsed_ms=elapsed_ms,
+                call_type="reextract_country",
+            )
+            logger.info(
+                "Country re-extraction LLM stats: %d in / %d out tokens, %dms",
+                stats.input_tokens, stats.output_tokens, stats.elapsed_ms,
+            )
+
+            response_text = response.content[0].text
+            logger.info("Country re-extraction: %s", response_text[:200])
+
+            parsed = _repair_json(response_text)
+            if parsed is None:
+                return None, stats
+
+            fld = parsed.get("country_of_origin")
+            if isinstance(fld, dict) and "value" in fld:
+                return fld["value"], stats
+            elif isinstance(fld, str):
+                return fld, stats
+            return None, stats
+
+        except Exception as e:
+            logger.exception("Country re-extraction failed: %s", e)
             return None, None
 
     async def reextract_specialty_class(

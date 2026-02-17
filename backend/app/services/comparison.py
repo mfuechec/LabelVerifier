@@ -248,11 +248,35 @@ def specialty_class_match(
     if declared_fanciful_name and has_fanciful:
         fn_status, fn_score, _ = fuzzy_match(fanciful_name, declared_fanciful_name)
         if fn_status == "content_mismatch":
-            return (
-                "content_mismatch",
-                fn_score,
-                f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
-            )
+            # Fallback 1: LLM may put the fanciful name into the composition field
+            if has_composition:
+                cs_status, _, _ = fuzzy_match(composition_statement, declared_fanciful_name)
+                if cs_status == "match":
+                    pass  # Fanciful name found in composition — continue to success path
+                    fn_status = "match"
+
+            # Fallback 2: Declared fanciful may be a style/variety designator
+            # (e.g. "ACHOLADO", "ITALIA", "EXTRA ANEJO") — short ALL-CAPS terms
+            # that are COLA metadata, not marketing names on the label
+            if fn_status == "content_mismatch":
+                decl_words = declared_fanciful_name.strip().split()
+                is_style_designator = (
+                    len(decl_words) == 1
+                    and declared_fanciful_name == declared_fanciful_name.upper()
+                )
+                if is_style_designator:
+                    # Accept if the extracted fanciful has a recognizable product identity
+                    # (i.e., it's not empty garbage — it contains meaningful text)
+                    if len(fanciful_name.strip().split()) >= 2:
+                        pass  # Style designator — skip fanciful name check
+                        fn_status = "match"
+
+            if fn_status == "content_mismatch":
+                return (
+                    "content_mismatch",
+                    fn_score,
+                    f"Fanciful name mismatch: label has '{fanciful_name}', COLA declares '{declared_fanciful_name}'",
+                )
 
     if has_fanciful and has_composition:
         # Check base spirit if expected
@@ -354,6 +378,17 @@ def numeric_match_net_contents(
 
     if best_match is None:
         return ("content_mismatch", 0.0, "Could not parse declared net contents")
+
+    # If values differ by >5x, likely an OCR misread (e.g. 7500 vs 750)
+    best_diff, best_dec_label = best_match
+    best_dec_ml = ext_ml - best_diff if ext_ml > best_diff else ext_ml + best_diff
+    if best_dec_ml > 0:
+        ratio = max(ext_ml, best_dec_ml) / min(ext_ml, best_dec_ml)
+        if ratio > 5:
+            return (
+                "extraction_uncertain", 30.0,
+                f"Net contents differ by {ratio:.0f}x ({ext_label} vs {best_dec_label}) — possible OCR error",
+            )
 
     return ("content_mismatch", 0.0, f"Net contents differ: {ext_label} vs {best_match[1]}")
 
@@ -522,7 +557,16 @@ class ComparisonService:
                 if dec_value:
                     norm_ext = normalize_company_name(ext_value) if ext_value else None
                     norm_dec = normalize_company_name(dec_value)
-                    status, score, reason = fuzzy_match(norm_ext, norm_dec)
+                    # Single-word containment: if extracted is one meaningful word
+                    # contained in the declared name, accept it
+                    if (norm_ext and len(norm_ext.split()) == 1
+                            and len(norm_ext) >= 3 and norm_ext in norm_dec):
+                        status, score, reason = (
+                            "match", 95.0,
+                            f"Company name '{norm_ext}' found in declared name",
+                        )
+                    else:
+                        status, score, reason = fuzzy_match(norm_ext, norm_dec)
                     results.append(
                         FieldComparisonResult(
                             field_name=field_name,
@@ -560,6 +604,21 @@ class ComparisonService:
                         ext_cmp = normalize_country(ext_cmp)
                         dec_cmp = normalize_country(dec_cmp)
                     status, score, reason = fuzzy_match(ext_cmp, dec_cmp)
+                    # Brand-specific fallback: use partial_ratio when standard
+                    # fuzzy fails — handles declared brand embedded in longer
+                    # extracted text and COLA typos (e.g. "VIJO TONEL" vs
+                    # "Pisco Viejo Tonel")
+                    if (field_name == "brand_name"
+                            and status == "content_mismatch" and ext_cmp):
+                        pr = fuzz.partial_ratio(
+                            normalize_for_fuzzy(ext_cmp),
+                            normalize_for_fuzzy(dec_cmp),
+                        )
+                        if pr >= 85:
+                            status, score, reason = (
+                                "match", pr,
+                                f"Fuzzy match: {pr:.0f}% (brand partial match)",
+                            )
                     results.append(
                         FieldComparisonResult(
                             field_name=field_name,

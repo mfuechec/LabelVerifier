@@ -60,6 +60,7 @@ class ProcessingStats(BaseModel):
     total_output_tokens: int = 0
     extraction_time_ms: int = 0
     total_time_ms: int = 0
+    estimated_cost_usd: float = 0.0
 
 
 class VerificationResult(BaseModel):
